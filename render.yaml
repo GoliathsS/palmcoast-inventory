@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: palmcoast-inventory
+    env: python
+    buildCommand: pip install -r requirements.txt && playwright install
+    startCommand: python app.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10

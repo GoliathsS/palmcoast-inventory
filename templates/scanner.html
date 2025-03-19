@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Scan Product | Palm Coast Inventory</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://unpkg.com/@ericblade/quagga2@1.2.6/dist/quagga.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Inter", sans-serif;
+      background-color: #f1f4f9;
+      color: #222;
+      text-align: center;
+      padding: 0 1rem;
+    }
+
+    header {
+      padding: 1rem 0;
+      background: white;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+      margin-bottom: 1rem;
+    }
+
+    header img {
+      height: 60px;
+      border-radius: 8px;
+    }
+
+    h2 {
+      font-size: 1.5rem;
+      margin: 0.5rem 0;
+    }
+
+    .scanner-panel {
+      background: white;
+      max-width: 480px;
+      margin: 0 auto;
+      border-radius: 12px;
+      box-shadow: 0 0 8px rgba(0,0,0,0.05);
+      padding: 1rem;
+    }
+
+    select, button {
+      width: 100%;
+      padding: 12px;
+      font-size: 1rem;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: #fdfdfd;
+    }
+
+    #scanner-container video {
+      width: 100% !important;
+      height: auto !important;
+      border-radius: 10px;
+      margin-top: 10px;
+    }
+
+    #status {
+      margin: 10px 0;
+      font-weight: bold;
+    }
+
+    .success { color: green; }
+    .error { color: red; }
+    .warning { color: orange; }
+
+    #checkout-list {
+      margin-top: 20px;
+      text-align: left;
+    }
+
+    #checkout-list h3 {
+      font-size: 1.2rem;
+      margin-bottom: 8px;
+    }
+
+    #checkout-list ul {
+      background: #fff;
+      border-radius: 8px;
+      padding: 1rem;
+      list-style-type: disc;
+      box-shadow: 0 0 4px rgba(0,0,0,0.05);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <img src="/static/LOGO.jpg" alt="Palm Coast Pest Control Logo">
+    <h2>📦 Scan Product</h2>
+  </header>
+
+  <div class="scanner-panel">
+    <select id="direction">
+      <option value="in">Scan In</option>
+      <option value="out">Scan Out</option>
+    </select>
+
+    <select id="technician">
+      <option value="">-- Select Technician --</option>
+      {% for tech in technicians %}
+        <option value="{{ tech }}">{{ tech }}</option>
+      {% endfor %}
+    </select>
+
+    <button id="start-btn">▶️ Start Scanner</button>
+    <div id="scanner-container" style="display:none;"></div>
+
+    <p id="status"></p>
+
+    <div id="checkout-list">
+      <h3>🧾 Checkout List</h3>
+      <ul id="scanned-items"></ul>
+    </div>
+  </div>
+
+  <audio id="beep" src="/static/beep.mp3" preload="auto"></audio>
+
+  <script>
+    const statusDisplay = document.getElementById("status");
+    const directionSelect = document.getElementById("direction");
+    const technicianSelect = document.getElementById("technician");
+    const scannedItems = document.getElementById("scanned-items");
+    const scannerContainer = document.getElementById("scanner-container");
+    const startBtn = document.getElementById("start-btn");
+    const beep = document.getElementById("beep");
+
+    let scannerInitialized = false;
+
+    startBtn.addEventListener("click", () => {
+      scannerContainer.style.display = "block";
+      startBtn.style.display = "none";
+
+      if (!scannerInitialized) {
+        Quagga.init({
+          inputStream: {
+            name: "Live",
+            type: "LiveStream",
+            target: scannerContainer,
+            constraints: {
+              facingMode: "environment"
+            }
+          },
+          decoder: {
+            readers: ["ean_reader", "upc_reader", "code_128_reader"]
+          },
+          locate: true,
+          numOfWorkers: 2
+        }, function(err) {
+          if (err) {
+            console.error(err);
+            statusDisplay.textContent = "❌ Error initializing scanner";
+            statusDisplay.className = "error";
+            return;
+          }
+          Quagga.start();
+          scannerInitialized = true;
+        });
+
+        Quagga.onDetected(data => {
+          const barcode = data.codeResult.code;
+          if (!barcode) return;
+
+          const direction = directionSelect.value;
+          const technician = technicianSelect.value;
+
+          if (direction === "out" && !technician) {
+            statusDisplay.textContent = "⚠️ Technician required for Scan Out.";
+            statusDisplay.className = "warning";
+            return;
+          }
+
+          Quagga.pause();
+          beep.play().catch((e) => console.warn("🔇 Beep error:", e));
+          statusDisplay.textContent = `📦 Scanned: ${barcode}`;
+          statusDisplay.className = "";
+
+          const li = document.createElement("li");
+          const now = new Date().toLocaleTimeString();
+          li.textContent = `${now} — ${barcode} (${direction})`;
+          scannedItems.appendChild(li);
+
+          fetch("/scan-action", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              barcode: barcode,
+              direction: direction,
+              technician: technician
+            }),
+          })
+          .then(res => res.json())
+          .then(data => {
+            if (data.status === "success") {
+              statusDisplay.textContent = `✅ Scan ${direction} successful for ${barcode}`;
+              statusDisplay.className = "success";
+            } else {
+              statusDisplay.textContent = `❌ Product ${barcode} not found`;
+              statusDisplay.className = "error";
+            }
+            setTimeout(() => Quagga.start(), 1500);
+          });
+        });
+      }
+    });
+  </script>
+</body>
+</html>

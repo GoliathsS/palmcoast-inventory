@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Scan History</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <h2>🗂️ Scan History</h2>
+
+  <form method="get">
+    <label for="month">Filter by Month:</label>
+    <input type="month" id="month" name="month" value="{{ selected_month }}">
+    
+    <label for="technician">Technician:</label>
+    <select name="technician" id="technician">
+      <option value="">All</option>
+      <option value="John" {% if selected_tech == 'John' %}selected{% endif %}>John</option>
+      <option value="Sara" {% if selected_tech == 'Sara' %}selected{% endif %}>Sara</option>
+      <option value="Mike" {% if selected_tech == 'Mike' %}selected{% endif %}>Mike</option>
+    </select>
+
+    <button type="submit">🔍 View</button>
+  </form>
+
+  <h3>📊 Usage Summary (This Month)</h3>
+  <ul>
+    {% for tech, cost in summary %}
+      <li>{{ tech }}: ${{ "%.2f"|format(cost) }}</li>
+    {% else %}
+      <li>No usage data for selected period.</li>
+    {% endfor %}
+  </ul>
+
+  <h3>📋 Detailed Logs</h3>
+  <table>
+    <tr>
+      <th>Product</th>
+      <th>Action</th>
+      <th>Technician</th>
+      <th>Date</th>
+    </tr>
+    {% for name, action, timestamp, technician, cost in logs %}
+    <tr>
+      <td>{{ name }}</td>
+      <td>{{ action|capitalize }}</td>
+      <td>{{ technician or "—" }}</td>
+      <td>{{ timestamp }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  <br>
+  <a href="/">🔙 Back to Dashboard</a>
+</body>
+</html>
