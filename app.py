@@ -6,7 +6,7 @@ import sqlite3
 import os
 from datetime import datetime
 import calendar
-from technician_manager import add_technician, remove_technician, get_all_technicians
+from technician_manager import add_technician, remove_technician, get_all_technicians, init_technician_db
 from siteone_sync import run_siteone_sync
 
 app = Flask(__name__)
@@ -206,4 +206,5 @@ def sync_siteone():
 
 if __name__ == '__main__':
     init_db()
+    init_technician_db()
     app.run(debug=True, host='0.0.0.0')
