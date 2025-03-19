@@ -1,7 +1,8 @@
 import sqlite3
+import os
 from playwright.sync_api import sync_playwright
 
-DB_PATH = "inventory.db"
+DB_PATH = os.path.join(os.path.dirname(__file__), 'inventory.db')
 
 def get_siteone_mapped_products():
     with sqlite3.connect(DB_PATH) as conn:
