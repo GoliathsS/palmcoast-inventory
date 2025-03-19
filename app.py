@@ -11,7 +11,7 @@ from siteone_sync import run_siteone_sync
 
 app = Flask(__name__)
 
-DB_PATH = 'D:\inventory_scanner_app\inventory.db'
+DB_PATH = os.path.join(os.path.dirname(__file__), "inventory.db")
 print(f"🧩 Using DB at: {os.path.abspath(DB_PATH)}")
 
 # Create the database if it doesn't exist
