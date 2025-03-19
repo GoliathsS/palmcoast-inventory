@@ -1,7 +1,8 @@
 # technician_manager.py
 import sqlite3
+import os
 
-DB_PATH = "inventory.db"
+DB_PATH = os.path.join(os.path.dirname(__file__), 'inventory.db')
 
 def init_technician_db():
     with sqlite3.connect(DB_PATH) as conn:
