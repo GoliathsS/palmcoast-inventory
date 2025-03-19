@@ -24,8 +24,24 @@ def init_db():
                             name TEXT NOT NULL,
                             barcode TEXT UNIQUE NOT NULL,
                             stock INTEGER DEFAULT 0,
-                            min_stock INTEGER DEFAULT 0
+                            min_stock INTEGER DEFAULT 0,
+                            siteone_sku TEXT,
+                            cost_per_unit REAL DEFAULT 0
                         )''')
+            conn.commit()
+    else:
+        # Patch: Add missing columns if DB already exists
+        with sqlite3.connect(DB_PATH) as conn:
+            c = conn.cursor()
+            # Attempt to add missing columns
+            try:
+                c.execute("ALTER TABLE products ADD COLUMN siteone_sku TEXT")
+            except sqlite3.OperationalError:
+                pass  # Already exists
+            try:
+                c.execute("ALTER TABLE products ADD COLUMN cost_per_unit REAL DEFAULT 0")
+            except sqlite3.OperationalError:
+                pass
             conn.commit()
 
 @app.route('/')
