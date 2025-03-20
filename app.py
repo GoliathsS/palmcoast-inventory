@@ -182,6 +182,11 @@ def history():
         technicians=technicians
     )
 
+@app.route("/settings")
+def settings():
+    technicians = get_all_technicians()
+    return render_template("settings.html", technicians=technicians)
+
 @app.route("/add-technician", methods=["POST"])
 def add_technician_route():
     name = request.form.get("tech_name")
