@@ -40,14 +40,15 @@ def add_product():
     name = request.form["name"]
     barcode = request.form["barcode"]
     min_stock = int(request.form["min_stock"])
+    cost_per_unit = float(request.form.get("cost_per_unit", 0))
     siteone_sku = request.form.get("siteone_sku", "").strip()
 
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("""
-        INSERT INTO products (name, barcode, min_stock, siteone_sku)
-        VALUES (%s, %s, %s, %s)
-    """, (name, barcode, min_stock, siteone_sku))
+        INSERT INTO products (name, barcode, min_stock, cost_per_unit, siteone_sku)
+        VALUES (%s, %s, %s, %s, %s)
+    """, (name, barcode, min_stock, cost_per_unit, siteone_sku))
     conn.commit()
     cur.close()
     conn.close()
