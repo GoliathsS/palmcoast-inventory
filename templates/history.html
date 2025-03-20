@@ -1,56 +1,70 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Scan History</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Scan History | Palm Coast Inventory</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <h2>🗂️ Scan History</h2>
 
-  <form method="get">
-    <label for="month">Filter by Month:</label>
-    <input type="month" id="month" name="month" value="{{ selected_month }}">
-    
-    <label for="technician">Technician:</label>
-    <select name="technician" id="technician">
-      <option value="">All</option>
-      <option value="John" {% if selected_tech == 'John' %}selected{% endif %}>John</option>
-      <option value="Sara" {% if selected_tech == 'Sara' %}selected{% endif %}>Sara</option>
-      <option value="Mike" {% if selected_tech == 'Mike' %}selected{% endif %}>Mike</option>
-    </select>
+  <header style="text-align:center; padding: 1rem 0; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 1rem;">
+    <img src="/static/LOGO.jpg" alt="Palm Coast Pest Control Logo" style="height: 60px; border-radius: 8px;">
+    <h2 style="margin-top: 0.5rem;">📜 Product Scan History</h2>
+  </header>
 
-    <button type="submit">🔍 View</button>
-  </form>
+  <div class="settings-section" style="max-width: 600px; margin: auto;">
+    <form method="GET" action="/history">
+      <label for="month">Month:</label>
+      <select name="month" id="month">
+        <option value="">All Months</option>
+        {% for m in months %}
+          <option value="{{ m }}" {% if selected_month == m %}selected{% endif %}>{{ m }}</option>
+        {% endfor %}
+      </select>
 
-  <h3>📊 Usage Summary (This Month)</h3>
-  <ul>
-    {% for tech, cost in summary %}
-      <li>{{ tech }}: ${{ "%.2f"|format(cost) }}</li>
-    {% else %}
-      <li>No usage data for selected period.</li>
-    {% endfor %}
-  </ul>
+      <label for="technician">Technician:</label>
+      <select name="technician" id="technician">
+        <option value="">All Techs</option>
+        {% for tech in technicians %}
+          <option value="{{ tech }}" {% if selected_tech == tech %}selected{% endif %}>{{ tech }}</option>
+        {% endfor %}
+      </select>
 
-  <h3>📋 Detailed Logs</h3>
-  <table>
-    <tr>
-      <th>Product</th>
-      <th>Action</th>
-      <th>Technician</th>
-      <th>Date</th>
-    </tr>
-    {% for name, action, timestamp, technician, cost in logs %}
-    <tr>
-      <td>{{ name }}</td>
-      <td>{{ action|capitalize }}</td>
-      <td>{{ technician or "—" }}</td>
-      <td>{{ timestamp }}</td>
-    </tr>
-    {% endfor %}
-  </table>
+      <button type="submit">🔍 Filter</button>
+    </form>
+  </div>
 
-  <br>
-  <a href="/">🔙 Back to Dashboard</a>
+  <div style="max-width: 960px; margin: 20px auto;">
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Time</th>
+          <th>Barcode</th>
+          <th>Direction</th>
+          <th>Technician</th>
+          <th>Cost</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in history %}
+        <tr>
+          <td>{{ row[5] }}</td>
+          <td>{{ row[6] }}</td>
+          <td>{{ row[1] }}</td>
+          <td>{{ row[2].capitalize() }}</td>
+          <td>{{ row[3] if row[3] else '—' }}</td>
+          <td>${{ '%.2f' | format(row[4] or 0.00) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <p style="text-align:right; font-weight:bold; margin-top: 1rem;">
+      🧾 Total Cost: ${{ '%.2f' | format(total_cost) }}
+    </p>
+  </div>
+
 </body>
 </html>
