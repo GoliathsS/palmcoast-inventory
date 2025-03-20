@@ -146,7 +146,8 @@ form {
   transform: translateY(-1px);
 }
 
-/* Scanner-specific styles */
+/* ----------------- Scanner Page Enhancements ------------------ */
+
 #scanner-container video {
   width: 100% !important;
   height: auto !important;
@@ -189,4 +190,18 @@ form {
 #status.error { color: var(--danger); }
 #status.warning { color: orange; }
 
+/* Small screen optimization */
+@media screen and (max-width: 480px) {
+  body {
+    padding: 10px;
+  }
 
+  .scanner-panel {
+    padding: 0.75rem;
+  }
+
+  select, button {
+    font-size: 1rem;
+    padding: 10px;
+  }
+}
