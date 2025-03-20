@@ -113,6 +113,15 @@ def history():
     conn = get_db_connection()
     cur = conn.cursor()
 
+    # Get unique months from scan_logs
+    cur.execute("SELECT DISTINCT TO_CHAR(timestamp::date, 'YYYY-MM') FROM scan_logs ORDER BY 1 DESC")
+    months = [row[0] for row in cur.fetchall()]
+
+    # Get all technician names
+    cur.execute("SELECT DISTINCT technician FROM scan_logs WHERE technician IS NOT NULL AND technician != '' ORDER BY technician")
+    technicians = [row[0] for row in cur.fetchall()]
+
+    # Fetch logs
     base_query = """
         SELECT p.name, s.action, s.timestamp, s.technician, p.cost_per_unit
         FROM scan_logs s
@@ -122,10 +131,8 @@ def history():
     params = []
 
     if selected_month:
-        start_date = f"{selected_month}-01"
-        end_date = f"{selected_month}-31"
-        base_query += " AND s.timestamp BETWEEN %s AND %s"
-        params += [start_date, end_date]
+        base_query += " AND TO_CHAR(s.timestamp::date, 'YYYY-MM') = %s"
+        params.append(selected_month)
 
     if selected_tech:
         base_query += " AND s.technician = %s"
@@ -135,6 +142,7 @@ def history():
     cur.execute(base_query, tuple(params))
     logs = cur.fetchall()
 
+    # Total cost summary
     summary_query = """
         SELECT s.technician, SUM(p.cost_per_unit)
         FROM scan_logs s
@@ -144,8 +152,8 @@ def history():
     summary_params = []
 
     if selected_month:
-        summary_query += " AND s.timestamp BETWEEN %s AND %s"
-        summary_params += [start_date, end_date]
+        summary_query += " AND TO_CHAR(s.timestamp::date, 'YYYY-MM') = %s"
+        summary_params.append(selected_month)
 
     if selected_tech:
         summary_query += " AND s.technician = %s"
@@ -154,17 +162,20 @@ def history():
     summary_query += " GROUP BY s.technician"
     cur.execute(summary_query, tuple(summary_params))
     summary = cur.fetchall()
+    total_cost = sum(row[1] for row in summary)
 
     cur.close()
     conn.close()
-    
-    # Calculate total cost from the summary data
-    total_cost = sum(row[1] for row in summary)
-    return render_template("history.html", logs=logs, summary=summary,
-                           selected_month=selected_month,
-                           selected_tech=selected_tech,
-                           total_cost=total_cost)
 
+    return render_template("history.html",
+        logs=logs,
+        summary=summary,
+        total_cost=total_cost,
+        selected_month=selected_month,
+        selected_tech=selected_tech,
+        months=months,
+        technicians=technicians
+    )
 
 @app.route("/add-technician", methods=["POST"])
 def add_technician_route():
