@@ -23,6 +23,20 @@
         {% endfor %}
       </select>
 
+      <select name="month" id="month">
+        <option value="">All Months</option>
+        {% for m in months %}
+          <option value="{{ m }}" {% if selected_month == m %}selected{% endif %}>{{ m }}</option>
+        {% endfor %}
+      </select>
+
+      <select name="technician" id="technician">
+        <option value="">All Techs</option>
+        {% for tech in technicians %}
+          <option value="{{ tech }}" {% if selected_tech == tech %}selected{% endif %}>{{ tech }}</option>
+        {% endfor %}
+      </select>
+
       <label for="technician">Technician:</label>
       <select name="technician" id="technician">
         <option value="">All Techs</option>
