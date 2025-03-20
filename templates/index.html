@@ -77,23 +77,25 @@
       </a>
     </header>
 
-    <div class="row g-3 mb-4">
-      <div class="col-md-3">
-        <input type="text" class="form-control" placeholder="Product Name" name="name">
+    <form method="POST" action="/add-product">
+      <div class="row g-3 mb-4">
+        <div class="col-md-3">
+          <input type="text" class="form-control" placeholder="Product Name" name="name" required>
+        </div>
+        <div class="col-md-3">
+          <input type="text" class="form-control" placeholder="Barcode" name="barcode" required>
+        </div>
+        <div class="col-md-2">
+          <input type="number" class="form-control" placeholder="Min Stock" name="min_stock" required>
+        </div>
+        <div class="col-md-3">
+          <input type="text" class="form-control" placeholder="SiteOne SKU (optional)" name="siteone_sku">
+        </div>
+        <div class="col-md-1 d-grid">
+          <button type="submit" class="btn btn-success">➕ Add Product</button>
+        </div>
       </div>
-      <div class="col-md-3">
-        <input type="text" class="form-control" placeholder="Barcode" name="barcode">
-      </div>
-      <div class="col-md-2">
-        <input type="number" class="form-control" placeholder="Min Stock" name="min_stock">
-      </div>
-      <div class="col-md-3">
-        <input type="text" class="form-control" placeholder="SiteOne SKU (optional)" name="siteone_sku">
-      </div>
-      <div class="col-md-1 d-grid">
-        <button class="btn btn-success">➕ Add Product</button>
-      </div>
-    </div>
+    </form>
 
     <!-- Modern Action Buttons -->
     <div class="action-buttons">
