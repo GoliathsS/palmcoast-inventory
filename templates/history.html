@@ -41,19 +41,19 @@
         <tr>
           <th>Date</th>
           <th>Time</th>
-          <th>Barcode</th>
+          <th>Product</th>
           <th>Direction</th>
           <th>Technician</th>
           <th>Cost</th>
         </tr>
       </thead>
       <tbody>
-        {% for row in history %}
+        {% for row in logs %}
         <tr>
-          <td>{{ row[5] }}</td>
-          <td>{{ row[6] }}</td>
-          <td>{{ row[1] }}</td>
-          <td>{{ row[2].capitalize() }}</td>
+          <td>{{ row[2][:10] }}</td>
+          <td>{{ row[2][11:19] }}</td>
+          <td>{{ row[0] }}</td>
+          <td>{{ row[1].capitalize() }}</td>
           <td>{{ row[3] if row[3] else '—' }}</td>
           <td>${{ '%.2f' | format(row[4] or 0.00) }}</td>
         </tr>
@@ -62,9 +62,10 @@
     </table>
 
     <p style="text-align:right; font-weight:bold; margin-top: 1rem;">
-      🧾 Total Cost: ${{ '%.2f' | format(total_cost) }}
+      🧾 Total Cost: ${{ '%.2f' | format(total_cost or 0.00) }}
     </p>
   </div>
 
 </body>
 </html>
+
