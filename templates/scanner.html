@@ -34,7 +34,7 @@
     </form>
   </div>
 
-  <div id="scanner-container" style="display:none; margin-top:20px; max-width: 600px; margin: 20px auto; border: 1px solid #ccc; border-radius: 8px; overflow: hidden;"></div>
+  <div id="scanner-container" style="display:none; margin-top:20px; max-width: 600px; margin: 20px auto; border: 1px solid #ccc; border-radius: 8px; overflow: hidden; position: relative;"></div>
 
   <p id="status" style="text-align:center; font-weight: bold;"></p>
 
@@ -66,13 +66,21 @@
             name: "Live",
             type: "LiveStream",
             target: scannerContainer,
-            constraints: { facingMode: "environment" }
+            constraints: {
+              facingMode: "environment",
+              width: { ideal: 640 },
+              height: { ideal: 480 }
+            }
+          },
+          locator: {
+            patchSize: "medium",
+            halfSample: true
           },
           decoder: {
             readers: ["ean_reader", "upc_reader", "code_128_reader"]
           },
           locate: true,
-          numOfWorkers: 2
+          frequency: 10
         }, function(err) {
           if (err) {
             console.error(err);
@@ -84,49 +92,78 @@
           scannerInitialized = true;
         });
 
-        Quagga.onDetected(data => {
-          const barcode = data.codeResult.code;
-          if (!barcode) return;
-
-          const direction = directionSelect.value;
-          const technician = technicianSelect.value;
-
-          if (direction === "out" && !technician) {
-            statusDisplay.textContent = "⚠️ Technician required for Scan Out.";
-            statusDisplay.style.color = "orange";
-            return;
-          }
-
-          Quagga.pause();
-          beep.play().catch((e) => console.warn("🔇 Beep error:", e));
-          statusDisplay.textContent = `📦 Scanned: ${barcode}`;
-          statusDisplay.style.color = "#2563eb";
-
-          const li = document.createElement("li");
-          const now = new Date().toLocaleTimeString();
-          li.textContent = `${now} — ${barcode} (${direction})`;
-          scannedItems.appendChild(li);
-
-          fetch("/scan-action", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              barcode: barcode,
-              direction: direction,
-              technician: technician
-            }),
-          })
-          .then(res => res.json())
-          .then(data => {
-            if (data.status === "success") {
-              statusDisplay.textContent = `✅ Scan ${direction} successful for ${barcode}`;
-              statusDisplay.style.color = "green";
-            } else {
-              statusDisplay.textContent = `❌ Product ${barcode} not found`;
-              statusDisplay.style.color = "red";
+        Quagga.onProcessed(result => {
+          const ctx = Quagga.canvas.ctx.overlay;
+          const canvas = Quagga.canvas.dom.overlay;
+          if (result) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (result.boxes) {
+              result.boxes.forEach(box => {
+                Quagga.ImageDebug.drawPath(box, { x: 0, y: 1 }, ctx, {
+                  color: "green",
+                  lineWidth: 2
+                });
+              });
             }
-            setTimeout(() => Quagga.start(), 1500);
-          });
+            if (result.box) {
+              Quagga.ImageDebug.drawPath(result.box, { x: 0, y: 1 }, ctx, {
+                color: "blue",
+                lineWidth: 2
+              });
+            }
+          }
+        });
+
+        Quagga.onDetected(result => {
+          const barcode = result.codeResult.code;
+          const errors = result.codeResult.decodedCodes
+            .map(d => d.error)
+            .filter(e => e !== undefined);
+          const avgError = errors.reduce((a, b) => a + b, 0) / errors.length;
+
+          if (avgError < 0.1 && barcode) {
+            const direction = directionSelect.value;
+            const technician = technicianSelect.value;
+
+            if (direction === "out" && !technician) {
+              statusDisplay.textContent = "⚠️ Technician required for Scan Out.";
+              statusDisplay.style.color = "orange";
+              return;
+            }
+
+            Quagga.pause();
+            beep.play().catch(e => console.warn("🔇 Beep error:", e));
+            statusDisplay.textContent = `📦 Scanned: ${barcode}`;
+            statusDisplay.style.color = "#2563eb";
+
+            const li = document.createElement("li");
+            const now = new Date().toLocaleTimeString();
+            li.textContent = `${now} — ${barcode} (${direction})`;
+            scannedItems.appendChild(li);
+
+            fetch("/scan-action", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                barcode: barcode,
+                direction: direction,
+                technician: technician
+              }),
+            })
+            .then(res => res.json())
+            .then(data => {
+              if (data.status === "success") {
+                statusDisplay.textContent = `✅ Scan ${direction} successful for ${barcode}`;
+                statusDisplay.style.color = "green";
+              } else {
+                statusDisplay.textContent = `❌ Product ${barcode} not found`;
+                statusDisplay.style.color = "red";
+              }
+              setTimeout(() => Quagga.start(), 1500);
+            });
+          } else {
+            console.log("⚠️ Low confidence scan skipped");
+          }
         });
       }
     });
