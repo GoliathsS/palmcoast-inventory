@@ -142,11 +142,17 @@
             type: "LiveStream",
             target: scannerContainer,
             constraints: {
-              facingMode: "environment"
+              facingMode: "environment",
+              width: { ideal: 1280 },
+              height: { ideal: 720 }
             }
           },
+          locator: {
+            patchSize: "x-large",
+            halfSample: false
+          },
           decoder: {
-            readers: ["ean_reader", "upc_reader", "code_128_reader"]
+            readers: ["ean_reader", "upc_reader", "code_128_reader", "code_39_reader"]
           },
           locate: true,
           numOfWorkers: 2
@@ -165,45 +171,50 @@
           const barcode = data.codeResult.code;
           if (!barcode) return;
 
-          const direction = directionSelect.value;
-          const technician = technicianSelect.value;
+          const errors = data.codeResult.decodedCodes.map(d => d.error).filter(e => e !== undefined);
+          const avgError = errors.length ? errors.reduce((a, b) => a + b, 0) / errors.length : 0;
 
-          if (direction === "out" && !technician) {
-            statusDisplay.textContent = "⚠️ Technician required for Scan Out.";
-            statusDisplay.className = "warning";
-            return;
-          }
+          if (avgError < 0.15) {
+            const direction = directionSelect.value;
+            const technician = technicianSelect.value;
 
-          Quagga.pause();
-          beep.play().catch((e) => console.warn("🔇 Beep error:", e));
-          statusDisplay.textContent = `📦 Scanned: ${barcode}`;
-          statusDisplay.className = "";
-
-          const li = document.createElement("li");
-          const now = new Date().toLocaleTimeString();
-          li.textContent = `${now} — ${barcode} (${direction})`;
-          scannedItems.appendChild(li);
-
-          fetch("/scan-action", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              barcode: barcode,
-              direction: direction,
-              technician: technician
-            }),
-          })
-          .then(res => res.json())
-          .then(data => {
-            if (data.status === "success") {
-              statusDisplay.textContent = `✅ Scan ${direction} successful for ${barcode}`;
-              statusDisplay.className = "success";
-            } else {
-              statusDisplay.textContent = `❌ Product ${barcode} not found`;
-              statusDisplay.className = "error";
+            if (direction === "out" && !technician) {
+              statusDisplay.textContent = "⚠️ Technician required for Scan Out.";
+              statusDisplay.className = "warning";
+              return;
             }
-            setTimeout(() => Quagga.start(), 1500);
-          });
+
+            Quagga.pause();
+            beep.play().catch((e) => console.warn("🔇 Beep error:", e));
+            statusDisplay.textContent = `📦 Scanned: ${barcode}`;
+            statusDisplay.className = "";
+
+            const li = document.createElement("li");
+            const now = new Date().toLocaleTimeString();
+            li.textContent = `${now} — ${barcode} (${direction})`;
+            scannedItems.appendChild(li);
+
+            fetch("/scan-action", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                barcode: barcode,
+                direction: direction,
+                technician: technician
+              }),
+            })
+            .then(res => res.json())
+            .then(data => {
+              if (data.status === "success") {
+                statusDisplay.textContent = `✅ Scan ${direction} successful for ${barcode}`;
+                statusDisplay.className = "success";
+              } else {
+                statusDisplay.textContent = `❌ Product ${barcode} not found`;
+                statusDisplay.className = "error";
+              }
+              setTimeout(() => Quagga.start(), 1500);
+            });
+          }
         });
       }
     });
