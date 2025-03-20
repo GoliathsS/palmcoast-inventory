@@ -17,13 +17,18 @@ def get_db_connection():
 def index():
     conn = get_db_connection()
     cur = conn.cursor()
+    
     cur.execute("SELECT * FROM products ORDER BY id")
     products = cur.fetchall()
+    
+    cur.execute("SELECT SUM(stock * cost_per_unit) FROM products")
+    total_value = cur.fetchone()[0] or 0
+    
     cur.close()
     conn.close()
 
     technicians = get_all_technicians()
-    return render_template('index.html', products=products, technicians=technicians)
+    return render_template('index.html', products=products, technicians=technicians, total_value=total_value)
 
 @app.route("/scan")
 def scan():
