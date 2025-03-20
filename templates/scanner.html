@@ -12,78 +12,85 @@
       font-family: "Segoe UI", "Inter", sans-serif;
       background-color: #f1f4f9;
       color: #222;
-      text-align: center;
-      padding: 0 1rem;
+      padding: 0;
     }
 
     header {
-      padding: 1rem 0;
+      padding: 1rem;
       background: white;
       box-shadow: 0 2px 4px rgba(0,0,0,0.08);
-      margin-bottom: 1rem;
+      text-align: center;
     }
 
     header img {
-      height: 60px;
+      height: 50px;
       border-radius: 8px;
     }
 
     h2 {
-      font-size: 1.5rem;
+      font-size: 1.3rem;
       margin: 0.5rem 0;
     }
 
     .scanner-panel {
-      background: white;
-      max-width: 480px;
-      margin: 0 auto;
-      border-radius: 12px;
-      box-shadow: 0 0 8px rgba(0,0,0,0.05);
       padding: 1rem;
+      max-width: 500px;
+      margin: auto;
     }
 
     select, button {
       width: 100%;
       padding: 12px;
       font-size: 1rem;
-      margin: 10px 0;
+      margin: 0.5rem 0;
       border: 1px solid #ccc;
-      border-radius: 8px;
-      background: #fdfdfd;
+      border-radius: 10px;
+      background: white;
     }
 
     #scanner-container video {
       width: 100% !important;
       height: auto !important;
-      border-radius: 10px;
-      margin-top: 10px;
+      border-radius: 16px;
+      margin-top: 1rem;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
 
     #status {
-      margin: 10px 0;
+      margin: 1rem 0 0.5rem;
       font-weight: bold;
+      text-align: center;
     }
 
     .success { color: green; }
     .error { color: red; }
     .warning { color: orange; }
 
-    #checkout-list {
-      margin-top: 20px;
-      text-align: left;
-    }
-
-    #checkout-list h3 {
-      font-size: 1.2rem;
-      margin-bottom: 8px;
-    }
-
-    #checkout-list ul {
-      background: #fff;
-      border-radius: 8px;
+    .collapsible-log {
+      background: white;
+      border-radius: 12px;
+      margin-top: 1rem;
       padding: 1rem;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+
+    .collapsible-log h3 {
+      font-size: 1.1rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .collapsible-log ul {
+      padding-left: 1.2rem;
       list-style-type: disc;
-      box-shadow: 0 0 4px rgba(0,0,0,0.05);
+    }
+
+    .toggle-log {
+      background: #eee;
+      border: none;
+      padding: 10px;
+      width: 100%;
+      border-radius: 10px;
+      margin-top: 1rem;
     }
   </style>
 </head>
@@ -112,8 +119,12 @@
 
     <p id="status"></p>
 
-    <div id="checkout-list">
-      <h3>🧾 Checkout List</h3>
+    <button class="toggle-log" onclick="document.getElementById('log-panel').classList.toggle('hidden')">
+      🧾 Toggle Checkout List
+    </button>
+
+    <div id="log-panel" class="collapsible-log">
+      <h3>Scanned Items</h3>
       <ul id="scanned-items"></ul>
     </div>
   </div>
@@ -221,3 +232,4 @@
   </script>
 </body>
 </html>
+
