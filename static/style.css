@@ -23,7 +23,7 @@ h1, h2 {
 }
 
 button {
-  background-color: var(--primary);
+  background-color: #1e40af;
   color: white;
   border: none;
   padding: 10px 16px;
@@ -34,7 +34,7 @@ button {
 }
 
 button:hover {
-  background-color: #1e40af;
+  background-color: #1c3fa0;
 }
 
 input, select {
