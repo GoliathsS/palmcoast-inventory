@@ -67,9 +67,7 @@
             type: "LiveStream",
             target: scannerContainer,
             constraints: {
-              facingMode: "environment",
-              width: { min: 640 },
-              height: { min: 480 }
+              facingMode: { ideal: "environment" }  // Enable autofocus-friendly mode
             }
           },
           locator: {
