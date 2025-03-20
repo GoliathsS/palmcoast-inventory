@@ -95,3 +95,54 @@ form {
 .siteone-sync {
   margin-top: 10px;
 }
+
+.action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  align-items: center;
+}
+
+.action-buttons button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 10px 18px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.settings-btn {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.sync-btn {
+  background-color: #e0edff;
+  color: #1d4ed8;
+}
+
+.manual-sync-btn {
+  background-color: #e6fbe6;
+  color: #15803d;
+}
+
+.primary-btn {
+  background-color: #14532d;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.settings-btn:hover,
+.sync-btn:hover,
+.manual-sync-btn:hover,
+.primary-btn:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
