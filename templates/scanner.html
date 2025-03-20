@@ -176,12 +176,12 @@
 
           Quagga.pause();
           beep.play().catch((e) => console.warn("🔇 Beep error:", e));
-          statusDisplay.textContent = 📦 Scanned: ${barcode};
+          statusDisplay.textContent = `📦 Scanned: ${barcode}`;
           statusDisplay.className = "";
 
           const li = document.createElement("li");
           const now = new Date().toLocaleTimeString();
-          li.textContent = ${now} — ${barcode} (${direction});
+          li.textContent = `${now} — ${barcode} (${direction})`;
           scannedItems.appendChild(li);
 
           fetch("/scan-action", {
@@ -196,10 +196,10 @@
           .then(res => res.json())
           .then(data => {
             if (data.status === "success") {
-              statusDisplay.textContent = ✅ Scan ${direction} successful for ${barcode};
+              statusDisplay.textContent = `✅ Scan ${direction} successful for ${barcode}`;
               statusDisplay.className = "success";
             } else {
-              statusDisplay.textContent = ❌ Product ${barcode} not found;
+              statusDisplay.textContent = `❌ Product ${barcode} not found`;
               statusDisplay.className = "error";
             }
             setTimeout(() => Quagga.start(), 1500);
