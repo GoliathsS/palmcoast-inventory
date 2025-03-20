@@ -1,42 +1,31 @@
 # technician_manager.py
 import psycopg2
-import os
 
-DB_PATH = os.path.join(os.path.dirname(__file__), 'inventory.db')
-# This is just an example, replace with your actual Render internal DB URL
-conn = psycopg2.connect(
-    "postgresql://palmcoast_inventory_db_user:3vu51Xo0fR2xUXaJKzezTTngjgoY9Ko9@dpg-cve249ogph6c73cbbbb0-a.virginia-postgres.render.com/palmcoast_inventory_db"
-)
-
-def init_technician_db():
-    with sqlite3.connect(DB_PATH) as conn:
-        c = conn.cursor()
-        c.execute("""
-            CREATE TABLE IF NOT EXISTS technicians (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT UNIQUE NOT NULL
-            )
-        """)
-        conn.commit()
+# Use your actual PostgreSQL connection string
+DATABASE_URL = "postgresql://palmcoast_inventory_db_user:3vu51Xo0fR2xUXaJKzezTTngjgoY9Ko9@dpg-cve249ogph6c73cbbbb0-a.virginia-postgres.render.com/palmcoast_inventory_db"
 
 def add_technician(name):
-    with sqlite3.connect(DB_PATH) as conn:
-        c = conn.cursor()
-        c.execute("INSERT OR IGNORE INTO technicians (name) VALUES (?)", (name,))
-        conn.commit()
+    conn = psycopg2.connect(DATABASE_URL)
+    cur = conn.cursor()
+    cur.execute("INSERT INTO technicians (name) VALUES (%s) ON CONFLICT (name) DO NOTHING", (name,))
+    conn.commit()
+    cur.close()
+    conn.close()
 
 def remove_technician(name):
-    with sqlite3.connect(DB_PATH) as conn:
-        c = conn.cursor()
-        c.execute("DELETE FROM technicians WHERE name = ?", (name,))
-        conn.commit()
+    conn = psycopg2.connect(DATABASE_URL)
+    cur = conn.cursor()
+    cur.execute("DELETE FROM technicians WHERE name = %s", (name,))
+    conn.commit()
+    cur.close()
+    conn.close()
 
 def get_all_technicians():
-    with sqlite3.connect(DB_PATH) as conn:
-        c = conn.cursor()
-        c.execute("SELECT name FROM technicians ORDER BY name ASC")
-        return [row[0] for row in c.fetchall()]
+    conn = psycopg2.connect(DATABASE_URL)
+    cur = conn.cursor()
+    cur.execute("SELECT name FROM technicians ORDER BY name ASC")
+    results = [row[0] for row in cur.fetchall()]
+    cur.close()
+    conn.close()
+    return results
 
-if __name__ == "__main__":
-    init_technician_db()
-    print("✅ Technician table ready.")
