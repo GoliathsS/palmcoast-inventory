@@ -9,7 +9,10 @@
 </head>
 <body>
 
-  <h2>📷 Product Scanner</h2>
+  <header style="text-align:center; padding: 1rem 0; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 1rem;">
+    <img src="/static/LOGO.jpg" alt="Palm Coast Pest Control Logo" style="height: 60px; border-radius: 8px;">
+    <h2 style="margin-top: 0.5rem;">📦 Scan Product</h2>
+  </header>
 
   <div class="settings-section" style="max-width: 500px; margin: auto;">
     <form>
@@ -74,7 +77,7 @@
           if (err) {
             console.error(err);
             statusDisplay.textContent = "❌ Error initializing scanner";
-            statusDisplay.className = "error";
+            statusDisplay.style.color = "red";
             return;
           }
           Quagga.start();
@@ -130,3 +133,4 @@
   </script>
 </body>
 </html>
+
