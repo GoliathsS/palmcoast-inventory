@@ -2,7 +2,10 @@
 import sqlite3
 import os
 
-DB_PATH = os.path.join(os.path.dirname(__file__), 'inventory.db')
+# This is just an example, replace with your actual Render internal DB URL
+conn = psycopg2.connect(
+    "postgresql://palmcoast_inventory_db_user:3vu51Xo0fR2xUXaJKzezTTngjgoY9Ko9@dpg-cve249ogph6c73cbbbb0-a/palmcoast_inventory_db"
+)
 
 def init_technician_db():
     with sqlite3.connect(DB_PATH) as conn:
