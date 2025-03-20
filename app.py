@@ -157,10 +157,14 @@ def history():
 
     cur.close()
     conn.close()
-
+    
+    # Calculate total cost from the summary data
+    total_cost = sum(row[1] for row in summary)
     return render_template("history.html", logs=logs, summary=summary,
                            selected_month=selected_month,
-                           selected_tech=selected_tech)
+                           selected_tech=selected_tech,
+                           total_cost=total_cost)
+
 
 @app.route("/add-technician", methods=["POST"])
 def add_technician_route():
