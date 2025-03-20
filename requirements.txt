@@ -1,3 +1,4 @@
 Flask
 playwright
+psycopg2-binary
 requests
