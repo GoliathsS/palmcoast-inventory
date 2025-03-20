@@ -1,57 +1,83 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Palm Coast Inventory Dashboard</title>
-    <link rel="stylesheet" href="/static/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Palm Coast Inventory Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    body {
+      background-color: #f8f9fa;
+      font-family: 'Inter', sans-serif;
+    }
+    .badge-low {
+      background-color: #dc3545;
+    }
+    .badge-ok {
+      background-color: #198754;
+    }
+    .dashboard-card {
+      box-shadow: 0 0 8px rgba(0,0,0,0.05);
+      border-radius: 12px;
+    }
+  </style>
 </head>
 <body>
-    <h1>📦 Palm Coast Inventory Dashboard</h1>
+  <div class="container py-4">
+    <header class="mb-4 d-flex align-items-center justify-content-between">
+      <div class="d-flex align-items-center">
+        <img src="/static/LOGO.jpg" alt="Logo" style="height: 50px; border-radius: 8px; margin-right: 10px;">
+        <h3 class="mb-0">Palm Coast Inventory Dashboard</h3>
+      </div>
+      <a href="/history" class="btn btn-outline-secondary">
+        🧾 View History
+      </a>
+    </header>
 
-    <form action="/add-product" method="POST" style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
-        <input type="text" name="name" placeholder="Product Name" required>
-        <input type="text" name="barcode" placeholder="Barcode" required>
-        <input type="number" name="min_stock" placeholder="Min Stock" required>
-        <input type="text" name="siteone_sku" placeholder="SiteOne SKU (optional)">
-        <button type="submit">➕ Add Product</button>
-    </form>
-
-    <div class="settings-section">
-        <button onclick="toggleSettings()">⚙️ Settings</button>
-        <div id="settings-panel" style="display: none; margin-top: 10px;">
-            <h3>👷 Manage Technicians</h3>
-            <form action="/add-technician" method="POST">
-                <input type="text" name="tech_name" placeholder="Technician Name" required>
-                <button type="submit">➕ Add Technician</button>
-            </form>
-
-            <form action="/remove-technician" method="POST" style="margin-top: 10px;">
-                <select name="tech_name">
-                    {% for tech in technicians %}
-                        <option value="{{ tech }}">{{ tech }}</option>
-                    {% endfor %}
-                </select>
-                <button type="submit">🗑️ Remove Technician</button>
-            </form>
-        </div>
-
-        <div class="siteone-sync">
-            <h3>🔄 Sync SiteOne Prices</h3>
-            <button onclick="toggleSyncForm()">🔧 Start Manual Sync</button>
-            <form id="syncForm" action="/sync-siteone" method="POST" style="display: none; margin-top: 10px;">
-                <input type="email" name="email" placeholder="SiteOne Email" required>
-                <input type="password" name="password" placeholder="Password" required>
-                <button type="submit">▶️ Start Sync</button>
-            </form>
-        </div>
+    <div class="row g-3 mb-4">
+      <div class="col-md-3">
+        <input type="text" class="form-control" placeholder="Product Name" name="name">
+      </div>
+      <div class="col-md-3">
+        <input type="text" class="form-control" placeholder="Barcode" name="barcode">
+      </div>
+      <div class="col-md-2">
+        <input type="number" class="form-control" placeholder="Min Stock" name="min_stock">
+      </div>
+      <div class="col-md-3">
+        <input type="text" class="form-control" placeholder="SiteOne SKU (optional)" name="siteone_sku">
+      </div>
+      <div class="col-md-1 d-grid">
+        <button class="btn btn-success">➕ Add Product</button>
+      </div>
     </div>
 
-    <a href="/scan"><button>📷 Open Scanner</button></a>
-    <a href="/history" style="float:right; font-size:0.8rem;">📜 View History</a>
+    <div class="mb-3">
+      <div class="btn-group" role="group">
+        <a href="/settings" class="btn btn-outline-primary">⚙️ Settings</a>
+        <form action="/sync-siteone" method="post" class="d-inline">
+          <input type="hidden" name="email" value="your@email.com">
+          <input type="hidden" name="password" value="yourpassword">
+          <button class="btn btn-outline-primary">🔄 Sync SiteOne Prices</button>
+        </form>
+        <button class="btn btn-outline-success" onclick="location.href='/manual-sync'">🔁 Start Manual Sync</button>
+      </div>
+    </div>
 
-    <table>
-        <tr>
+    <div class="mb-3">
+      <button class="btn btn-dark" onclick="location.href='/scan'">📦 Open Scanner</button>
+    </div>
+
+    <div class="dashboard-card p-3 bg-white mb-4">
+      <h5 class="text-muted">💰 Total Inventory Value:</h5>
+      <h3 class="text-success fw-bold">${{ '%.2f' | format(total_value or 0.00) }}</h3>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-striped align-middle">
+        <thead class="table-light">
+          <tr>
             <th>Product</th>
             <th>Barcode</th>
             <th>In Stock</th>
@@ -59,60 +85,36 @@
             <th>Status</th>
             <th>Price</th>
             <th>Actions</th>
-        </tr>
-        {% for p in products %}
-        <tr id="row-{{ p[0] }}" style="display:none;">
-            <form action="/edit-product/{{ p[0] }}" method="POST" class="edit-form">
-                <td><input type="text" name="name" value="{{ p[1] }}" required></td>
-                <td><input type="text" name="barcode" value="{{ p[2] }}" required></td>
-                <td>{{ p[3] }}</td>
-                <td><input type="number" name="min_stock" value="{{ p[4] }}" required></td>
-                <td class="{{ 'status-low' if p[3] < p[4] else 'status-ok' }}">
-                    {{ 'Low' if p[3] < p[4] else 'OK' }}
-                </td>
-                <td>${{ '%.2f' | format(p[5] or 0.00) }}</td>
-                <td>
-                    <button type="submit">💾 Save</button>
-                    <button type="button" onclick="toggleEdit({{ p[0] }})">❌ Cancel</button>
-                </td>
-            </form>
-        </tr>
-        <tr class="view-row" id="view-{{ p[0] }}">
-            <td>{{ p[1] }}</td>
-            <td>{{ p[2] }}</td>
-            <td>{{ p[3] }}</td>
-            <td>{{ p[4] }}</td>
-            <td class="{{ 'status-low' if p[3] < p[4] else 'status-ok' }}">
-                {{ 'Low' if p[3] < p[4] else 'OK' }}
-            </td>
-            <td>${{ '%.2f' | format(p[5] or 0.00) }}</td>
+          </tr>
+        </thead>
+        <tbody>
+          {% for product in products %}
+          <tr>
+            <td>{{ product[1] }}</td>
+            <td>{{ product[2] }}</td>
+            <td>{{ product[3] }}</td>
+            <td>{{ product[4] }}</td>
             <td>
-                <button onclick="toggleEdit({{ p[0] }})">✏️ Edit</button>
-                <form action="/delete-product/{{ p[0] }}" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure?');">
-                    <button type="submit">🗑 Delete</button>
-                </form>
+              {% if product[3] < product[4] %}
+                <span class="badge badge-low">Low</span>
+              {% else %}
+                <span class="badge badge-ok">OK</span>
+              {% endif %}
             </td>
-        </tr>
-        {% endfor %}
-    </table>
-
-    <script>
-        function toggleEdit(id) {
-            const row = document.getElementById('row-' + id);
-            const view = document.getElementById('view-' + id);
-            row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
-            view.style.display = view.style.display === 'none' ? 'table-row' : 'none';
-        }
-
-        function toggleSettings() {
-            const panel = document.getElementById("settings-panel");
-            panel.style.display = panel.style.display === "none" ? "block" : "none";
-        }
-
-        function toggleSyncForm() {
-            const form = document.getElementById("syncForm");
-            form.style.display = form.style.display === "none" ? "block" : "none";
-        }
-    </script>
+            <td>${{ '%.2f' | format(product[5] or 0.00) }}</td>
+            <td>
+              <form action="/edit-product/{{ product[0] }}" method="post" style="display:inline-block">
+                <button class="btn btn-sm btn-outline-warning">✏️ Edit</button>
+              </form>
+              <form action="/delete-product/{{ product[0] }}" method="post" style="display:inline-block" onsubmit="return confirm('Are you sure?')">
+                <button class="btn btn-sm btn-outline-danger">🗑 Delete</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 </body>
 </html>
