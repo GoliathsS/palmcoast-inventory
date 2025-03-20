@@ -68,13 +68,13 @@
             target: scannerContainer,
             constraints: {
               facingMode: "environment",
-              width: { ideal: 640 },
-              height: { ideal: 480 }
+              width: { min: 640 },
+              height: { min: 480 }
             }
           },
           locator: {
-            patchSize: "medium",
-            halfSample: true
+            patchSize: "x-large",
+            halfSample: false
           },
           decoder: {
             readers: ["ean_reader", "upc_reader", "code_128_reader"]
@@ -92,36 +92,17 @@
           scannerInitialized = true;
         });
 
-        Quagga.onProcessed(result => {
-          const ctx = Quagga.canvas.ctx.overlay;
-          const canvas = Quagga.canvas.dom.overlay;
-          if (result) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            if (result.boxes) {
-              result.boxes.forEach(box => {
-                Quagga.ImageDebug.drawPath(box, { x: 0, y: 1 }, ctx, {
-                  color: "green",
-                  lineWidth: 2
-                });
-              });
-            }
-            if (result.box) {
-              Quagga.ImageDebug.drawPath(result.box, { x: 0, y: 1 }, ctx, {
-                color: "blue",
-                lineWidth: 2
-              });
-            }
-          }
-        });
-
         Quagga.onDetected(result => {
+          if (!result || !result.codeResult || !result.codeResult.code) return;
+
           const barcode = result.codeResult.code;
           const errors = result.codeResult.decodedCodes
             .map(d => d.error)
             .filter(e => e !== undefined);
-          const avgError = errors.reduce((a, b) => a + b, 0) / errors.length;
 
-          if (avgError < 0.1 && barcode) {
+          const avgError = errors.length > 0 ? errors.reduce((a, b) => a + b, 0) / errors.length : 1;
+
+          if (avgError < 0.15) {
             const direction = directionSelect.value;
             const technician = technicianSelect.value;
 
@@ -162,7 +143,7 @@
               setTimeout(() => Quagga.start(), 1500);
             });
           } else {
-            console.log("⚠️ Low confidence scan skipped");
+            console.log("⚠️ Ignored low-confidence scan");
           }
         });
       }
@@ -170,4 +151,3 @@
   </script>
 </body>
 </html>
-
