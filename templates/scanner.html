@@ -141,18 +141,17 @@
   const startBtn = document.getElementById("start-btn");
   const beep = document.getElementById("beep");
 
-  const codeReader = new ZXingBrowser.BrowserMultiFormatReader();
+  const codeReader = new ZXing.BrowserMultiFormatReader();
   let scannerStarted = false;
 
   startBtn.addEventListener("click", async () => {
-    console.log("▶️ Scan button clicked");
     scannerContainer.innerHTML = '';
     scannerContainer.style.display = "block";
     startBtn.style.display = "none";
 
     if (!scannerStarted) {
       try {
-        const devices = await ZXingBrowser.BrowserMultiFormatReader.listVideoInputDevices();
+        const devices = await ZXing.BrowserMultiFormatReader.listVideoInputDevices();
         console.log("📱 Video input devices:", devices);
 
         if (!devices.length) {
@@ -161,19 +160,16 @@
           return;
         }
 
-        // ✅ Attempt to force rear camera
         const backCamera = devices.find(device =>
           /back|rear|environment/i.test(device.label)
         ) || devices[0];
 
         const selectedDeviceId = backCamera.deviceId;
-        console.log("📷 Using camera:", backCamera.label || "Unnamed");
 
         await codeReader.decodeFromVideoDevice(
           selectedDeviceId,
           scannerContainer,
           (result, error, controls) => {
-            // ✅ Set iOS-required attributes on the video element
             const video = scannerContainer.querySelector('video');
             if (video) {
               video.setAttribute('playsinline', true);
@@ -202,7 +198,7 @@
               li.textContent = `${now} — ${barcode} (${direction})`;
               scannedItems.appendChild(li);
 
-              controls.stop(); // Pause temporarily
+              controls.stop();
 
               fetch("/scan-action", {
                 method: "POST",
