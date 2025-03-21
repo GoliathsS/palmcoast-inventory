@@ -197,36 +197,60 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script type="module">
-    import { BrowserMultiFormatReader } from 'https://cdn.jsdelivr.net/npm/@zxing/browser@latest/+esm';
+  import { BrowserMultiFormatReader } from 'https://cdn.jsdelivr.net/npm/@zxing/browser@latest/+esm';
 
-    const barcodeField = document.getElementById("barcode-field");
-    const scanBtn = document.getElementById("scan-btn");
-    const modal = document.getElementById("barcode-scanner-modal");
-    const videoElement = document.getElementById("barcode-scanner-video");
+  const barcodeField = document.getElementById("barcode-field");
+  const scanBtn = document.getElementById("scan-btn");
+
+  let cameraOverlay;
+
+  scanBtn.addEventListener("click", async () => {
     const codeReader = new BrowserMultiFormatReader();
-    let controls = null;
 
-    window.stopScanner = function () {
-      modal.style.display = "none";
-      try { controls?.stop(); } catch {}
+    // Create overlay
+    cameraOverlay = document.createElement("div");
+    cameraOverlay.style.position = "fixed";
+    cameraOverlay.style.top = "0";
+    cameraOverlay.style.left = "0";
+    cameraOverlay.style.width = "100vw";
+    cameraOverlay.style.height = "100vh";
+    cameraOverlay.style.backgroundColor = "rgba(0,0,0,0.8)";
+    cameraOverlay.style.display = "flex";
+    cameraOverlay.style.flexDirection = "column";
+    cameraOverlay.style.alignItems = "center";
+    cameraOverlay.style.justifyContent = "center";
+    cameraOverlay.style.zIndex = "9999";
+
+    const video = document.createElement("video");
+    video.setAttribute("autoplay", true);
+    video.setAttribute("muted", true);
+    video.setAttribute("playsinline", true);
+    video.style.borderRadius = "12px";
+    video.style.maxWidth = "90%";
+    video.style.maxHeight = "70vh";
+
+    const cancelBtn = document.createElement("button");
+    cancelBtn.textContent = "❌ Cancel";
+    cancelBtn.className = "btn btn-danger mt-3";
+    cancelBtn.onclick = () => {
       codeReader.reset();
+      cameraOverlay.remove();
+    };
+
+    cameraOverlay.appendChild(video);
+    cameraOverlay.appendChild(cancelBtn);
+    document.body.appendChild(cameraOverlay);
+
+    try {
+      const result = await codeReader.decodeOnceFromVideoDevice(undefined, video);
+      barcodeField.value = result.getText();
+    } catch (err) {
+      console.error("Scan failed:", err);
+    } finally {
+      codeReader.reset();
+      cameraOverlay.remove();
     }
-
-    scanBtn.addEventListener("click", async () => {
-      modal.style.display = "flex";
-
-      try {
-        controls = await codeReader.decodeFromVideoElement(videoElement, (result) => {
-          if (result) {
-            barcodeField.value = result.getText();
-            stopScanner();
-          }
-        });
-      } catch (err) {
-        alert("Camera error: " + err.message);
-        stopScanner();
-      }
-    });
-  </script>
+  });
+</script>
 </body>
 </html>
