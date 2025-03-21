@@ -130,7 +130,7 @@
 
   <audio id="beep" src="/static/beep.mp3" preload="auto"></audio>
 
-  <script type="module">
+<script type="module">
   import { BrowserMultiFormatReader } from "https://cdn.jsdelivr.net/npm/@zxing/browser@latest/+esm";
 
   const statusDisplay = document.getElementById("status");
@@ -143,6 +143,52 @@
 
   const codeReader = new BrowserMultiFormatReader();
   let videoElement;
+
+  async function scanLoop() {
+    try {
+      const result = await codeReader.decodeOnceFromVideoElement(videoElement);
+      const barcode = result.getText();
+      const direction = directionSelect.value;
+      const technician = technicianSelect.value;
+
+      if (direction === "out" && !technician) {
+        statusDisplay.textContent = "⚠️ Technician required for Scan Out.";
+        statusDisplay.className = "warning";
+        return scanLoop(); // Retry after showing warning
+      }
+
+      beep.play().catch(e => console.warn("🔇 Beep error:", e));
+      statusDisplay.textContent = `📦 Scanned: ${barcode}`;
+      statusDisplay.className = "";
+
+      const li = document.createElement("li");
+      const now = new Date().toLocaleTimeString();
+      li.textContent = `${now} — ${barcode} (${direction})`;
+      scannedItems.appendChild(li);
+
+      const res = await fetch("/scan-action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ barcode, direction, technician }),
+      });
+
+      const data = await res.json();
+
+      if (data.status === "success") {
+        statusDisplay.textContent = `✅ Scan ${direction} successful for ${barcode}`;
+        statusDisplay.className = "success";
+      } else {
+        statusDisplay.textContent = `❌ Product ${barcode} not found`;
+        statusDisplay.className = "error";
+      }
+
+      setTimeout(scanLoop, 1500); // Restart scanner
+    } catch (err) {
+      console.error("Scan error:", err);
+      statusDisplay.textContent = `❌ ${err.message || "Scan failed"}`;
+      statusDisplay.className = "error";
+    }
+  }
 
   startBtn.addEventListener("click", async () => {
     startBtn.disabled = true;
@@ -168,54 +214,8 @@
       videoElement.srcObject = stream;
       await videoElement.play();
 
-      codeReader.decodeFromVideoElement(videoElement, async (result, error, controls) => {
-        if (result) {
-          const barcode = result.getText();
-          const direction = directionSelect.value;
-          const technician = technicianSelect.value;
+      scanLoop(); // Start scanning loop
 
-          if (direction === "out" && !technician) {
-            statusDisplay.textContent = "⚠️ Technician required for Scan Out.";
-            statusDisplay.className = "warning";
-            return;
-          }
-
-          beep.play().catch(e => console.warn("🔇 Beep error:", e));
-          statusDisplay.textContent = `📦 Scanned: ${barcode}`;
-          statusDisplay.className = "";
-
-          const li = document.createElement("li");
-          const now = new Date().toLocaleTimeString();
-          li.textContent = `${now} — ${barcode} (${direction})`;
-          scannedItems.appendChild(li);
-
-          controls.stop();
-
-          const res = await fetch("/scan-action", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              barcode,
-              direction,
-              technician
-            }),
-          });
-
-          const data = await res.json();
-
-          if (data.status === "success") {
-            statusDisplay.textContent = `✅ Scan ${direction} successful for ${barcode}`;
-            statusDisplay.className = "success";
-          } else {
-            statusDisplay.textContent = `❌ Product ${barcode} not found`;
-            statusDisplay.className = "error";
-          }
-
-          setTimeout(() => {
-            codeReader.decodeFromVideoElement(videoElement);
-          }, 1500);
-        }
-      });
     } catch (err) {
       console.error("Camera error:", err);
       statusDisplay.textContent = `❌ ${err.message || "Camera access denied"}`;
@@ -223,5 +223,6 @@
     }
   });
 </script>
+
 </body>
 </html>
