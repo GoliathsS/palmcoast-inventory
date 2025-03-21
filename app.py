@@ -30,6 +30,13 @@ def index():
     # Total inventory value
     cur.execute("SELECT SUM(stock * cost_per_unit) FROM products")
     total_value = cur.fetchone()[0] or 0
+
+    # Lawn and Pest counts
+    cur.execute("SELECT COUNT(*) FROM products WHERE category = 'Lawn'")
+    lawn_count = cur.fetchone()[0]
+
+    cur.execute("SELECT COUNT(*) FROM products WHERE category = 'Pest'")
+    pest_count = cur.fetchone()[0]
     
     cur.close()
     conn.close()
@@ -40,7 +47,9 @@ def index():
         products=products,
         technicians=technicians,
         total_value=total_value,
-        category_filter=category_filter  # Pass this to the template
+        category_filter=category_filter,
+        lawn_count=lawn_count,
+        pest_count=pest_count
     )
 
 @app.route("/scan")
