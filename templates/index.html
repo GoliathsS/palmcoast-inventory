@@ -129,6 +129,7 @@
             <th>Min Stock</th>
             <th>Status</th>
             <th>Price</th>
+            <th>Category</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -140,13 +141,22 @@
             <td>{{ product[3] }}</td>
             <td>{{ product[4] }}</td>
             <td>
-              {% if product[3] < product[4] %}
+              {% if product[3] == 0 %}
+                <span class="badge bg-danger">Out</span>
+              {% elif product[3] < product[4] %}
                 <span class="badge badge-low">Low</span>
               {% else %}
                 <span class="badge badge-ok">OK</span>
               {% endif %}
             </td>
             <td>${{ '%.2f' | format(product[5] or 0.00) }}</td>
+            <td>
+              {% if product[7] == 'Lawn' %}
+                <span class="badge bg-success">Lawn</span>
+              {% else %}
+                <span class="badge bg-info text-dark">Pest</span>
+              {% endif %}
+            </td>
             <td>
               <button class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#editModal{{ product[0] }}">✏️ Edit</button>
               <form action="/delete-product/{{ product[0] }}" method="post" style="display:inline-block" onsubmit="return confirm('Are you sure?')">
