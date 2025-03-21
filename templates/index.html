@@ -205,23 +205,29 @@ let unsubscribe;
 
 function closeScanner() {
   try {
+    console.log("closeScanner() called");
+
     if (unsubscribe) {
       unsubscribe();
+      console.log("Unsubscribed scanner events");
       unsubscribe = null;
     }
 
     if (codeReader) {
       codeReader.reset();
+      console.log("Code reader reset");
       codeReader = null;
     }
 
     if (video && video.srcObject) {
       video.srcObject.getTracks().forEach(track => track.stop());
+      console.log("Video tracks stopped");
       video.srcObject = null;
     }
 
     if (overlay) {
       document.body.removeChild(overlay);
+      console.log("Overlay removed from DOM");
       overlay = null;
     }
 
