@@ -197,13 +197,16 @@
   const scanBtn = document.getElementById("scan-btn");
 
   let overlay = null;
+  let codeReader = null;
+  let stopStream = null;
 
   scanBtn.addEventListener("click", async () => {
     if (overlay) return; // prevent duplicate overlays
 
-    const codeReader = new BrowserMultiFormatReader();
+    // Initialize scanner
+    codeReader = new BrowserMultiFormatReader();
 
-    // Create overlay
+    // Overlay container
     overlay = document.createElement("div");
     overlay.style.position = "fixed";
     overlay.style.top = "0";
@@ -218,6 +221,7 @@
     overlay.style.justifyContent = "center";
     overlay.style.padding = "20px";
 
+    // Video element
     const video = document.createElement("video");
     video.setAttribute("autoplay", true);
     video.setAttribute("muted", true);
@@ -228,14 +232,11 @@
     video.style.boxShadow = "0 0 10px rgba(0,0,0,0.3)";
     overlay.appendChild(video);
 
+    // Cancel button
     const cancelBtn = document.createElement("button");
     cancelBtn.textContent = "❌ Cancel";
     cancelBtn.className = "btn btn-danger mt-3";
-    cancelBtn.onclick = () => {
-      codeReader.reset();
-      overlay.remove();
-      overlay = null;
-    };
+    cancelBtn.onclick = () => closeScanner(video);
     overlay.appendChild(cancelBtn);
 
     document.body.appendChild(overlay);
@@ -243,13 +244,22 @@
     try {
       const result = await codeReader.decodeOnceFromVideoDevice(undefined, video);
       barcodeField.value = result.getText();
+      barcodeField.scrollIntoView({ behavior: "smooth", block: "center" });
       barcodeField.focus();
-      codeReader.reset();
-      overlay.remove();
-      overlay = null;
+      if (navigator.vibrate) navigator.vibrate(100);
+      closeScanner(video);
     } catch (err) {
       console.error("Scan error:", err);
-      codeReader.reset();
+      closeScanner(video);
+    }
+  });
+
+  function closeScanner(videoElement) {
+    if (codeReader) codeReader.reset();
+    if (videoElement && videoElement.srcObject) {
+      videoElement.srcObject.getTracks().forEach(track => track.stop());
+    }
+    if (overlay) {
       overlay.remove();
       overlay = null;
     }
