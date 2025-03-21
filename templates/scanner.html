@@ -201,6 +201,7 @@
             });
 
             const data = await res.json();
+            console.log("✅ Server response:", data);
 
             if (data.status === "success") {
               statusDisplay.textContent = `✅ Scan ${direction} successful for ${barcode}`;
