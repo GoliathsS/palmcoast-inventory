@@ -145,6 +145,7 @@
   let scannerStarted = false;
 
   startBtn.addEventListener("click", async () => {
+    console.log("▶️ Start clicked");
     scannerContainer.innerHTML = '';
     scannerContainer.style.display = "block";
     startBtn.style.display = "none";
@@ -152,7 +153,7 @@
     if (!scannerStarted) {
       try {
         const devices = await ZXing.BrowserMultiFormatReader.listVideoInputDevices();
-        console.log("📱 Video input devices:", devices);
+        console.log("📱 Devices:", devices);
 
         if (!devices.length) {
           statusDisplay.textContent = "❌ No cameras found.";
@@ -166,16 +167,16 @@
 
         const selectedDeviceId = backCamera.deviceId;
 
-        await codeReader.decodeFromVideoDevice(
+        codeReader.decodeFromVideoDevice(
           selectedDeviceId,
           scannerContainer,
           (result, error, controls) => {
-            const video = scannerContainer.querySelector('video');
+            const video = scannerContainer.querySelector("video");
             if (video) {
-              video.setAttribute('playsinline', true);
-              video.setAttribute('autoplay', true);
-              video.setAttribute('muted', true);
-              video.setAttribute('controls', false);
+              video.setAttribute("playsinline", true);
+              video.setAttribute("autoplay", true);
+              video.setAttribute("muted", true);
+              video.setAttribute("controls", false);
             }
 
             if (result) {
@@ -189,7 +190,7 @@
                 return;
               }
 
-              beep.play().catch(e => console.warn("🔇 Beep error:", e));
+              beep.play().catch((e) => console.warn("🔇 Beep error:", e));
               statusDisplay.textContent = `📦 Scanned: ${barcode}`;
               statusDisplay.className = "";
 
