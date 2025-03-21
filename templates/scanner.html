@@ -130,11 +130,7 @@
 
   <audio id="beep" src="/static/beep.mp3" preload="auto"></audio>
 
-<script type="module">
-  import {
-    BrowserMultiFormatReader
-  } from "https://cdn.jsdelivr.net/npm/@zxing/browser@latest/+esm";
-
+<script>
   const statusDisplay = document.getElementById("status");
   const directionSelect = document.getElementById("direction");
   const technicianSelect = document.getElementById("technician");
@@ -143,18 +139,25 @@
   const startBtn = document.getElementById("start-btn");
   const beep = document.getElementById("beep");
 
-  const codeReader = new BrowserMultiFormatReader();
+  const codeReader = new ZXingBrowser.BrowserMultiFormatReader();
   let scannerStarted = false;
 
   startBtn.addEventListener("click", async () => {
-    scannerContainer.innerHTML = ''; // Reset container
+    scannerContainer.innerHTML = '';
     scannerContainer.style.display = "block";
     startBtn.style.display = "none";
 
     if (!scannerStarted) {
       try {
-        const devices = await BrowserMultiFormatReader.listVideoInputDevices();
-        const selectedDeviceId = devices[0]?.deviceId;
+        const devices = await ZXingBrowser.BrowserMultiFormatReader.listVideoInputDevices();
+
+        if (!devices.length) {
+          statusDisplay.textContent = "❌ No cameras found.";
+          statusDisplay.className = "error";
+          return;
+        }
+
+        const selectedDeviceId = devices[0].deviceId;
 
         await codeReader.decodeFromVideoDevice(
           selectedDeviceId,
@@ -180,7 +183,6 @@
               li.textContent = `${now} — ${barcode} (${direction})`;
               scannedItems.appendChild(li);
 
-              // Pause scanning temporarily
               controls.stop();
 
               fetch("/scan-action", {
@@ -201,17 +203,17 @@
                   statusDisplay.textContent = `❌ Product ${barcode} not found`;
                   statusDisplay.className = "error";
                 }
-                setTimeout(() => {
-                  controls.start(); // Resume scanning
-                }, 1500);
+                setTimeout(() => controls.start(), 1500);
               });
             }
           }
         );
+
         scannerStarted = true;
+
       } catch (err) {
-        console.error(err);
-        statusDisplay.textContent = "❌ Error starting scanner";
+        console.error("ZXing Error:", err);
+        statusDisplay.textContent = "❌ Error starting scanner. " + (err.message || '');
         statusDisplay.className = "error";
       }
     }
