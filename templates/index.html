@@ -202,27 +202,30 @@
   let unsubscribe;
 
   function closeScanner() {
-    if (unsubscribe) {
-      unsubscribe();
-      unsubscribe = null;
-    }
+    try {
+      if (unsubscribe) {
+        unsubscribe();
+        unsubscribe = null;
+      }
 
-    if (codeReader) {
-      codeReader.reset();
-    }
+      if (codeReader) {
+        codeReader.reset();
+        codeReader = null;
+      }
 
-    if (video && video.srcObject) {
-      video.srcObject.getTracks().forEach(track => track.stop());
-      video.srcObject = null;
-    }
+      if (video?.srcObject) {
+        video.srcObject.getTracks().forEach(track => track.stop());
+        video.srcObject = null;
+      }
 
-    if (overlay) {
-      document.body.removeChild(overlay);
-      overlay = null;
-    }
+      if (overlay) {
+        document.body.removeChild(overlay);
+        overlay = null;
+      }
 
-    codeReader = null;
-    video = null;
+    } catch (err) {
+      console.error("Error during closeScanner:", err);
+    }
   }
 
   scanBtn.addEventListener("click", async () => {
@@ -231,27 +234,31 @@
     codeReader = new BrowserMultiFormatReader();
 
     overlay = document.createElement("div");
-    overlay.style.position = "fixed";
-    overlay.style.top = "0";
-    overlay.style.left = "0";
-    overlay.style.width = "100vw";
-    overlay.style.height = "100vh";
-    overlay.style.backgroundColor = "rgba(0,0,0,0.85)";
-    overlay.style.zIndex = "9999";
-    overlay.style.display = "flex";
-    overlay.style.flexDirection = "column";
-    overlay.style.alignItems = "center";
-    overlay.style.justifyContent = "center";
-    overlay.style.padding = "20px";
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: rgba(0, 0, 0, 0.85);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    `;
 
     video = document.createElement("video");
     video.setAttribute("autoplay", true);
     video.setAttribute("muted", true);
     video.setAttribute("playsinline", true);
-    video.style.width = "90%";
-    video.style.maxWidth = "500px";
-    video.style.borderRadius = "12px";
-    video.style.boxShadow = "0 0 10px rgba(0,0,0,0.3)";
+    video.style.cssText = `
+      width: 90%;
+      max-width: 500px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    `;
     overlay.appendChild(video);
 
     const cancelBtn = document.createElement("button");
@@ -267,11 +274,11 @@
         if (result) {
           barcodeField.value = result.getText();
           barcodeField.focus();
-          closeScanner();
+          setTimeout(closeScanner, 300);  // Give browser time to paint before removing
         }
       });
     } catch (err) {
-      console.error("Scan error:", err);
+      console.error("Scanner error:", err);
       closeScanner();
     }
   });
