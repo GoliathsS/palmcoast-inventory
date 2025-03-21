@@ -191,88 +191,93 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script type="module">
-    import { BrowserMultiFormatReader } from 'https://cdn.jsdelivr.net/npm/@zxing/browser@latest/+esm';
+  import { BrowserMultiFormatReader } from 'https://cdn.jsdelivr.net/npm/@zxing/browser@latest/+esm';
 
-    const barcodeField = document.getElementById("barcode-field");
-    const scanBtn = document.getElementById("scan-btn");
+  const barcodeField = document.getElementById("barcode-field");
+  const scanBtn = document.getElementById("scan-btn");
 
-    let overlay = null;
-    let stream = null;
-    let codeReader = null;
-    let video = null;
-    let unsubscribe = null;
+  let overlay = null;
+  let stream = null;
+  let codeReader = null;
+  let video = null;
+  let cancelBtn = null;
+  let unsubscribe = null;
 
-    scanBtn.addEventListener("click", async () => {
-      if (overlay) return;
+  scanBtn.addEventListener("click", async () => {
+    if (overlay) return;
 
-      codeReader = new BrowserMultiFormatReader();
+    codeReader = new BrowserMultiFormatReader();
 
-      overlay = document.createElement("div");
-      overlay.style.position = "fixed";
-      overlay.style.top = "0";
-      overlay.style.left = "0";
-      overlay.style.width = "100vw";
-      overlay.style.height = "100vh";
-      overlay.style.backgroundColor = "rgba(0,0,0,0.85)";
-      overlay.style.zIndex = "9999";
-      overlay.style.display = "flex";
-      overlay.style.flexDirection = "column";
-      overlay.style.alignItems = "center";
-      overlay.style.justifyContent = "center";
-      overlay.style.padding = "20px";
+    // === Overlay Setup ===
+    overlay = document.createElement("div");
+    overlay.style.position = "fixed";
+    overlay.style.top = "0";
+    overlay.style.left = "0";
+    overlay.style.width = "100vw";
+    overlay.style.height = "100vh";
+    overlay.style.backgroundColor = "rgba(0,0,0,0.85)";
+    overlay.style.zIndex = "9999";
+    overlay.style.display = "flex";
+    overlay.style.flexDirection = "column";
+    overlay.style.alignItems = "center";
+    overlay.style.justifyContent = "center";
+    overlay.style.padding = "20px";
 
-      video = document.createElement("video");
-      video.setAttribute("autoplay", true);
-      video.setAttribute("muted", true);
-      video.setAttribute("playsinline", true);
-      video.style.width = "90%";
-      video.style.maxWidth = "500px";
-      video.style.borderRadius = "12px";
-      video.style.boxShadow = "0 0 10px rgba(0,0,0,0.3)";
-      overlay.appendChild(video);
+    video = document.createElement("video");
+    video.setAttribute("autoplay", true);
+    video.setAttribute("muted", true);
+    video.setAttribute("playsinline", true);
+    video.style.width = "90%";
+    video.style.maxWidth = "500px";
+    video.style.borderRadius = "12px";
+    video.style.boxShadow = "0 0 10px rgba(0,0,0,0.3)";
+    overlay.appendChild(video);
 
-      const cancelBtn = document.createElement("button");
-      cancelBtn.textContent = "❌ Cancel";
-      cancelBtn.className = "btn btn-danger mt-3";
-      cancelBtn.onclick = () => {
-        closeScanner();
-      };
-      overlay.appendChild(cancelBtn);
+    cancelBtn = document.createElement("button");
+    cancelBtn.textContent = "❌ Cancel";
+    cancelBtn.className = "btn btn-danger mt-3";
+    cancelBtn.onclick = () => closeScanner();
+    overlay.appendChild(cancelBtn);
 
-      document.body.appendChild(overlay);
+    document.body.appendChild(overlay);
 
-      try {
-        unsubscribe = await codeReader.decodeFromVideoDevice(null, video, (result, err) => {
-          if (result) {
-            barcodeField.value = result.getText();
-            barcodeField.focus();
-            closeScanner();
-          }
-        });
-      } catch (err) {
-        console.error("Camera error:", err);
-        closeScanner();
-      }
-    });
+    try {
+      unsubscribe = await codeReader.decodeFromVideoDevice(null, video, (result, err) => {
+        if (result) {
+          barcodeField.value = result.getText();
+          barcodeField.focus();
+          closeScanner(); // <-- on successful scan
+        }
+      });
+    } catch (err) {
+      console.error("Camera error:", err);
+      closeScanner();
+    }
+  });
 
-    function closeScanner() {
+  function closeScanner() {
+    try {
       if (unsubscribe) unsubscribe();
       if (codeReader) codeReader.reset();
-
       if (video && video.srcObject) {
         video.srcObject.getTracks().forEach(track => track.stop());
-        video.srcObject = null; // 👈 this clears the lingering feed that keeps the overlay
+        video.srcObject = null;
       }
 
-      if (overlay) {
-        overlay.remove();
-        overlay = null;
+      // ✅ Remove the overlay cleanly
+      if (overlay && overlay.parentNode) {
+        overlay.parentNode.removeChild(overlay);
       }
 
+      overlay = null;
+      video = null;
+      cancelBtn = null;
       unsubscribe = null;
       codeReader = null;
-      video = null;
+    } catch (e) {
+      console.error("Error closing scanner:", e);
     }
+  }
   </script>
 </body>
 </html>
