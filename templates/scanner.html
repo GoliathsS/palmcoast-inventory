@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Scan Product | Palm Coast Inventory</title>
   <link rel="stylesheet" href="/static/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@zxing/browser@latest"></script>
   <style>
     body {
       margin: 0;
@@ -128,47 +129,39 @@
     </div>
   </div>
 
-<audio id="beep" src="/static/beep.mp3" preload="auto"></audio>
+  <audio id="beep" src="/static/beep.mp3" preload="auto"></audio>
 
-<script src="https://cdn.jsdelivr.net/npm/@zxing/browser@latest"></script>
+  <script>
+    const statusDisplay = document.getElementById("status");
+    const directionSelect = document.getElementById("direction");
+    const technicianSelect = document.getElementById("technician");
+    const scannedItems = document.getElementById("scanned-items");
+    const scannerContainer = document.getElementById("scanner-container");
+    const startBtn = document.getElementById("start-btn");
+    const beep = document.getElementById("beep");
 
-<script>
-  const statusDisplay = document.getElementById("status");
-  const directionSelect = document.getElementById("direction");
-  const technicianSelect = document.getElementById("technician");
-  const scannedItems = document.getElementById("scanned-items");
-  const scannerContainer = document.getElementById("scanner-container");
-  const startBtn = document.getElementById("start-btn");
-  const beep = document.getElementById("beep");
+    const codeReader = new ZXing.BrowserMultiFormatReader();
+    let scannerStarted = false;
 
-  const codeReader = new ZXing.BrowserMultiFormatReader();
-  let scannerStarted = false;
+    startBtn.addEventListener("click", async () => {
+      scannerContainer.innerHTML = '';
+      scannerContainer.style.display = "block";
+      startBtn.style.display = "none";
 
-  startBtn.addEventListener("click", async () => {
-    console.log("▶️ Start clicked");
-    scannerContainer.innerHTML = '';
-    scannerContainer.style.display = "block";
-    startBtn.style.display = "none";
-
-    if (!scannerStarted) {
       try {
         const devices = await ZXing.BrowserMultiFormatReader.listVideoInputDevices();
-        console.log("📱 Devices:", devices);
+        if (!devices.length) throw new Error("No cameras found.");
 
-        if (!devices.length) {
-          statusDisplay.textContent = "❌ No cameras found.";
-          statusDisplay.className = "error";
-          return;
-        }
+        const backCamera = devices.find(device => /back|rear|environment/i.test(device.label)) || devices[0];
 
-        const backCamera = devices.find(device =>
-          /back|rear|environment/i.test(device.label)
-        ) || devices[0];
-
-        const selectedDeviceId = backCamera.deviceId;
-
-        codeReader.decodeFromVideoDevice(
-          selectedDeviceId,
+        await codeReader.decodeFromConstraints(
+          {
+            audio: false,
+            video: {
+              deviceId: backCamera.deviceId,
+              facingMode: { ideal: "environment" }
+            }
+          },
           scannerContainer,
           (result, error, controls) => {
             const video = scannerContainer.querySelector("video");
@@ -204,11 +197,7 @@
               fetch("/scan-action", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  barcode: barcode,
-                  direction: direction,
-                  technician: technician
-                }),
+                body: JSON.stringify({ barcode, direction, technician })
               })
               .then(res => res.json())
               .then(data => {
@@ -226,15 +215,13 @@
         );
 
         scannerStarted = true;
-
       } catch (err) {
-        console.error("ZXing Error:", err);
-        statusDisplay.textContent = "❌ Error starting scanner. " + (err.message || '');
+        console.error("Scanner Error:", err);
+        statusDisplay.textContent = `❌ Error: ${err.message}`;
         statusDisplay.className = "error";
       }
-    }
-  });
-</script>
+    });
+  </script>
 </body>
 </html>
 
