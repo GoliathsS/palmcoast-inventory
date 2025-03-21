@@ -43,25 +43,6 @@
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
       transform: translateY(-1px);
     }
-    #barcode-scanner-modal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0, 0, 0, 0.8);
-      z-index: 9999;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-    }
-    #barcode-scanner-video {
-      width: 90%;
-      max-width: 400px;
-      border-radius: 12px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.5);
-    }
   </style>
 </head>
 <body>
@@ -183,6 +164,7 @@
               </div>
             </div>
           </div>
+
           {% endfor %}
         </tbody>
       </table>
@@ -191,86 +173,32 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script type="module">
-  import { BrowserMultiFormatReader } from 'https://cdn.skypack.dev/@zxing/browser';
+    import { BrowserMultiFormatReader } from 'https://cdn.jsdelivr.net/npm/@zxing/browser@latest/+esm';
 
-  const barcodeField = document.getElementById("barcode-field");
-  const scanBtn = document.getElementById("scan-btn");
+    const barcodeField = document.getElementById("barcode-field");
+    const scanBtn = document.getElementById("scan-btn");
 
-  let codeReader = null;
-  let overlay = null;
-  let video = null;
+    scanBtn.addEventListener("click", async () => {
+      const codeReader = new BrowserMultiFormatReader();
+      const previewElem = document.createElement("video");
+      previewElem.setAttribute("autoplay", true);
+      previewElem.setAttribute("muted", true);
+      previewElem.setAttribute("playsinline", true);
+      previewElem.style.width = "100%";
+      previewElem.style.borderRadius = "10px";
+      document.body.appendChild(previewElem);
 
-  async function openScanner() {
-    if (overlay) return;
-
-    codeReader = new BrowserMultiFormatReader();
-
-    overlay = document.createElement("div");
-    overlay.style.position = "fixed";
-    overlay.style.top = "0";
-    overlay.style.left = "0";
-    overlay.style.width = "100vw";
-    overlay.style.height = "100vh";
-    overlay.style.backgroundColor = "rgba(0,0,0,0.85)";
-    overlay.style.zIndex = "9999";
-    overlay.style.display = "flex";
-    overlay.style.flexDirection = "column";
-    overlay.style.alignItems = "center";
-    overlay.style.justifyContent = "center";
-    overlay.style.padding = "20px";
-
-    video = document.createElement("video");
-    video.setAttribute("autoplay", true);
-    video.setAttribute("muted", true);
-    video.setAttribute("playsinline", true);
-    video.style.width = "90%";
-    video.style.maxWidth = "500px";
-    video.style.borderRadius = "12px";
-    overlay.appendChild(video);
-
-    const cancelBtn = document.createElement("button");
-    cancelBtn.textContent = "❌ Cancel";
-    cancelBtn.className = "btn btn-danger mt-3";
-    cancelBtn.onclick = closeScanner;
-    overlay.appendChild(cancelBtn);
-
-    document.body.appendChild(overlay);
-
-    try {
-      await codeReader.decodeOnceFromVideoDevice(null, video)
-        .then((result) => {
-          barcodeField.value = result.text;
-          barcodeField.focus();
-          closeScanner();
-        })
-        .catch((err) => {
-          console.error("Scanning interrupted or error:", err);
-          closeScanner();
-        });
-    } catch (err) {
-      console.error("Error initializing scanner:", err);
-      closeScanner();
-    }
-  }
-
-  function closeScanner() {
-    if (codeReader) {
-      codeReader.reset();
-      codeReader = null;
-    }
-
-    if (video && video.srcObject) {
-      video.srcObject.getTracks().forEach(track => track.stop());
-      video.srcObject = null;
-    }
-
-    if (overlay) {
-      document.body.removeChild(overlay);
-      overlay = null;
-    }
-  }
-
-  scanBtn.addEventListener("click", openScanner);
+      try {
+        const result = await codeReader.decodeOnceFromVideoDevice(undefined, previewElem);
+        barcodeField.value = result.getText();
+        codeReader.reset();
+        previewElem.remove();
+      } catch (err) {
+        console.error("Scan failed:", err);
+        codeReader.reset();
+        previewElem.remove();
+      }
+    });
   </script>
 </body>
 </html>
