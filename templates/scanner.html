@@ -131,97 +131,98 @@
 
   <audio id="beep" src="/static/beep.mp3" preload="auto"></audio>
 
-  <script>
-    const statusDisplay = document.getElementById("status");
-    const directionSelect = document.getElementById("direction");
-    const technicianSelect = document.getElementById("technician");
-    const scannedItems = document.getElementById("scanned-items");
-    const scannerContainer = document.getElementById("scanner-container");
-    const startBtn = document.getElementById("start-btn");
-    const beep = document.getElementById("beep");
+  <script type="module">
+  import { BrowserMultiFormatReader } from "https://cdn.jsdelivr.net/npm/@zxing/browser@latest/+esm";
 
-    const codeReader = new ZXing.BrowserMultiFormatReader();
-    let scannerStarted = false;
+  const statusDisplay = document.getElementById("status");
+  const directionSelect = document.getElementById("direction");
+  const technicianSelect = document.getElementById("technician");
+  const scannedItems = document.getElementById("scanned-items");
+  const scannerContainer = document.getElementById("scanner-container");
+  const startBtn = document.getElementById("start-btn");
+  const beep = document.getElementById("beep");
 
-    startBtn.addEventListener("click", async () => {
-      scannerContainer.innerHTML = '';
-      scannerContainer.style.display = "block";
-      startBtn.style.display = "none";
+  const codeReader = new BrowserMultiFormatReader();
 
-      try {
-        const devices = await ZXing.BrowserMultiFormatReader.listVideoInputDevices();
-        if (!devices.length) throw new Error("No cameras found.");
+  startBtn.addEventListener("click", async () => {
+    scannerContainer.innerHTML = "";
+    scannerContainer.style.display = "block";
+    startBtn.disabled = true;
 
-        const backCamera = devices.find(device => /back|rear|environment/i.test(device.label)) || devices[0];
+    try {
+      const constraints = {
+        video: {
+          facingMode: { ideal: "environment" } // Force rear camera
+        },
+        audio: false
+      };
 
-        await codeReader.decodeFromConstraints(
-          {
-            audio: false,
-            video: {
-              deviceId: backCamera.deviceId,
-              facingMode: { ideal: "environment" }
-            }
-          },
-          scannerContainer,
-          (result, error, controls) => {
-            const video = scannerContainer.querySelector("video");
-            if (video) {
-              video.setAttribute("playsinline", true);
-              video.setAttribute("autoplay", true);
-              video.setAttribute("muted", true);
-              video.setAttribute("controls", false);
-            }
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      const video = document.createElement("video");
+      video.setAttribute("playsinline", true);
+      video.setAttribute("autoplay", true);
+      video.setAttribute("muted", true);
+      video.style.width = "100%";
+      video.style.borderRadius = "16px";
+      scannerContainer.appendChild(video);
+      video.srcObject = stream;
+      await video.play();
 
-            if (result) {
-              const barcode = result.getText();
-              const direction = directionSelect.value;
-              const technician = technicianSelect.value;
+      codeReader.decodeFromVideoElement(video, async (result, error) => {
+        if (result) {
+          const barcode = result.getText();
+          const direction = directionSelect.value;
+          const technician = technicianSelect.value;
 
-              if (direction === "out" && !technician) {
-                statusDisplay.textContent = "⚠️ Technician required for Scan Out.";
-                statusDisplay.className = "warning";
-                return;
-              }
-
-              beep.play().catch((e) => console.warn("🔇 Beep error:", e));
-              statusDisplay.textContent = `📦 Scanned: ${barcode}`;
-              statusDisplay.className = "";
-
-              const li = document.createElement("li");
-              const now = new Date().toLocaleTimeString();
-              li.textContent = `${now} — ${barcode} (${direction})`;
-              scannedItems.appendChild(li);
-
-              controls.stop();
-
-              fetch("/scan-action", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ barcode, direction, technician })
-              })
-              .then(res => res.json())
-              .then(data => {
-                if (data.status === "success") {
-                  statusDisplay.textContent = `✅ Scan ${direction} successful for ${barcode}`;
-                  statusDisplay.className = "success";
-                } else {
-                  statusDisplay.textContent = `❌ Product ${barcode} not found`;
-                  statusDisplay.className = "error";
-                }
-                setTimeout(() => controls.start(), 1500);
-              });
-            }
+          if (direction === "out" && !technician) {
+            statusDisplay.textContent = "⚠️ Technician required for Scan Out.";
+            statusDisplay.className = "warning";
+            return;
           }
-        );
 
-        scannerStarted = true;
-      } catch (err) {
-        console.error("Scanner Error:", err);
-        statusDisplay.textContent = `❌ Error: ${err.message}`;
-        statusDisplay.className = "error";
-      }
-    });
-  </script>
+          beep.play().catch(e => console.warn("Beep error:", e));
+          statusDisplay.textContent = `📦 Scanned: ${barcode}`;
+          statusDisplay.className = "";
+
+          const li = document.createElement("li");
+          const now = new Date().toLocaleTimeString();
+          li.textContent = `${now} — ${barcode} (${direction})`;
+          scannedItems.appendChild(li);
+
+          codeReader.reset(); // Stop scanner while we send data
+
+          const res = await fetch("/scan-action", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              barcode,
+              direction,
+              technician
+            }),
+          });
+
+          const data = await res.json();
+
+          if (data.status === "success") {
+            statusDisplay.textContent = `✅ Scan ${direction} successful for ${barcode}`;
+            statusDisplay.className = "success";
+          } else {
+            statusDisplay.textContent = `❌ Product ${barcode} not found`;
+            statusDisplay.className = "error";
+          }
+
+          setTimeout(() => {
+            codeReader.decodeFromVideoElement(video); // Restart scanner
+          }, 1500);
+        }
+      });
+    } catch (err) {
+      console.error("Camera error:", err);
+      statusDisplay.textContent = `❌ ${err.message || "Camera access denied"}`;
+      statusDisplay.className = "error";
+    }
+  });
+</script>
 </body>
 </html>
 
