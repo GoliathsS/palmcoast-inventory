@@ -258,14 +258,19 @@
     function closeScanner() {
       if (unsubscribe) unsubscribe();
       if (codeReader) codeReader.reset();
+
       if (video && video.srcObject) {
-        const tracks = video.srcObject.getTracks();
-        tracks.forEach(track => track.stop());
+        video.srcObject.getTracks().forEach(track => track.stop());
       }
-      if (overlay) overlay.remove();
-      overlay = null;
+
+      if (overlay) {
+        overlay.remove();         // Remove the dark overlay and all contents
+        overlay = null;
+      }
+
       unsubscribe = null;
       codeReader = null;
+      video = null;
     }
   </script>
 </body>
