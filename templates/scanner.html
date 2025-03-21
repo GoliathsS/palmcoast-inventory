@@ -130,7 +130,7 @@
 
   <audio id="beep" src="/static/beep.mp3" preload="auto"></audio>
 
-  <script type="module"> 
+  <script type="module">
   import { BrowserMultiFormatReader } from "https://cdn.jsdelivr.net/npm/@zxing/browser@latest/+esm";
 
   const statusDisplay = document.getElementById("status");
@@ -142,6 +142,7 @@
   const beep = document.getElementById("beep");
 
   const codeReader = new BrowserMultiFormatReader();
+
   startBtn.addEventListener("click", async () => {
     scannerContainer.innerHTML = "";
     scannerContainer.style.display = "block";
@@ -149,7 +150,9 @@
 
     try {
       const constraints = {
-        video: { facingMode: { ideal: "environment" } },
+        video: {
+          facingMode: { ideal: "environment" }
+        },
         audio: false
       };
 
@@ -165,40 +168,35 @@
       await video.play();
 
       codeReader.decodeFromVideoElement(video, async (result, error) => {
-        if (!result) return;
+        if (result) {
+          const barcode = result.getText();
+          const direction = directionSelect.value;
+          const technician = technicianSelect.value;
 
-        const barcode = result.getText();
-        const direction = directionSelect.value;
-        const technician = technicianSelect.value;
+          if (direction === "out" && !technician) {
+            statusDisplay.textContent = "⚠️ Technician required for Scan Out.";
+            statusDisplay.className = "warning";
+            return;
+          }
 
-        if (direction === "out" && !technician) {
-          statusDisplay.textContent = "⚠️ Technician required for Scan Out.";
-          statusDisplay.className = "warning";
-          return;
-        }
+          // Pause scanner
+          codeReader.reset();
+          beep.play().catch(() => {});
 
-        // Pause scanner to avoid duplicate reads
-        codeReader.reset();
-        beep.play().catch(e => console.warn("🔇 Beep error:", e));
-
-        // Send barcode to server first, THEN update UI
-        try {
-          const res = await fetch("/scan-action", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              barcode,
-              direction,
-              technician
-            }),
-          });
-
-          const data = await res.json();
+          // Optimistic display
           const li = document.createElement("li");
           const now = new Date().toLocaleTimeString();
           li.textContent = `${now} — ${barcode} (${direction})`;
           scannedItems.appendChild(li);
 
+          // Send to server
+          const res = await fetch("/scan-action", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ barcode, direction, technician }),
+          });
+
+          const data = await res.json();
           if (data.status === "success") {
             statusDisplay.textContent = `✅ Scan ${direction} successful for ${barcode}`;
             statusDisplay.className = "success";
@@ -206,21 +204,15 @@
             statusDisplay.textContent = `❌ Product ${barcode} not found`;
             statusDisplay.className = "error";
           }
-        } catch (err) {
-          console.error("❌ Server error:", err);
-          statusDisplay.textContent = `❌ Server error`;
-          statusDisplay.className = "error";
+
+          setTimeout(() => {
+            codeReader.decodeFromVideoElement(video);
+          }, 1500);
         }
-
-        // Resume scanner after delay
-        setTimeout(() => {
-          codeReader.decodeFromVideoElement(video);
-        }, 1500);
       });
-
     } catch (err) {
       console.error("Camera error:", err);
-      statusDisplay.textContent = `❌ ${err.message || "Camera access denied"}`;
+      statusDisplay.textContent = `❌ ${err.message || "Camera error"}`;
       statusDisplay.className = "error";
     }
   });
