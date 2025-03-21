@@ -224,28 +224,44 @@
 
     const barcodeField = document.getElementById("barcode-field");
     const scanBtn = document.getElementById("scan-btn");
+    const videoElem = document.getElementById("scannerPreview");
+    const modalElem = new bootstrap.Modal(document.getElementById("scannerModal"));
+    const closeModalBtn = document.getElementById("closeModalBtn");
+
+    let codeReader = new BrowserMultiFormatReader();
 
     scanBtn.addEventListener("click", async () => {
-      const codeReader = new BrowserMultiFormatReader();
-      const previewElem = document.createElement("video");
-      previewElem.setAttribute("autoplay", true);
-      previewElem.setAttribute("muted", true);
-      previewElem.setAttribute("playsinline", true);
-      previewElem.style.width = "100%";
-      previewElem.style.borderRadius = "10px";
-      document.body.appendChild(previewElem);
+      modalElem.show(); // open modal
 
       try {
-        const result = await codeReader.decodeOnceFromVideoDevice(undefined, previewElem);
+        const result = await codeReader.decodeOnceFromVideoDevice(undefined, videoElem);
         barcodeField.value = result.getText();
+        modalElem.hide();
         codeReader.reset();
-        previewElem.remove();
       } catch (err) {
         console.error("Scan failed:", err);
+        modalElem.hide();
         codeReader.reset();
-        previewElem.remove();
       }
     });
+
+    closeModalBtn.addEventListener("click", () => {
+      codeReader.reset();
+    });
   </script>
+  <!-- Barcode Scanner Modal -->
+  <div class="modal fade" id="scannerModal" tabindex="-1" aria-labelledby="scannerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="scannerModalLabel">Scan Barcode</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="closeModalBtn"></button>
+        </div>
+        <div class="modal-body text-center">
+          <video id="scannerPreview" autoplay muted playsinline style="width: 100%; border-radius: 12px;"></video>
+        </div>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
