@@ -114,6 +114,9 @@
     <div class="dashboard-card p-3 bg-white mb-4">
       <h5 class="text-muted">💰 Total Inventory Value:</h5>
       <h3 class="text-success fw-bold">${{ '%.2f' | format(total_value or 0.00) }}</h3>
+      <small class="mt-2 d-block text-muted">
+        🌿 <strong>Lawn:</strong> {{ lawn_count }} &nbsp;&nbsp; 🐜 <strong>Pest:</strong> {{ pest_count }}
+      </small>
     </div>
 
     <div class="table-responsive">
