@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Scan Product | Palm Coast Inventory</title>
   <link rel="stylesheet" href="/static/style.css">
-  <script src="https://unpkg.com/@ericblade/quagga2@1.2.6/dist/quagga.min.js"></script>
   <style>
     body {
       margin: 0;
@@ -131,105 +130,93 @@
 
   <audio id="beep" src="/static/beep.mp3" preload="auto"></audio>
 
-  <script>
-    const statusDisplay = document.getElementById("status");
-    const directionSelect = document.getElementById("direction");
-    const technicianSelect = document.getElementById("technician");
-    const scannedItems = document.getElementById("scanned-items");
-    const scannerContainer = document.getElementById("scanner-container");
-    const startBtn = document.getElementById("start-btn");
-    const beep = document.getElementById("beep");
+<script type="module">
+  import {
+    BrowserMultiFormatReader
+  } from "https://cdn.jsdelivr.net/npm/@zxing/browser@latest/+esm";
 
-    let scannerInitialized = false;
+  const statusDisplay = document.getElementById("status");
+  const directionSelect = document.getElementById("direction");
+  const technicianSelect = document.getElementById("technician");
+  const scannedItems = document.getElementById("scanned-items");
+  const scannerContainer = document.getElementById("scanner-container");
+  const startBtn = document.getElementById("start-btn");
+  const beep = document.getElementById("beep");
 
-    startBtn.addEventListener("click", () => {
-      scannerContainer.style.display = "block";
-      startBtn.style.display = "none";
+  const codeReader = new BrowserMultiFormatReader();
+  let scannerStarted = false;
 
-      if (!scannerInitialized) {
-        Quagga.init({
-          inputStream: {
-            name: "Live",
-            type: "LiveStream",
-            target: scannerContainer,
-            constraints: {
-              facingMode: "environment",
-              width: { ideal: 1280 },
-              height: { ideal: 720 }
-            }
-          },
-          locator: {
-            patchSize: "x-large",
-            halfSample: false
-          },
-          decoder: {
-            readers: ["ean_reader", "upc_reader", "code_128_reader", "code_39_reader"]
-          },
-          locate: true,
-          numOfWorkers: 2
-        }, function(err) {
-          if (err) {
-            console.error(err);
-            statusDisplay.textContent = "❌ Error initializing scanner";
-            statusDisplay.className = "error";
-            return;
-          }
-          Quagga.start();
-          scannerInitialized = true;
-        });
+  startBtn.addEventListener("click", async () => {
+    scannerContainer.innerHTML = ''; // Reset container
+    scannerContainer.style.display = "block";
+    startBtn.style.display = "none";
 
-        Quagga.onDetected(data => {
-          const barcode = data.codeResult.code;
-          if (!barcode) return;
+    if (!scannerStarted) {
+      try {
+        const devices = await BrowserMultiFormatReader.listVideoInputDevices();
+        const selectedDeviceId = devices[0]?.deviceId;
 
-          const errors = data.codeResult.decodedCodes.map(d => d.error).filter(e => e !== undefined);
-          const avgError = errors.length ? errors.reduce((a, b) => a + b, 0) / errors.length : 0;
+        await codeReader.decodeFromVideoDevice(
+          selectedDeviceId,
+          scannerContainer,
+          (result, error, controls) => {
+            if (result) {
+              const barcode = result.getText();
+              const direction = directionSelect.value;
+              const technician = technicianSelect.value;
 
-          if (avgError < 0.15) {
-            const direction = directionSelect.value;
-            const technician = technicianSelect.value;
-
-            if (direction === "out" && !technician) {
-              statusDisplay.textContent = "⚠️ Technician required for Scan Out.";
-              statusDisplay.className = "warning";
-              return;
-            }
-
-            Quagga.pause();
-            beep.play().catch((e) => console.warn("🔇 Beep error:", e));
-            statusDisplay.textContent = `📦 Scanned: ${barcode}`;
-            statusDisplay.className = "";
-
-            const li = document.createElement("li");
-            const now = new Date().toLocaleTimeString();
-            li.textContent = `${now} — ${barcode} (${direction})`;
-            scannedItems.appendChild(li);
-
-            fetch("/scan-action", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                barcode: barcode,
-                direction: direction,
-                technician: technician
-              }),
-            })
-            .then(res => res.json())
-            .then(data => {
-              if (data.status === "success") {
-                statusDisplay.textContent = `✅ Scan ${direction} successful for ${barcode}`;
-                statusDisplay.className = "success";
-              } else {
-                statusDisplay.textContent = `❌ Product ${barcode} not found`;
-                statusDisplay.className = "error";
+              if (direction === "out" && !technician) {
+                statusDisplay.textContent = "⚠️ Technician required for Scan Out.";
+                statusDisplay.className = "warning";
+                return;
               }
-              setTimeout(() => Quagga.start(), 1500);
-            });
+
+              beep.play().catch((e) => console.warn("🔇 Beep error:", e));
+              statusDisplay.textContent = `📦 Scanned: ${barcode}`;
+              statusDisplay.className = "";
+
+              const li = document.createElement("li");
+              const now = new Date().toLocaleTimeString();
+              li.textContent = `${now} — ${barcode} (${direction})`;
+              scannedItems.appendChild(li);
+
+              // Pause scanning temporarily
+              controls.stop();
+
+              fetch("/scan-action", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  barcode: barcode,
+                  direction: direction,
+                  technician: technician
+                }),
+              })
+              .then(res => res.json())
+              .then(data => {
+                if (data.status === "success") {
+                  statusDisplay.textContent = `✅ Scan ${direction} successful for ${barcode}`;
+                  statusDisplay.className = "success";
+                } else {
+                  statusDisplay.textContent = `❌ Product ${barcode} not found`;
+                  statusDisplay.className = "error";
+                }
+                setTimeout(() => {
+                  controls.start(); // Resume scanning
+                }, 1500);
+              });
+            }
           }
-        });
+        );
+        scannerStarted = true;
+      } catch (err) {
+        console.error(err);
+        statusDisplay.textContent = "❌ Error starting scanner";
+        statusDisplay.className = "error";
       }
-    });
-  </script>
+    }
+  });
+</script>
 </body>
 </html>
 
