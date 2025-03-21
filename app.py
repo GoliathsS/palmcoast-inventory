@@ -15,12 +15,19 @@ def get_db_connection():
 
 @app.route('/')
 def index():
+    category_filter = request.args.get('category', 'All')  # Get ?category= value from URL
+
     conn = get_db_connection()
     cur = conn.cursor()
     
-    cur.execute("SELECT * FROM products ORDER BY id")
+    # Filter products based on category
+    if category_filter == 'All':
+        cur.execute("SELECT * FROM products ORDER BY id")
+    else:
+        cur.execute("SELECT * FROM products WHERE category = %s ORDER BY id", (category_filter,))
     products = cur.fetchall()
-    
+
+    # Total inventory value
     cur.execute("SELECT SUM(stock * cost_per_unit) FROM products")
     total_value = cur.fetchone()[0] or 0
     
@@ -28,7 +35,13 @@ def index():
     conn.close()
 
     technicians = get_all_technicians()
-    return render_template('index.html', products=products, technicians=technicians, total_value=total_value)
+    return render_template(
+        'index.html',
+        products=products,
+        technicians=technicians,
+        total_value=total_value,
+        category_filter=category_filter  # Pass this to the template
+    )
 
 @app.route("/scan")
 def scan():
