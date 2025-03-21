@@ -55,13 +55,14 @@ def add_product():
     min_stock = int(request.form["min_stock"])
     cost_per_unit = float(request.form.get("cost_per_unit", 0))
     siteone_sku = request.form.get("siteone_sku", "").strip()
+    category = request.form.get("category", "Pest")
 
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("""
-        INSERT INTO products (name, barcode, min_stock, cost_per_unit, siteone_sku)
-        VALUES (%s, %s, %s, %s, %s)
-    """, (name, barcode, min_stock, cost_per_unit, siteone_sku))
+        INSERT INTO products (name, barcode, min_stock, cost_per_unit, siteone_sku, category)
+        VALUES (%s, %s, %s, %s, %s, %s)
+    """, (name, barcode, min_stock, cost_per_unit, siteone_sku, category))
     conn.commit()
     cur.close()
     conn.close()
@@ -74,14 +75,15 @@ def edit_product(product_id):
     barcode = data['barcode']
     min_stock = int(data['min_stock'])
     cost_per_unit = float(data.get('cost_per_unit', 0.0))
+    category = data.get('category', 'Pest')
 
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("""
         UPDATE products
-        SET name=%s, barcode=%s, min_stock=%s, cost_per_unit=%s
+        SET name=%s, barcode=%s, min_stock=%s, cost_per_unit=%s, category=%s
         WHERE id=%s
-    """, (name, barcode, min_stock, cost_per_unit, product_id))
+    """, (name, barcode, min_stock, cost_per_unit, category, product_id))
     conn.commit()
     cur.close()
     conn.close()
