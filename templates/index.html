@@ -134,7 +134,7 @@
         </thead>
         <tbody>
           {% for product in products %}
-          <tr>
+          <tr class="{% if product[3] == 0 %}table-danger{% endif %}" {% if product[3] == 0 %}title="Out of Stock"{% endif %}>
             <td>{{ product[1] }}</td>
             <td>{{ product[2] }}</td>
             <td>{{ product[3] }}</td>
