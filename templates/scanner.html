@@ -180,7 +180,7 @@
             return;
           }
 
-          beep.play().catch(e => console.warn("Beep error:", e));
+          beep.play().catch((e) => console.warn("🔇 Beep error:", e));
           statusDisplay.textContent = `📦 Scanned: ${barcode}`;
           statusDisplay.className = "";
 
@@ -189,39 +189,31 @@
           li.textContent = `${now} — ${barcode} (${direction})`;
           scannedItems.appendChild(li);
 
-          codeReader.reset(); // Stop scanner while we send data
+          controls.stop();
 
-          const res = await fetch("/scan-action", {
+          fetch("/scan-action", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              barcode,
-              direction,
-              technician
+              barcode: barcode,
+              direction: direction,
+              technician: technician
             }),
+          })
+          .then(res => res.json())
+          .then(data => {
+            if (data.status === "success") {
+              statusDisplay.textContent = `✅ Scan ${direction} successful for ${barcode}`;
+              statusDisplay.className = "success";
+            } else {
+              statusDisplay.textContent = `❌ Product ${barcode} not found`;
+              statusDisplay.className = "error";
+            }
+
+            // ⏱️ Resume scanning after a delay
+            setTimeout(() => controls.start(), 1500);
           });
-
-          const data = await res.json();
-
-          if (data.status === "success") {
-            statusDisplay.textContent = `✅ Scan ${direction} successful for ${barcode}`;
-            statusDisplay.className = "success";
-          } else {
-            statusDisplay.textContent = `❌ Product ${barcode} not found`;
-            statusDisplay.className = "error";
-          }
-
-          setTimeout(() => {
-            codeReader.decodeFromVideoElement(video); // Restart scanner
-          }, 1500);
         }
-      });
-    } catch (err) {
-      console.error("Camera error:", err);
-      statusDisplay.textContent = `❌ ${err.message || "Camera access denied"}`;
-      statusDisplay.className = "error";
-    }
-  });
 </script>
 </body>
 </html>
