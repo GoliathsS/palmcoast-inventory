@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Scan Product | Palm Coast Inventory</title>
   <link rel="stylesheet" href="/static/style.css">
-  <script src="https://cdn.jsdelivr.net/npm/@zxing/browser@latest"></script>
   <style>
     body {
       margin: 0;
@@ -131,7 +130,9 @@
 
   <audio id="beep" src="/static/beep.mp3" preload="auto"></audio>
 
-  <script>
+  <script type="module">
+    import { BrowserMultiFormatReader } from "https://cdn.jsdelivr.net/npm/@zxing/browser@latest/+esm";
+
     const statusDisplay = document.getElementById("status");
     const directionSelect = document.getElementById("direction");
     const technicianSelect = document.getElementById("technician");
@@ -140,81 +141,84 @@
     const startBtn = document.getElementById("start-btn");
     const beep = document.getElementById("beep");
 
-    const codeReader = new ZXing.BrowserMultiFormatReader();
-    let scannerStarted = false;
-    let selectedDeviceId = null;
+    const codeReader = new BrowserMultiFormatReader();
 
     startBtn.addEventListener("click", async () => {
-      scannerContainer.innerHTML = '';
+      scannerContainer.innerHTML = "";
       scannerContainer.style.display = "block";
-      startBtn.style.display = "none";
+      startBtn.disabled = true;
 
       try {
-        const devices = await ZXing.BrowserMultiFormatReader.listVideoInputDevices();
-        const backCam = devices.find(d => /back|rear|environment/i.test(d.label)) || devices[0];
-        selectedDeviceId = backCam.deviceId;
+        const constraints = {
+          video: {
+            facingMode: { ideal: "environment" }
+          },
+          audio: false
+        };
 
-        codeReader.decodeFromVideoDevice(
-          selectedDeviceId,
-          scannerContainer,
-          async (result, error, controls) => {
-            const video = scannerContainer.querySelector("video");
-            if (video) {
-              video.setAttribute("playsinline", true);
-              video.setAttribute("autoplay", true);
-              video.setAttribute("muted", true);
-              video.setAttribute("controls", false);
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        const video = document.createElement("video");
+        video.setAttribute("playsinline", true);
+        video.setAttribute("autoplay", true);
+        video.setAttribute("muted", true);
+        video.style.width = "100%";
+        video.style.borderRadius = "16px";
+        scannerContainer.appendChild(video);
+        video.srcObject = stream;
+        await video.play();
+
+        codeReader.decodeFromVideoElement(video, async (result, error) => {
+          if (result) {
+            const barcode = result.getText();
+            const direction = directionSelect.value;
+            const technician = technicianSelect.value;
+
+            if (direction === "out" && !technician) {
+              statusDisplay.textContent = "⚠️ Technician required for Scan Out.";
+              statusDisplay.className = "warning";
+              return;
             }
 
-            if (result) {
-              const barcode = result.getText();
-              const direction = directionSelect.value;
-              const technician = technicianSelect.value;
+            beep.play().catch(e => console.warn("Beep error:", e));
+            statusDisplay.textContent = `📦 Scanned: ${barcode}`;
+            statusDisplay.className = "";
 
-              if (direction === "out" && !technician) {
-                statusDisplay.textContent = "⚠️ Technician required for Scan Out.";
-                statusDisplay.className = "warning";
-                return;
-              }
+            const li = document.createElement("li");
+            const now = new Date().toLocaleTimeString();
+            li.textContent = `${now} — ${barcode} (${direction})`;
+            scannedItems.appendChild(li);
 
-              controls.stop();
-              beep.play().catch(e => console.warn("🔇 Beep error:", e));
+            codeReader.reset();
 
-              fetch("/scan-action", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  barcode,
-                  direction,
-                  technician
-                }),
-              })
-              .then(res => res.json())
-              .then(data => {
-                const li = document.createElement("li");
-                const now = new Date().toLocaleTimeString();
-                li.textContent = `${now} — ${barcode} (${direction})`;
-                scannedItems.appendChild(li);
+            const res = await fetch("/scan-action", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                barcode,
+                direction,
+                technician
+              }),
+            });
 
-                if (data.status === "success") {
-                  statusDisplay.textContent = `✅ Scan ${direction} successful for ${barcode}`;
-                  statusDisplay.className = "success";
-                } else {
-                  statusDisplay.textContent = `❌ Product ${barcode} not found`;
-                  statusDisplay.className = "error";
-                }
+            const data = await res.json();
 
-                setTimeout(() => {
-                  codeReader.decodeFromVideoDevice(selectedDeviceId, scannerContainer, arguments.callee);
-                }, 1500);
-              });
+            if (data.status === "success") {
+              statusDisplay.textContent = `✅ Scan ${direction} successful for ${barcode}`;
+              statusDisplay.className = "success";
+            } else {
+              statusDisplay.textContent = `❌ Product ${barcode} not found`;
+              statusDisplay.className = "error";
             }
+
+            setTimeout(() => {
+              codeReader.decodeFromVideoElement(video);
+            }, 1500);
           }
-        );
+        });
 
       } catch (err) {
-        console.error("ZXing Error:", err);
-        statusDisplay.textContent = "❌ Error starting scanner. " + (err.message || '');
+        console.error("Camera error:", err);
+        statusDisplay.textContent = `❌ ${err.message || "Camera access denied"}`;
         statusDisplay.className = "error";
       }
     });
