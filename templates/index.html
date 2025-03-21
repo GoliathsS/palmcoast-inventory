@@ -261,10 +261,11 @@
 
       if (video && video.srcObject) {
         video.srcObject.getTracks().forEach(track => track.stop());
+        video.srcObject = null; // 👈 this clears the lingering feed that keeps the overlay
       }
 
       if (overlay) {
-        overlay.remove();         // Remove the dark overlay and all contents
+        overlay.remove();
         overlay = null;
       }
 
