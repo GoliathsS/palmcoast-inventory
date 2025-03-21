@@ -143,6 +143,7 @@
   let scannerStarted = false;
 
   startBtn.addEventListener("click", async () => {
+    console.log("▶️ Scan button clicked");
     scannerContainer.innerHTML = '';
     scannerContainer.style.display = "block";
     startBtn.style.display = "none";
@@ -150,6 +151,7 @@
     if (!scannerStarted) {
       try {
         const devices = await ZXingBrowser.BrowserMultiFormatReader.listVideoInputDevices();
+        console.log("📱 Video input devices:", devices);
 
         if (!devices.length) {
           statusDisplay.textContent = "❌ No cameras found.";
@@ -157,12 +159,27 @@
           return;
         }
 
-        const selectedDeviceId = devices[0].deviceId;
+        // ✅ Attempt to force rear camera
+        const backCamera = devices.find(device =>
+          /back|rear|environment/i.test(device.label)
+        ) || devices[0];
+
+        const selectedDeviceId = backCamera.deviceId;
+        console.log("📷 Using camera:", backCamera.label || "Unnamed");
 
         await codeReader.decodeFromVideoDevice(
           selectedDeviceId,
           scannerContainer,
           (result, error, controls) => {
+            // ✅ Set iOS-required attributes on the video element
+            const video = scannerContainer.querySelector('video');
+            if (video) {
+              video.setAttribute('playsinline', true);
+              video.setAttribute('autoplay', true);
+              video.setAttribute('muted', true);
+              video.setAttribute('controls', false);
+            }
+
             if (result) {
               const barcode = result.getText();
               const direction = directionSelect.value;
@@ -174,7 +191,7 @@
                 return;
               }
 
-              beep.play().catch((e) => console.warn("🔇 Beep error:", e));
+              beep.play().catch(e => console.warn("🔇 Beep error:", e));
               statusDisplay.textContent = `📦 Scanned: ${barcode}`;
               statusDisplay.className = "";
 
@@ -183,7 +200,7 @@
               li.textContent = `${now} — ${barcode} (${direction})`;
               scannedItems.appendChild(li);
 
-              controls.stop();
+              controls.stop(); // Pause temporarily
 
               fetch("/scan-action", {
                 method: "POST",
