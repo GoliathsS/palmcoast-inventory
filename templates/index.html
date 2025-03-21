@@ -236,6 +236,7 @@
       try {
         const result = await codeReader.decodeOnceFromVideoDevice(undefined, videoElem);
         barcodeField.value = result.getText();
+        document.getElementById("beep-sound").play();
         modalElem.hide();
         codeReader.reset();
       } catch (err) {
