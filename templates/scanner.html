@@ -202,7 +202,10 @@
     try {
       const constraints = {
         video: {
-          facingMode: { ideal: "environment" }
+          facingMode: { exact: "environment" },
+          focusMode: "continuous", // hint for focus
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
         },
         audio: false
       };
