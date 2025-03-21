@@ -245,6 +245,19 @@ def sync_siteone():
     success, message = run_siteone_sync()
     return redirect(url_for("index"))
 
+@app.route("/print-report")
+def print_report():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    cur.execute("SELECT * FROM products ORDER BY category, name")
+    products = cur.fetchall()
+
+    cur.close()
+    conn.close()
+
+    return render_template("print_report.html", products=products)
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')
 
