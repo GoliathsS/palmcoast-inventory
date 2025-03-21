@@ -206,6 +206,10 @@ def remove_technician_route():
         remove_technician(name.strip())
     return redirect("/")
 
+@app.route('/static/manifest.json')
+def manifest():
+    return send_from_directory('static', 'manifest.json', mimetype='application/manifest+json')
+
 @app.route("/sync-siteone", methods=["POST"])
 def sync_siteone():
     email = request.form.get("email")
