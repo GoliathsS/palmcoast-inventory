@@ -131,91 +131,97 @@
   <audio id="beep" src="/static/beep.mp3" preload="auto"></audio>
 
   <script type="module">
-    import { BrowserMultiFormatReader } from "https://cdn.jsdelivr.net/npm/@zxing/browser@latest/+esm";
+  import { BrowserMultiFormatReader } from "https://cdn.jsdelivr.net/npm/@zxing/browser@latest/+esm";
 
-    const statusDisplay = document.getElementById("status");
-    const directionSelect = document.getElementById("direction");
-    const technicianSelect = document.getElementById("technician");
-    const scannedItems = document.getElementById("scanned-items");
-    const scannerContainer = document.getElementById("scanner-container");
-    const startBtn = document.getElementById("start-btn");
-    const beep = document.getElementById("beep");
+  const statusDisplay = document.getElementById("status");
+  const directionSelect = document.getElementById("direction");
+  const technicianSelect = document.getElementById("technician");
+  const scannedItems = document.getElementById("scanned-items");
+  const scannerContainer = document.getElementById("scanner-container");
+  const startBtn = document.getElementById("start-btn");
+  const beep = document.getElementById("beep");
 
-    const codeReader = new BrowserMultiFormatReader();
+  const codeReader = new BrowserMultiFormatReader();
+  let videoElement;
 
-    startBtn.addEventListener("click", async () => {
-      scannerContainer.innerHTML = "";
-      scannerContainer.style.display = "block";
-      startBtn.disabled = true;
+  startBtn.addEventListener("click", async () => {
+    startBtn.disabled = true;
+    scannerContainer.innerHTML = "";
+    scannerContainer.style.display = "block";
 
-      try {
-        const constraints = {
-          video: { facingMode: { ideal: "environment" } },
-          audio: false
-        };
+    try {
+      const constraints = {
+        video: {
+          facingMode: { ideal: "environment" }
+        },
+        audio: false
+      };
 
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        const video = document.createElement("video");
-        video.setAttribute("playsinline", true);
-        video.setAttribute("autoplay", true);
-        video.setAttribute("muted", true);
-        video.style.width = "100%";
-        video.style.borderRadius = "16px";
-        scannerContainer.appendChild(video);
-        video.srcObject = stream;
-        await video.play();
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      videoElement = document.createElement("video");
+      videoElement.setAttribute("playsinline", true);
+      videoElement.setAttribute("autoplay", true);
+      videoElement.setAttribute("muted", true);
+      videoElement.style.width = "100%";
+      videoElement.style.borderRadius = "16px";
+      scannerContainer.appendChild(videoElement);
+      videoElement.srcObject = stream;
+      await videoElement.play();
 
-        codeReader.decodeFromVideoElement(video, async (result, error) => {
-          if (result) {
-            const barcode = result.getText();
-            const direction = directionSelect.value;
-            const technician = technicianSelect.value;
+      codeReader.decodeFromVideoElement(videoElement, async (result, error, controls) => {
+        if (result) {
+          const barcode = result.getText();
+          const direction = directionSelect.value;
+          const technician = technicianSelect.value;
 
-            if (direction === "out" && !technician) {
-              statusDisplay.textContent = "⚠️ Technician required for Scan Out.";
-              statusDisplay.className = "warning";
-              return;
-            }
-
-            beep.play().catch(e => console.warn("Beep error:", e));
-            statusDisplay.textContent = `📦 Scanned: ${barcode}`;
-            statusDisplay.className = "";
-
-            const li = document.createElement("li");
-            const now = new Date().toLocaleTimeString();
-            li.textContent = `${now} — ${barcode} (${direction})`;
-            scannedItems.appendChild(li);
-
-            codeReader.reset();
-
-            const res = await fetch("/scan-action", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ barcode, direction, technician })
-            });
-
-            const data = await res.json();
-
-            if (data.status === "success") {
-              statusDisplay.textContent = `✅ Scan ${direction} successful for ${barcode}`;
-              statusDisplay.className = "success";
-            } else {
-              statusDisplay.textContent = `❌ Product ${barcode} not found`;
-              statusDisplay.className = "error";
-            }
-
-            setTimeout(() => {
-              codeReader.decodeFromVideoElement(video);
-            }, 1500);
+          if (direction === "out" && !technician) {
+            statusDisplay.textContent = "⚠️ Technician required for Scan Out.";
+            statusDisplay.className = "warning";
+            return;
           }
-        });
 
-      } catch (err) {
-        console.error("Camera error:", err);
-        statusDisplay.textContent = `❌ ${err.message || "Camera access denied"}`;
-        statusDisplay.className = "error";
-      }
-    });
-  </script>
+          beep.play().catch(e => console.warn("🔇 Beep error:", e));
+          statusDisplay.textContent = `📦 Scanned: ${barcode}`;
+          statusDisplay.className = "";
+
+          const li = document.createElement("li");
+          const now = new Date().toLocaleTimeString();
+          li.textContent = `${now} — ${barcode} (${direction})`;
+          scannedItems.appendChild(li);
+
+          controls.stop();
+
+          const res = await fetch("/scan-action", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              barcode,
+              direction,
+              technician
+            }),
+          });
+
+          const data = await res.json();
+
+          if (data.status === "success") {
+            statusDisplay.textContent = `✅ Scan ${direction} successful for ${barcode}`;
+            statusDisplay.className = "success";
+          } else {
+            statusDisplay.textContent = `❌ Product ${barcode} not found`;
+            statusDisplay.className = "error";
+          }
+
+          setTimeout(() => {
+            codeReader.decodeFromVideoElement(videoElement);
+          }, 1500);
+        }
+      });
+    } catch (err) {
+      console.error("Camera error:", err);
+      statusDisplay.textContent = `❌ ${err.message || "Camera access denied"}`;
+      statusDisplay.className = "error";
+    }
+  });
+</script>
 </body>
 </html>
