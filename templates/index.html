@@ -196,9 +196,40 @@
   const barcodeField = document.getElementById("barcode-field");
   const scanBtn = document.getElementById("scan-btn");
 
-  let overlay, video, codeReader, cancelBtn;
+  let codeReader;
+  let overlay;
+  let video;
+  let unsubscribe;
 
-  function createOverlay() {
+  function closeScanner() {
+    if (unsubscribe) {
+      unsubscribe();
+      unsubscribe = null;
+    }
+
+    if (codeReader) {
+      codeReader.reset();
+    }
+
+    if (video && video.srcObject) {
+      video.srcObject.getTracks().forEach(track => track.stop());
+      video.srcObject = null;
+    }
+
+    if (overlay) {
+      document.body.removeChild(overlay);
+      overlay = null;
+    }
+
+    codeReader = null;
+    video = null;
+  }
+
+  scanBtn.addEventListener("click", async () => {
+    if (overlay) return;
+
+    codeReader = new BrowserMultiFormatReader();
+
     overlay = document.createElement("div");
     overlay.style.position = "fixed";
     overlay.style.top = "0";
@@ -223,46 +254,16 @@
     video.style.boxShadow = "0 0 10px rgba(0,0,0,0.3)";
     overlay.appendChild(video);
 
-    cancelBtn = document.createElement("button");
+    const cancelBtn = document.createElement("button");
     cancelBtn.textContent = "❌ Cancel";
     cancelBtn.className = "btn btn-danger mt-3";
-    cancelBtn.onclick = () => closeScanner();
+    cancelBtn.onclick = closeScanner;
     overlay.appendChild(cancelBtn);
 
     document.body.appendChild(overlay);
-  }
-
-  function closeScanner() {
-    try {
-      if (codeReader) {
-        codeReader.reset();
-        codeReader = null;
-      }
-
-      if (video?.srcObject) {
-        video.srcObject.getTracks().forEach(track => track.stop());
-        video.srcObject = null;
-      }
-
-      if (overlay) {
-        overlay.remove();
-        overlay = null;
-        video = null;
-        cancelBtn = null;
-      }
-    } catch (e) {
-      console.error("Error closing scanner:", e);
-    }
-  }
-
-  scanBtn.addEventListener("click", async () => {
-    if (overlay) return; // already scanning
-
-    createOverlay();
-    codeReader = new BrowserMultiFormatReader();
 
     try {
-      await codeReader.decodeFromVideoDevice(null, video, (result, err) => {
+      unsubscribe = await codeReader.decodeFromVideoDevice(null, video, (result, error) => {
         if (result) {
           barcodeField.value = result.getText();
           barcodeField.focus();
