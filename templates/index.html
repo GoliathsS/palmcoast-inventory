@@ -43,6 +43,25 @@
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
       transform: translateY(-1px);
     }
+    #barcode-scanner-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+    }
+    #barcode-scanner-video {
+      width: 90%;
+      max-width: 400px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    }
   </style>
 </head>
 <body>
@@ -164,11 +183,16 @@
               </div>
             </div>
           </div>
-
           {% endfor %}
         </tbody>
       </table>
     </div>
+  </div>
+
+  <!-- Barcode Scanner Modal -->
+  <div id="barcode-scanner-modal" class="d-flex">
+    <video id="barcode-scanner-video"></video>
+    <button onclick="stopScanner()" class="btn btn-danger mt-3">✖️ Cancel</button>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -177,29 +201,32 @@
 
     const barcodeField = document.getElementById("barcode-field");
     const scanBtn = document.getElementById("scan-btn");
+    const modal = document.getElementById("barcode-scanner-modal");
+    const videoElement = document.getElementById("barcode-scanner-video");
+    const codeReader = new BrowserMultiFormatReader();
+    let controls = null;
+
+    window.stopScanner = function () {
+      modal.style.display = "none";
+      try { controls?.stop(); } catch {}
+      codeReader.reset();
+    }
 
     scanBtn.addEventListener("click", async () => {
-      const codeReader = new BrowserMultiFormatReader();
-      const previewElem = document.createElement("video");
-      previewElem.setAttribute("autoplay", true);
-      previewElem.setAttribute("muted", true);
-      previewElem.setAttribute("playsinline", true);
-      previewElem.style.width = "100%";
-      previewElem.style.borderRadius = "10px";
-      document.body.appendChild(previewElem);
+      modal.style.display = "flex";
 
       try {
-        const result = await codeReader.decodeOnceFromVideoDevice(undefined, previewElem);
-        barcodeField.value = result.getText();
-        codeReader.reset();
-        previewElem.remove();
+        controls = await codeReader.decodeFromVideoElement(videoElement, (result) => {
+          if (result) {
+            barcodeField.value = result.getText();
+            stopScanner();
+          }
+        });
       } catch (err) {
-        console.error("Scan failed:", err);
-        codeReader.reset();
-        previewElem.remove();
+        alert("Camera error: " + err.message);
+        stopScanner();
       }
     });
   </script>
 </body>
 </html>
-
