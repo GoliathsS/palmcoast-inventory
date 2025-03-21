@@ -256,7 +256,7 @@ def print_report():
     cur.close()
     conn.close()
 
-    return render_template("print_report.html", products=products)
+    return render_template("print_report.html", products=products, now=datetime.now())
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')
