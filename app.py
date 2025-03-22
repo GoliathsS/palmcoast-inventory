@@ -327,6 +327,14 @@ def upload_invoice():
 
     return render_template("upload_invoice.html")
 
+@app.route('/static/debug')
+def view_debug_output():
+    try:
+        with open("/tmp/pdf_debug_output.txt", "r", encoding="utf-8") as f:
+            return f"<pre>{f.read()}</pre>"
+    except FileNotFoundError:
+        return "No debug output found.", 404
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')
 
