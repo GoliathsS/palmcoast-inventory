@@ -88,14 +88,20 @@ def edit_product(product_id):
     min_stock = int(data['min_stock'])
     cost_per_unit = float(data.get('cost_per_unit', 0.0))
     category = data.get('category', 'Pest')
+    siteone_sku = data.get('siteone_sku', '').strip()
 
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("""
         UPDATE products
-        SET name=%s, barcode=%s, min_stock=%s, cost_per_unit=%s, category=%s
+        SET name=%s,
+            barcode=%s,
+            min_stock=%s,
+            cost_per_unit=%s,
+            category=%s,
+            siteone_sku=%s
         WHERE id=%s
-    """, (name, barcode, min_stock, cost_per_unit, category, product_id))
+    """, (name, barcode, min_stock, cost_per_unit, category, siteone_sku, product_id))
     conn.commit()
     cur.close()
     conn.close()
