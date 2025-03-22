@@ -294,33 +294,32 @@ def upload_invoice():
         # Loop and extract SKU + Price from expected pattern
         for i in range(len(lines)):
             line = lines[i].strip()
+            # Detect SKUs: numeric with optional dash, usually 6+ characters
+            if re.match(r'^[0-9A-Z\-]{6,}$', line):
+                sku = line
+                unit_price = None
 
-            # Look for SKU line: must be 5+ digit code (with optional -NLA)
-            if re.match(r'^\d{5,}(?:-NLA)?$', line):
-                sku = line.replace("-NLA", "")
-                
-                # Look for price within next 3–4 lines
-                for j in range(1, 5):
-                    if i + j >= len(lines):
-                        continue
-                    price_line = lines[i + j]
-                    price_match = re.search(r"\$(\d+\.\d+)", price_line)
+                # Look ahead up to 10 lines to find unit price like "$91.833/"
+                for j in range(i+1, min(i+10, len(lines))):
+                    price_match = re.search(r"\$([\d\.,]+)\s*/", lines[j])
                     if price_match:
-                        unit_price = float(price_match.group(1))
-                        
-                        # Now update the DB if price changed
-                        conn = get_db_connection()
-                        cur = conn.cursor()
-                        cur.execute("SELECT id, cost_per_unit FROM products WHERE siteone_sku = %s", (sku,))
-                        match = cur.fetchone()
-                        if match:
-                            product_id, old_price = match
-                            if round(old_price, 2) != round(unit_price, 2):
-                                cur.execute("UPDATE products SET cost_per_unit = %s WHERE id = %s", (unit_price, product_id))
-                                updates.append(f"SKU {sku}: ${old_price:.2f} → ${unit_price:.2f}")
-                        conn.commit()
-                        cur.close()
-                        conn.close()
+                        unit_price = float(price_match.group(1).replace(",", ""))
+                        break
+
+                if unit_price is not None:
+                    # Compare and update price in DB
+                    conn = get_db_connection()
+                    cur = conn.cursor()
+                    cur.execute("SELECT id, cost_per_unit FROM products WHERE siteone_sku = %s", (sku,))
+                    match = cur.fetchone()
+                    if match:
+                        product_id, old_price = match
+                        if old_price != unit_price:
+                            cur.execute("UPDATE products SET cost_per_unit = %s WHERE id = %s", (unit_price, product_id))
+                            updates.append(f"🟢 {sku}: ${old_price:.2f} → ${unit_price:.2f}")
+                    conn.commit()
+                    cur.close()
+                    conn.close()
                         break  # Done with this SKU
 
         return render_template("upload_result.html", updates=updates)
