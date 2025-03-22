@@ -278,21 +278,31 @@ def upload_invoice():
         filepath = os.path.join('/tmp', filename)
         file.save(filepath)
 
+        import fitz  # PyMuPDF
         doc = fitz.open(filepath)
         full_text = "\n".join(page.get_text() for page in doc)
-        lines = [line.strip() for line in full_text.split('\n') if line.strip()]
 
         updates = []
-        i = 0
-        while i < len(lines):
-            line = lines[i]
-            if re.fullmatch(r'\d{5,}', line):  # Match SKU line (numeric only)
-                sku = line
-                # Look ahead for line with price info
-                for j in range(i + 1, min(i + 5, len(lines))):
-                    price_match = re.search(r"\$([\d,]+\.\d{2})/", lines[j])
+        lines = full_text.split("\n")
+
+        # Loop and extract SKU + Price from expected pattern
+        for i in range(len(lines)):
+            line = lines[i].strip()
+
+            # Look for SKU line: must be 5+ digit code (with optional -NLA)
+            if re.match(r'^\d{5,}(?:-NLA)?$', line):
+                sku = line.replace("-NLA", "")
+                
+                # Look for price within next 3–4 lines
+                for j in range(1, 5):
+                    if i + j >= len(lines):
+                        continue
+                    price_line = lines[i + j]
+                    price_match = re.search(r"\$(\d+\.\d+)", price_line)
                     if price_match:
-                        unit_price = float(price_match.group(1).replace(",", ""))
+                        unit_price = float(price_match.group(1))
+                        
+                        # Now update the DB if price changed
                         conn = get_db_connection()
                         cur = conn.cursor()
                         cur.execute("SELECT id, cost_per_unit FROM products WHERE siteone_sku = %s", (sku,))
@@ -301,12 +311,11 @@ def upload_invoice():
                             product_id, old_price = match
                             if round(old_price, 2) != round(unit_price, 2):
                                 cur.execute("UPDATE products SET cost_per_unit = %s WHERE id = %s", (unit_price, product_id))
-                                updates.append(f"{sku}: ${old_price:.2f} → ${unit_price:.2f}")
+                                updates.append(f"SKU {sku}: ${old_price:.2f} → ${unit_price:.2f}")
                         conn.commit()
                         cur.close()
                         conn.close()
-                        break
-            i += 1
+                        break  # Done with this SKU
 
         return render_template("upload_result.html", updates=updates)
 
