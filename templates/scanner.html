@@ -4,25 +4,42 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Scan Product | Palm Coast Inventory</title>
-  <link rel="stylesheet" href="/static/style.css">
   <link rel="manifest" href="/static/manifest.json">
   <meta name="theme-color" content="#ffffff">
   <link rel="apple-touch-icon" sizes="180x180" href="/static/palm_icon_180.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="/static/palm_icon_192.png" />
+  <link rel="stylesheet" href="/static/style.css">
+
   <style>
+    :root {
+      --bg: #f1f4f9;
+      --text: #222;
+      --card: #ffffff;
+      --border: #ccc;
+    }
+
+    body.dark-mode {
+      --bg: #121212;
+      --text: #f5f5f5;
+      --card: #1e1e1e;
+      --border: #444;
+    }
+
     body {
       margin: 0;
       font-family: "Segoe UI", "Inter", sans-serif;
-      background-color: #f1f4f9;
-      color: #222;
+      background-color: var(--bg);
+      color: var(--text);
       padding: 0;
+      transition: background-color 0.3s ease, color 0.3s ease;
     }
 
     header {
       padding: 1rem;
-      background: white;
+      background: var(--card);
       box-shadow: 0 2px 4px rgba(0,0,0,0.08);
       text-align: center;
+      position: relative;
     }
 
     header img {
@@ -39,7 +56,7 @@
       padding: 1rem;
       max-width: 520px;
       margin: auto;
-      background: white;
+      background: var(--card);
       border-radius: 16px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.05);
     }
@@ -49,10 +66,15 @@
       padding: 14px;
       font-size: 1.05rem;
       margin: 0.75rem 0;
-      border: 1px solid #ccc;
+      border: 1px solid var(--border);
       border-radius: 10px;
       background: #fff;
       transition: 0.2s ease;
+    }
+
+    body.dark-mode select, body.dark-mode button {
+      background-color: #1f1f1f;
+      color: #fff;
     }
 
     button:hover {
@@ -79,7 +101,7 @@
     .warning { color: #f59e0b; }
 
     .collapsible-log {
-      background: #f9f9f9;
+      background: var(--card);
       border-radius: 12px;
       margin-top: 1rem;
       padding: 1rem;
@@ -90,7 +112,7 @@
       font-size: 1.1rem;
       margin-bottom: 0.5rem;
       font-weight: 600;
-      color: #374151;
+      color: var(--text);
     }
 
     .collapsible-log ul {
@@ -109,6 +131,22 @@
       font-size: 1rem;
       color: #333;
     }
+
+    /* Toggle Button Style */
+    #darkModeBtn {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: transparent;
+      border: none;
+      font-size: 1.2rem;
+      cursor: pointer;
+      color: var(--text);
+    }
+
+    #darkModeBtn:hover {
+      opacity: 0.8;
+    }
   </style>
 </head>
 <body>
@@ -116,6 +154,7 @@
   <header>
     <img src="/static/LOGO.jpg" alt="Palm Coast Pest Control Logo">
     <h2>🎞️ Scan Product</h2>
+    <button id="darkModeBtn" onclick="toggleDarkMode()">🌓</button>
   </header>
 
   <div class="scanner-panel">
@@ -172,7 +211,7 @@
       if (direction === "out" && !technician) {
         statusDisplay.textContent = "⚠️ Technician required for Scan Out.";
         statusDisplay.className = "warning";
-        return scanLoop(); // Retry after showing warning
+        return scanLoop();
       }
 
       beep.play().catch(e => console.warn("🔇 Beep error:", e));
@@ -200,7 +239,7 @@
         statusDisplay.className = "error";
       }
 
-      setTimeout(scanLoop, 1500); // Restart scanner
+      setTimeout(scanLoop, 1500);
     } catch (err) {
       console.error("Scan error:", err);
       statusDisplay.textContent = `❌ ${err.message || "Scan failed"}`;
@@ -217,7 +256,7 @@
       const constraints = {
         video: {
           facingMode: { exact: "environment" },
-          focusMode: "continuous", // hint for focus
+          focusMode: "continuous",
           width: { ideal: 1280 },
           height: { ideal: 720 }
         },
@@ -235,7 +274,7 @@
       videoElement.srcObject = stream;
       await videoElement.play();
 
-      scanLoop(); // Start scanning loop
+      scanLoop();
 
     } catch (err) {
       console.error("Camera error:", err);
@@ -243,6 +282,10 @@
       statusDisplay.className = "error";
     }
   });
+
+  function toggleDarkMode() {
+    document.body.classList.toggle('dark-mode');
+  }
 </script>
 
 <script>
