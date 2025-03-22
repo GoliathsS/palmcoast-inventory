@@ -211,6 +211,10 @@
                         <option value="Lawn" {% if product[7] == 'Lawn' %}selected{% endif %}>Lawn</option>
                       </select>
                     </div>
+                    <div class="mb-3">
+                      <label class="form-label">SiteOne SKU</label>
+                      <input type="text" name="siteone_sku" class="form-control" value="{{ product[6] or '' }}">
+                    </div>
                   </div>
                   <div class="modal-footer">
                     <button type="submit" class="btn btn-primary">Save Changes</button>
