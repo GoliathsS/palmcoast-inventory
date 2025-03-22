@@ -6,7 +6,7 @@ import re
 from werkzeug.utils import secure_filename
 from datetime import datetime
 from technician_manager import add_technician, remove_technician, get_all_technicians
-from siteone_sync import run_siteone_sync
+from decimal import Decimal, ROUND_HALF_UP
 
 app = Flask(__name__)
 
@@ -270,7 +270,7 @@ def print_report():
 @app.route('/upload-invoice', methods=['GET', 'POST'])
 def upload_invoice():
     if request.method == 'POST':
-        file = request.files['pdf']
+        file = request.files.get('pdf')
         if not file or not file.filename.endswith('.pdf'):
             return "Invalid file format", 400
 
@@ -283,6 +283,7 @@ def upload_invoice():
 
         updates = []
         lines = full_text.split("\n")
+
         for i in range(len(lines)):
             line = lines[i].strip()
             if re.match(r'^[A-Z0-9\-]{5,}$', line) and i + 2 < len(lines):
@@ -290,20 +291,31 @@ def upload_invoice():
                 qty_price_line = lines[i + 2].strip()
                 price_match = re.search(r"\$([\d\.,]+)$", qty_price_line)
                 if price_match:
-                    unit_price = float(price_match.group(1).replace(",", ""))
-                    # Update matching SKU in DB if cost_per_unit is different
+                    unit_price = Decimal(price_match.group(1).replace(",", "")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
                     conn = get_db_connection()
                     cur = conn.cursor()
                     cur.execute("SELECT id, cost_per_unit FROM products WHERE siteone_sku = %s", (sku,))
                     match = cur.fetchone()
+
                     if match:
                         product_id, old_price = match
+                        old_price = Decimal(old_price).quantize(Decimal("0.01"))
+
                         if old_price != unit_price:
-                            cur.execute("UPDATE products SET cost_per_unit = %s WHERE id = %s", (unit_price, product_id))
-                            updates.append(f"{sku}: ${old_price:.2f} → ${unit_price:.2f}")
+                            cur.execute("UPDATE products SET cost_per_unit = %s WHERE id = %s", (str(unit_price), product_id))
+                            updates.append(f"✅ {sku}: ${old_price:.2f} → ${unit_price:.2f}")
+                        else:
+                            updates.append(f"➖ {sku}: No change (${unit_price:.2f})")
+                    else:
+                        updates.append(f"❓ {sku}: Not found in inventory")
+
                     conn.commit()
                     cur.close()
                     conn.close()
+
+        if not updates:
+            updates.append("⚠️ No SKUs found or no price changes.")
 
         return render_template("upload_result.html", updates=updates)
 
