@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head><title>Price Sync Result</title></head>
+<body>
+  <h2>Updated Prices</h2>
+  {% if updates %}
+    <ul>
+      {% for line in updates %}
+        <li>{{ line }}</li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No prices were updated.</p>
+  {% endif %}
+  <a href="/">Back to Dashboard</a>
+</body>
+</html>
