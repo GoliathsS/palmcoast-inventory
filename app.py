@@ -1,6 +1,9 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 import psycopg2
 import os
+import fitz  # PyMuPDF
+import re
+from werkzeug.utils import secure_filename
 from datetime import datetime
 from technician_manager import add_technician, remove_technician, get_all_technicians
 from siteone_sync import run_siteone_sync
@@ -257,6 +260,48 @@ def print_report():
     conn.close()
 
     return render_template("print_report.html", products=products, now=datetime.now())
+
+@app.route('/upload-invoice', methods=['GET', 'POST'])
+def upload_invoice():
+    if request.method == 'POST':
+        file = request.files['pdf']
+        if not file or not file.filename.endswith('.pdf'):
+            return "Invalid file format", 400
+
+        filename = secure_filename(file.filename)
+        filepath = os.path.join('/tmp', filename)
+        file.save(filepath)
+
+        doc = fitz.open(filepath)
+        full_text = "\n".join(page.get_text() for page in doc)
+
+        updates = []
+        lines = full_text.split("\n")
+        for i in range(len(lines)):
+            line = lines[i].strip()
+            if re.match(r'^[A-Z0-9\-]{5,}$', line) and i + 2 < len(lines):
+                sku = line
+                qty_price_line = lines[i + 2].strip()
+                price_match = re.search(r"\$([\d\.,]+)$", qty_price_line)
+                if price_match:
+                    unit_price = float(price_match.group(1).replace(",", ""))
+                    # Update matching SKU in DB if cost_per_unit is different
+                    conn = get_db_connection()
+                    cur = conn.cursor()
+                    cur.execute("SELECT id, cost_per_unit FROM products WHERE siteone_sku = %s", (sku,))
+                    match = cur.fetchone()
+                    if match:
+                        product_id, old_price = match
+                        if old_price != unit_price:
+                            cur.execute("UPDATE products SET cost_per_unit = %s WHERE id = %s", (unit_price, product_id))
+                            updates.append(f"{sku}: ${old_price:.2f} → ${unit_price:.2f}")
+                    conn.commit()
+                    cur.close()
+                    conn.close()
+
+        return render_template("upload_result.html", updates=updates)
+
+    return render_template("upload_invoice.html")
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')
