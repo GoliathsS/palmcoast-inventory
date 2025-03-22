@@ -284,9 +284,12 @@ def upload_invoice():
 
         updates = []
         lines = full_text.split("\n")
-        print("---- RAW LINES FROM PDF ----")
-        for line in lines:
-            print(line)
+        
+        with open("/tmp/pdf_debug_output.txt", "w", encoding="utf-8") as f:
+            f.write("---- RAW LINES FROM PDF ----\n")
+            for i, line in enumerate(lines):
+                f.write(f"{i:03}: {line}\n")
+
 
         # Loop and extract SKU + Price from expected pattern
         for i in range(len(lines)):
