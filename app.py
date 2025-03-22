@@ -320,7 +320,7 @@ def upload_invoice():
                     conn.commit()
                     cur.close()
                     conn.close()
-                        break  # Done with this SKU
+                    break  # Done with this SKU
 
         return render_template("upload_result.html", updates=updates)
 
