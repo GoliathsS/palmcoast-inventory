@@ -270,7 +270,7 @@ def print_report():
 @app.route('/upload-invoice', methods=['GET', 'POST'])
 def upload_invoice():
     if request.method == 'POST':
-        file = request.files.get('pdf')
+        file = request.files['pdf']
         if not file or not file.filename.endswith('.pdf'):
             return "Invalid file format", 400
 
@@ -280,42 +280,33 @@ def upload_invoice():
 
         doc = fitz.open(filepath)
         full_text = "\n".join(page.get_text() for page in doc)
+        lines = [line.strip() for line in full_text.split('\n') if line.strip()]
 
         updates = []
-        lines = full_text.split("\n")
-
-        for i in range(len(lines)):
-            line = lines[i].strip()
-            if re.match(r'^[A-Z0-9\-]{5,}$', line) and i + 2 < len(lines):
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            if re.fullmatch(r'\d{5,}', line):  # Match SKU line (numeric only)
                 sku = line
-                qty_price_line = lines[i + 2].strip()
-                price_match = re.search(r"\$([\d\.,]+)$", qty_price_line)
-                if price_match:
-                    unit_price = Decimal(price_match.group(1).replace(",", "")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-
-                    conn = get_db_connection()
-                    cur = conn.cursor()
-                    cur.execute("SELECT id, cost_per_unit FROM products WHERE siteone_sku = %s", (sku,))
-                    match = cur.fetchone()
-
-                    if match:
-                        product_id, old_price = match
-                        old_price = Decimal(old_price).quantize(Decimal("0.01"))
-
-                        if old_price != unit_price:
-                            cur.execute("UPDATE products SET cost_per_unit = %s WHERE id = %s", (str(unit_price), product_id))
-                            updates.append(f"✅ {sku}: ${old_price:.2f} → ${unit_price:.2f}")
-                        else:
-                            updates.append(f"➖ {sku}: No change (${unit_price:.2f})")
-                    else:
-                        updates.append(f"❓ {sku}: Not found in inventory")
-
-                    conn.commit()
-                    cur.close()
-                    conn.close()
-
-        if not updates:
-            updates.append("⚠️ No SKUs found or no price changes.")
+                # Look ahead for line with price info
+                for j in range(i + 1, min(i + 5, len(lines))):
+                    price_match = re.search(r"\$([\d,]+\.\d{2})/", lines[j])
+                    if price_match:
+                        unit_price = float(price_match.group(1).replace(",", ""))
+                        conn = get_db_connection()
+                        cur = conn.cursor()
+                        cur.execute("SELECT id, cost_per_unit FROM products WHERE siteone_sku = %s", (sku,))
+                        match = cur.fetchone()
+                        if match:
+                            product_id, old_price = match
+                            if round(old_price, 2) != round(unit_price, 2):
+                                cur.execute("UPDATE products SET cost_per_unit = %s WHERE id = %s", (unit_price, product_id))
+                                updates.append(f"{sku}: ${old_price:.2f} → ${unit_price:.2f}")
+                        conn.commit()
+                        cur.close()
+                        conn.close()
+                        break
+            i += 1
 
         return render_template("upload_result.html", updates=updates)
 
