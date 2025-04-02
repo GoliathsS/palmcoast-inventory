@@ -140,6 +140,7 @@
             <th>Product</th>
             <th>Barcode</th>
             <th>In Stock</th>
+            <th>Units Remaining</th>
             <th>Min Stock</th>
             <th>Status</th>
             <th>Price</th>
@@ -153,6 +154,7 @@
             <td>{{ product[1] }}</td>
             <td>{{ product[2] }}</td>
             <td>{{ product[3] }}</td>
+            <td>{{ product[10] or 0 }}</td>  <!-- Assuming index 10 is units_remaining -->
             <td>{{ product[4] }}</td>
             <td>
               {% if product[3] == 0 %}
