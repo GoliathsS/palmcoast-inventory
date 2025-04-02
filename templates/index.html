@@ -287,16 +287,26 @@
     </div>
   </div>
   <script>
+  ChatGPT said:
+Perfect — you're nearly there!
+
+To complete the automation for unit cost calculation in both the Add Product form and the Edit Product modals, you just need to enhance your <script> section slightly by adding a second section that handles the form at the top (outside of modals).
+
+✅ Here's the exact script block to paste at the bottom of your index.html, just before </body>:
+html
+Copy
+Edit
+<script>
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/static/service-worker.js')
       .then(reg => console.log("✅ Service Worker registered", reg))
       .catch(err => console.error("❌ Service Worker failed", err));
   }
 </script>
-  <script>
+<script>
   document.addEventListener("DOMContentLoaded", () => {
+    // ----------------- Edit Modals -----------------
     const modals = document.querySelectorAll(".modal");
-
     modals.forEach(modal => {
       const costInput = modal.querySelector("input[name='cost_per_unit']");
       const unitsInput = modal.querySelector("input[name='units_per_item']");
@@ -313,6 +323,23 @@
       costInput?.addEventListener("input", calculate);
       unitsInput?.addEventListener("input", calculate);
     });
+
+    // ----------------- Add Product Form -----------------
+    const form = document.querySelector("form[action='/add-product']");
+    const costInput = form?.querySelector("input[name='cost_per_unit']");
+    const unitsInput = form?.querySelector("input[name='units_per_item']");
+    const unitCostInput = form?.querySelector("input[name='unit_cost']");
+
+    const updateUnitCost = () => {
+      const cost = parseFloat(costInput?.value);
+      const units = parseInt(unitsInput?.value);
+      if (!isNaN(cost) && !isNaN(units) && units > 0) {
+        unitCostInput.value = (cost / units).toFixed(2);
+      }
+    };
+
+    costInput?.addEventListener("input", updateUnitCost);
+    unitsInput?.addEventListener("input", updateUnitCost);
   });
 </script>
 </body>
