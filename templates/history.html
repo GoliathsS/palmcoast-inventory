@@ -5,6 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Scan History | Palm Coast Inventory</title>
   <link rel="stylesheet" href="/static/style.css">
+  <style>
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+      margin-top: 20px;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 12px;
+      border-bottom: 1px solid #eee;
+      text-align: left;
+    }
+    th {
+      background: #f3f4f6;
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
 
@@ -23,20 +43,6 @@
         {% endfor %}
       </select>
 
-      <select name="month" id="month">
-        <option value="">All Months</option>
-        {% for m in months %}
-          <option value="{{ m }}" {% if selected_month == m %}selected{% endif %}>{{ m }}</option>
-        {% endfor %}
-      </select>
-
-      <select name="technician" id="technician">
-        <option value="">All Techs</option>
-        {% for tech in technicians %}
-          <option value="{{ tech }}" {% if selected_tech == tech %}selected{% endif %}>{{ tech }}</option>
-        {% endfor %}
-      </select>
-
       <label for="technician">Technician:</label>
       <select name="technician" id="technician">
         <option value="">All Techs</option>
@@ -49,7 +55,37 @@
     </form>
   </div>
 
-  <div style="max-width: 960px; margin: 20px auto;">
+  <div style="max-width: 960px; margin: 40px auto 20px;">
+    <h3>📦 Technician Usage Summary</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Technician</th>
+          <th>Product</th>
+          <th>Quantity</th>
+          <th>Unit Cost</th>
+          <th>Total Cost</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in summary %}
+        <tr>
+          <td>{{ row[0] }}</td>
+          <td>{{ row[1] }}</td>
+          <td>{{ row[2] }}</td>
+          <td>${{ '%.2f' | format(row[3]) }}</td>
+          <td>${{ '%.2f' | format(row[4]) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p style="text-align:right; font-weight:bold; margin-top: 1rem;">
+      🧾 Total Cost: ${{ '%.2f' | format(total_cost or 0.00) }}
+    </p>
+  </div>
+
+  <div style="max-width: 960px; margin: 40px auto;">
+    <h3>🕓 Scan Log</h3>
     <table>
       <thead>
         <tr>
@@ -58,7 +94,7 @@
           <th>Product</th>
           <th>Direction</th>
           <th>Technician</th>
-          <th>Cost</th>
+          <th>Unit Cost</th>
         </tr>
       </thead>
       <tbody>
@@ -74,12 +110,7 @@
         {% endfor %}
       </tbody>
     </table>
-
-    <p style="text-align:right; font-weight:bold; margin-top: 1rem;">
-      🧾 Total Cost: ${{ '%.2f' | format(total_cost or 0.00) }}
-    </p>
   </div>
 
 </body>
 </html>
-
