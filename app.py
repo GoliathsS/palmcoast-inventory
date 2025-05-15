@@ -132,18 +132,15 @@ def scan_action():
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # Fetch product info, now also retrieving unit_cost
-    cur.execute("""
-        SELECT id, stock, units_per_item, units_remaining, unit_cost 
-        FROM products 
-        WHERE barcode=%s
-    """, (barcode,))
+    # Fetch product info
+    cur.execute("SELECT id, stock, units_per_item, units_remaining, unit_cost FROM products WHERE barcode=%s", (barcode,))
     result = cur.fetchone()
 
     if result:
         product_id, stock, units_per_item, units_remaining, unit_cost = result
         units_per_item = units_per_item or 1
         units_remaining = units_remaining or (stock * units_per_item)
+        unit_cost = unit_cost or 0.0
 
         if direction == 'out':
             if units_remaining <= 0:
@@ -152,22 +149,23 @@ def scan_action():
                 return jsonify({'status': 'not_enough_units'})
             units_remaining -= 1
         else:
-            units_remaining += units_per_item
+            units_remaining += units_per_item  # Add 1 item worth of units
+            stock += 1
 
         new_stock = units_remaining // units_per_item
 
+        # Update product stock
         cur.execute(
             "UPDATE products SET stock=%s, units_remaining=%s WHERE id=%s",
             (new_stock, units_remaining, product_id)
         )
 
+        # Log scan event WITH unit_cost
         timestamp = datetime.now().isoformat()
-
-        # Log the unit_cost into scan_logs!
-        cur.execute("""
-            INSERT INTO scan_logs (product_id, action, timestamp, technician, unit_cost)
-            VALUES (%s, %s, %s, %s, %s)
-        """, (product_id, direction, timestamp, technician, unit_cost))
+        cur.execute(
+            "INSERT INTO scan_logs (product_id, action, timestamp, technician, unit_cost) VALUES (%s, %s, %s, %s, %s)",
+            (product_id, direction, timestamp, technician, unit_cost)
+        )
 
         conn.commit()
         status = 'success'
