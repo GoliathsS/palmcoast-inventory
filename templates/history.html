@@ -73,8 +73,8 @@
           <td>{{ row[0] }}</td>
           <td>{{ row[1] }}</td>
           <td>{{ row[2] }}</td>
-          <td>${{ '%.2f' | format(row[3]) }}</td>
-          <td>${{ '%.2f' | format(row[4]) }}</td>
+          <td>${{ '%.2f' | format(row[3] or 0) }}</td>
+          <td>${{ '%.2f' | format(row[4] or 0) }}</td>
         </tr>
         {% endfor %}
       </tbody>
