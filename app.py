@@ -183,15 +183,21 @@ def corrections():
 
     if request.method == 'POST':
         log_id = request.form['log_id']
-        action = request.form['action']
-        technician = request.form['technician']
-        unit_cost = request.form.get('unit_cost') or 0.0
+        action_type = request.form.get('action_type', 'update')
 
-        cur.execute("""
-            UPDATE scan_logs
-            SET action = %s, technician = %s, unit_cost = %s
-            WHERE id = %s
-        """, (action, technician, unit_cost, log_id))
+        if action_type == 'delete':
+            cur.execute("DELETE FROM scan_logs WHERE id = %s", (log_id,))
+        else:
+            action = request.form['action']
+            technician = request.form['technician']
+            unit_cost = float(request.form.get('unit_cost') or 0.0)
+
+            cur.execute("""
+                UPDATE scan_logs
+                SET action = %s, technician = %s, unit_cost = %s
+                WHERE id = %s
+            """, (action, technician, unit_cost, log_id))
+
         conn.commit()
 
     # Filters
