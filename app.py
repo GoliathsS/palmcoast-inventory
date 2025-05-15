@@ -176,6 +176,36 @@ def scan_action():
     conn.close()
     return jsonify({'status': status})
 
+@app.route("/corrections", methods=["GET", "POST"])
+def corrections():
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    if request.method == "POST":
+        log_id = int(request.form["log_id"])
+        action = request.form["action"]
+        technician = request.form["technician"]
+        unit_cost = float(request.form.get("unit_cost", 0))
+        cur.execute("""
+            UPDATE scan_logs
+            SET action = %s, technician = %s, unit_cost = %s
+            WHERE id = %s
+        """, (action, technician, unit_cost, log_id))
+        conn.commit()
+
+    cur.execute("""
+        SELECT s.id, s.timestamp, p.name, s.action, s.technician, s.unit_cost
+        FROM scan_logs s
+        JOIN products p ON s.product_id = p.id
+        ORDER BY s.timestamp DESC
+        LIMIT 100
+    """)
+    logs = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    return render_template("corrections.html", logs=logs)
+
 @app.route("/history")
 def history():
     selected_month = request.args.get("month")
