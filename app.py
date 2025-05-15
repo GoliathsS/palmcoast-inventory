@@ -186,17 +186,17 @@ def history():
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # Get unique months from scan_logs
+    # Unique months for filter dropdown
     cur.execute("SELECT DISTINCT TO_CHAR(timestamp::date, 'YYYY-MM') FROM scan_logs ORDER BY 1 DESC")
     months = [row[0] for row in cur.fetchall()]
 
-    # Get all technician names
+    # Technician list
     cur.execute("SELECT DISTINCT technician FROM scan_logs WHERE technician IS NOT NULL AND technician != '' ORDER BY technician")
     technicians = [row[0] for row in cur.fetchall()]
 
-    # Fetch logs
+    # Logs with unit_cost from scan_logs
     base_query = """
-        SELECT p.name, s.action, s.timestamp, s.technician, p.cost_per_unit
+        SELECT p.name, s.action, s.timestamp, s.technician, s.unit_cost
         FROM scan_logs s
         JOIN products p ON s.product_id = p.id
         WHERE 1=1
@@ -215,9 +215,9 @@ def history():
     cur.execute(base_query, tuple(params))
     logs = cur.fetchall()
 
-    # Total cost summary
+    # Summary by technician + product
     summary_query = """
-        SELECT s.technician, SUM(p.cost_per_unit)
+        SELECT s.technician, p.name, COUNT(*) AS quantity, MAX(s.unit_cost), SUM(s.unit_cost)
         FROM scan_logs s
         JOIN products p ON s.product_id = p.id
         WHERE s.action = 'out'
@@ -232,10 +232,11 @@ def history():
         summary_query += " AND s.technician = %s"
         summary_params.append(selected_tech)
 
-    summary_query += " GROUP BY s.technician"
+    summary_query += " GROUP BY s.technician, p.name ORDER BY s.technician, p.name"
     cur.execute(summary_query, tuple(summary_params))
     summary = cur.fetchall()
-    total_cost = sum(row[1] for row in summary)
+
+    total_cost = sum(row[4] for row in summary)
 
     cur.close()
     conn.close()
