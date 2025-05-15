@@ -2,11 +2,82 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Correction Panel</title>
+  <title>🛠️ Correction Panel</title>
   <link rel="stylesheet" href="/static/style.css">
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      padding: 2rem;
+      background: #f9fafb;
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+    .filter-form {
+      max-width: 900px;
+      margin: 0 auto 2rem;
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .filter-form input, .filter-form select {
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+    th, td {
+      padding: 12px;
+      border-bottom: 1px solid #eee;
+      text-align: center;
+    }
+    th {
+      background: #f3f4f6;
+    }
+    tr:hover {
+      background: #f9f9f9;
+    }
+    button {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      background-color: #14532d;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0e3d1f;
+    }
+  </style>
 </head>
 <body>
-  <h2 style="text-align:center;">🛠️ Correction Panel</h2>
+
+  <h2>🛠️ Correction Panel</h2>
+
+  <div style="text-align:center; margin-bottom: 1.5rem;">
+  <a href="/" style="text-decoration:none; padding: 10px 16px; background:#14532d; color:white; border-radius: 8px; font-weight:600;">
+    ← Back to Dashboard
+  </a>
+</div>
+
+  <form method="GET" class="filter-form">
+    <input type="date" name="start" value="{{ request.args.get('start', '') }}">
+    <input type="date" name="end" value="{{ request.args.get('end', '') }}">
+    <select name="technician">
+      <option value="">All Technicians</option>
+      {% for tech in technicians %}
+        <option value="{{ tech }}" {% if request.args.get('technician') == tech %}selected{% endif %}>{{ tech }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit">🔍 Filter</button>
+  </form>
+
   <table>
     <thead>
       <tr>
@@ -34,5 +105,6 @@
       {% endfor %}
     </tbody>
   </table>
+
 </body>
 </html>
