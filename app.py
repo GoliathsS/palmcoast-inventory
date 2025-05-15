@@ -236,7 +236,7 @@ def history():
     cur.execute(summary_query, tuple(summary_params))
     summary = cur.fetchall()
 
-    total_cost = sum(row[4] for row in summary)
+    total_cost = sum((row[4] or 0) for row in summary)
 
     cur.close()
     conn.close()
