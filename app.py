@@ -176,16 +176,17 @@ def scan_action():
     conn.close()
     return jsonify({'status': status})
 
-@app.route("/corrections", methods=["GET", "POST"])
+@app.route('/corrections', methods=['GET', 'POST'])
 def corrections():
     conn = get_db_connection()
     cur = conn.cursor()
 
-    if request.method == "POST":
-        log_id = int(request.form["log_id"])
-        action = request.form["action"]
-        technician = request.form["technician"]
-        unit_cost = float(request.form.get("unit_cost", 0))
+    if request.method == 'POST':
+        log_id = request.form['log_id']
+        action = request.form['action']
+        technician = request.form['technician']
+        unit_cost = request.form.get('unit_cost') or 0.0
+
         cur.execute("""
             UPDATE scan_logs
             SET action = %s, technician = %s, unit_cost = %s
@@ -193,18 +194,43 @@ def corrections():
         """, (action, technician, unit_cost, log_id))
         conn.commit()
 
-    cur.execute("""
+    # Filters
+    start = request.args.get('start') or datetime.now().strftime('%Y-%m-01')
+    end = request.args.get('end') or datetime.now().strftime('%Y-%m-%d')
+    technician_filter = request.args.get('technician') or ""
+
+    # Build query
+    base_query = """
         SELECT s.id, s.timestamp, p.name, s.action, s.technician, s.unit_cost
         FROM scan_logs s
         JOIN products p ON s.product_id = p.id
-        ORDER BY s.timestamp DESC
-        LIMIT 100
-    """)
+        WHERE s.timestamp BETWEEN %s AND %s
+    """
+    params = [start, end + " 23:59:59"]
+
+    if technician_filter:
+        base_query += " AND s.technician = %s"
+        params.append(technician_filter)
+
+    base_query += " ORDER BY s.timestamp DESC"
+
+    cur.execute(base_query, tuple(params))
     logs = cur.fetchall()
+
+    # Technician list for filter dropdown
+    cur.execute("SELECT DISTINCT technician FROM scan_logs WHERE technician IS NOT NULL AND technician != '' ORDER BY technician")
+    techs = [row[0] for row in cur.fetchall()]
+
     cur.close()
     conn.close()
 
-    return render_template("corrections.html", logs=logs)
+    return render_template("corrections.html",
+        logs=logs,
+        technicians=techs,
+        selected_tech=technician_filter,
+        start=start,
+        end=end
+    )
 
 @app.route("/history")
 def history():
