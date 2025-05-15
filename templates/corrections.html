@@ -14,12 +14,25 @@
       text-align: center;
       margin-bottom: 1.5rem;
     }
+    .back-btn {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+    .back-btn a {
+      text-decoration: none;
+      padding: 10px 16px;
+      background: #14532d;
+      color: white;
+      border-radius: 8px;
+      font-weight: 600;
+    }
     .filter-form {
       max-width: 900px;
       margin: 0 auto 2rem;
       display: flex;
       gap: 1rem;
       flex-wrap: wrap;
+      justify-content: center;
     }
     .filter-form input, .filter-form select {
       padding: 8px;
@@ -60,15 +73,13 @@
 
   <h2>🛠️ Correction Panel</h2>
 
-  <div style="text-align:center; margin-bottom: 1.5rem;">
-  <a href="/" style="text-decoration:none; padding: 10px 16px; background:#14532d; color:white; border-radius: 8px; font-weight:600;">
-    ← Back to Dashboard
-  </a>
-</div>
+  <div class="back-btn">
+    <a href="/">← Back to Dashboard</a>
+  </div>
 
   <form method="GET" class="filter-form">
-    <input type="date" name="start" value="{{ request.args.get('start', '') }}">
-    <input type="date" name="end" value="{{ request.args.get('end', '') }}">
+    <input type="date" name="start" value="{{ request.args.get('start', '') }}" required>
+    <input type="date" name="end" value="{{ request.args.get('end', '') }}" required>
     <select name="technician">
       <option value="">All Technicians</option>
       {% for tech in technicians %}
@@ -81,7 +92,12 @@
   <table>
     <thead>
       <tr>
-        <th>Date</th><th>Product</th><th>Action</th><th>Technician</th><th>Cost</th><th>Update</th>
+        <th>Date</th>
+        <th>Product</th>
+        <th>Action</th>
+        <th>Technician</th>
+        <th>Cost</th>
+        <th>Update</th>
       </tr>
     </thead>
     <tbody>
@@ -99,7 +115,10 @@
           </td>
           <td><input type="text" name="technician" value="{{ log[4] or '' }}"></td>
           <td><input type="number" step="0.01" name="unit_cost" value="{{ log[5] or 0 }}"></td>
-          <td><button type="submit">💾 Save</button></td>
+          <td style="display:flex; gap:8px; justify-content:center;">
+            <button type="submit" name="action_type" value="update">💾 Save</button>
+            <button type="submit" name="action_type" value="delete" style="background-color:#dc2626;">🗑 Delete</button>
+          </td>
         </form>
       </tr>
       {% endfor %}
