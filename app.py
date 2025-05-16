@@ -7,6 +7,7 @@ from werkzeug.utils import secure_filename
 from datetime import datetime
 from technician_manager import add_technician, remove_technician, get_all_technicians
 from decimal import Decimal, ROUND_HALF_UP
+from rapidfuzz import process, fuzz
 
 app = Flask(__name__)
 
@@ -372,46 +373,50 @@ def upload_invoice():
         import fitz  # PyMuPDF
         doc = fitz.open(filepath)
         full_text = "\n".join(page.get_text() for page in doc)
-
-        updates = []
         lines = full_text.split("\n")
-        
-        with open("/tmp/pdf_debug_output.txt", "w", encoding="utf-8") as f:
-            f.write("---- RAW LINES FROM PDF ----\n")
-            for i, line in enumerate(lines):
-                f.write(f"{i:03}: {line}\n")
 
+        # Fetch all product names from DB
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT id, name, cost_per_unit FROM products")
+        db_products = cur.fetchall()  # [(id, name, cost), ...]
+        cur.close()
 
-        # Loop and extract SKU + Price from expected pattern
+        name_list = [p[1] for p in db_products]  # just names
+        updates = []
+
         for i in range(len(lines)):
-            line = lines[i].strip()
-            # Detect SKUs: numeric with optional dash, usually 6+ characters
-            if re.match(r'^[0-9A-Z\-]{6,}$', line):
-                sku = line
-                unit_price = None
+            name = lines[i].strip()
 
-                # Look ahead up to 10 lines to find unit price like "$91.833/"
-                for j in range(i+1, min(i+10, len(lines))):
-                    price_match = re.search(r"\$([\d\.,]+)\s*/", lines[j])
-                    if price_match:
-                        unit_price = float(price_match.group(1).replace(",", ""))
-                        break
+            # Try to find a price within next 5 lines
+            price_line = next((l for l in lines[i+1:i+6] if "$" in l and "/" in l), None)
+            if not price_line:
+                continue
 
-                if unit_price is not None:
-                    # Compare and update price in DB
+            price_match = re.search(r"\$([\d\.,]+)\s*/", price_line)
+            if not price_match:
+                continue
+
+            unit_price = float(price_match.group(1).replace(",", ""))
+
+            # Fuzzy match product name
+            match_name, score, idx = process.extractOne(name, name_list, scorer=fuzz.token_sort_ratio)
+            if score >= 90:
+                product_id, _, old_price = db_products[idx]
+
+                if old_price != unit_price:
                     conn = get_db_connection()
                     cur = conn.cursor()
-                    cur.execute("SELECT id, cost_per_unit FROM products WHERE siteone_sku = %s", (sku,))
-                    match = cur.fetchone()
-                    if match:
-                        product_id, old_price = match
-                        if old_price != unit_price:
-                            cur.execute("UPDATE products SET cost_per_unit = %s WHERE id = %s", (unit_price, product_id))
-                            updates.append(f"🟢 {sku}: ${old_price:.2f} → ${unit_price:.2f}")
+                    cur.execute("UPDATE products SET cost_per_unit = %s WHERE id = %s", (unit_price, product_id))
                     conn.commit()
                     cur.close()
                     conn.close()
-                    break  # Done with this SKU
+
+                    updates.append(f"🟢 {match_name}: ${old_price:.2f} → ${unit_price:.2f}")
+                else:
+                    updates.append(f"⚪ {match_name}: no change (${unit_price:.2f})")
+            else:
+                updates.append(f"🔴 No match for: {name}")
 
         return render_template("upload_result.html", updates=updates)
 
