@@ -20,6 +20,17 @@
         <p class="text-muted">No price changes detected.</p>
       {% endif %}
 
+      {% if debug_log %}
+        <div class="mt-5">
+          <h5 class="text-muted">🪵 Debug Log</h5>
+          <pre class="p-3 bg-body-tertiary border rounded" style="max-height: 400px; overflow-y: auto; white-space: pre-wrap; font-size: 0.85rem;">
+{% for line in debug_log %}
+{{ line }}
+{% endfor %}
+          </pre>
+        </div>
+      {% endif %}
+
       <hr class="my-4">
       <a href="/" class="btn btn-outline-secondary">⬅️ Back to Dashboard</a>
     </div>
