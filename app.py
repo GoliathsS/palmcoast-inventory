@@ -389,13 +389,9 @@ def upload_invoice():
         while i < len(lines):
             line = lines[i].strip()
 
-            # Detect SKU (6+ alphanumeric, often all numbers or with dash)
+            # Detect potential SKU
             if re.match(r'^[0-9A-Z\-]{6,}$', line):
                 name_lines = []
-                product_name = None
-                unit_price = None
-
-                # Collect next 1–3 lines of name (unless they’re price lines)
                 for j in range(i + 1, i + 4):
                     if j < len(lines):
                         next_line = lines[j].strip()
@@ -404,38 +400,39 @@ def upload_invoice():
                         name_lines.append(next_line)
 
                 if name_lines:
-                    product_name = " ".join(name_lines)
-                    product_name = re.sub(r'\s+', ' ', product_name).strip()
+                    product_name = " ".join(name_lines).strip()
+                    product_name = re.sub(r'\s+', ' ', product_name)
 
-                # Look ahead for unit price
-                for j in range(i + 1, i + 10):
-                    if j < len(lines):
-                        price_match = re.search(r"\$([\d\.,]+)\s*/", lines[j])
-                        if price_match:
-                            unit_price = float(price_match.group(1).replace(",", ""))
-                            break
+                    # Find unit price within the next 10 lines
+                    unit_price = None
+                    for j in range(i + 1, i + 10):
+                        if j < len(lines):
+                            price_match = re.search(r"\$([\d\.,]+)\s*/", lines[j])
+                            if price_match:
+                                unit_price = float(price_match.group(1).replace(",", ""))
+                                break
 
-                # Proceed only if both values were captured
-                if product_name and unit_price:
-                    match_name, score, idx = process.extractOne(
-                        product_name, name_list, scorer=fuzz.token_sort_ratio
-                    )
-                    if score >= 85:
-                        product_id, _, old_price = db_products[idx]
-                        if old_price != unit_price:
-                            conn = get_db_connection()
-                            cur = conn.cursor()
-                            cur.execute("UPDATE products SET cost_per_unit = %s WHERE id = %s", (unit_price, product_id))
-                            conn.commit()
-                            cur.close()
-                            conn.close()
-                            updates.append(f"🟢 {match_name}: ${old_price:.2f} → ${unit_price:.2f}")
+                    if unit_price is not None:
+                        # ✅ Safe to match and update
+                        match_name, score, idx = process.extractOne(
+                            product_name, name_list, scorer=fuzz.token_sort_ratio
+                        )
+                        if score >= 85:
+                            product_id, _, old_price = db_products[idx]
+                            if old_price != unit_price:
+                                conn = get_db_connection()
+                                cur = conn.cursor()
+                                cur.execute("UPDATE products SET cost_per_unit = %s WHERE id = %s", (unit_price, product_id))
+                                conn.commit()
+                                cur.close()
+                                conn.close()
+                                updates.append(f"🟢 {match_name}: ${old_price:.2f} → ${unit_price:.2f}")
+                            else:
+                                updates.append(f"⚪ {match_name}: no change (${unit_price:.2f})")
                         else:
-                            updates.append(f"⚪ {match_name}: no change (${unit_price:.2f})")
-                    else:
-                        updates.append(f"🔴 No match for: {product_name}")
-
-                i += 5  # Skip ahead
+                            updates.append(f"🔴 No match for: {product_name}")
+                # Advance index safely whether matched or not
+                i += 5
             else:
                 i += 1
 
