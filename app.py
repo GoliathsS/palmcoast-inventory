@@ -389,31 +389,34 @@ def upload_invoice():
         while i < len(lines):
             line = lines[i].strip()
 
-            # Detect SKU (6+ alphanumeric, sometimes with dash)
+            # Detect SKU (6+ alphanumeric, often all numbers or with dash)
             if re.match(r'^[0-9A-Z\-]{6,}$', line):
                 name_lines = []
-                # Collect next 1–3 lines of name
-                for j in range(i+1, i+4):
+                product_name = None
+                unit_price = None
+
+                # Collect next 1–3 lines of name (unless they’re price lines)
+                for j in range(i + 1, i + 4):
                     if j < len(lines):
                         next_line = lines[j].strip()
                         if "$" in next_line and "/" in next_line:
                             break
                         name_lines.append(next_line)
 
-                product_name = " ".join(name_lines)
-                product_name = re.sub(r'\s+', ' ', product_name).strip()
+                if name_lines:
+                    product_name = " ".join(name_lines)
+                    product_name = re.sub(r'\s+', ' ', product_name).strip()
 
-                # Look ahead for price
-                unit_price = None
-                for j in range(i+1, i+10):
+                # Look ahead for unit price
+                for j in range(i + 1, i + 10):
                     if j < len(lines):
                         price_match = re.search(r"\$([\d\.,]+)\s*/", lines[j])
                         if price_match:
                             unit_price = float(price_match.group(1).replace(",", ""))
                             break
 
+                # Proceed only if both values were captured
                 if product_name and unit_price:
-                    # Fuzzy match
                     match_name, score, idx = process.extractOne(
                         product_name, name_list, scorer=fuzz.token_sort_ratio
                     )
@@ -431,7 +434,8 @@ def upload_invoice():
                             updates.append(f"⚪ {match_name}: no change (${unit_price:.2f})")
                     else:
                         updates.append(f"🔴 No match for: {product_name}")
-                i += 5  # skip ahead a bit
+
+                i += 5  # Skip ahead
             else:
                 i += 1
 
