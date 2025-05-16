@@ -373,21 +373,25 @@ def upload_invoice():
         filepath = os.path.join('/tmp', filename)
         file.save(filepath)
 
-        # Extract PDF text
+        import fitz  # PyMuPDF
+        import re
+        from rapidfuzz import process, fuzz
+
         doc = fitz.open(filepath)
         lines = []
         for page in doc:
             lines.extend(page.get_text().splitlines())
 
-        # Get all products from DB
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("SELECT id, name, cost_per_unit FROM products")
-        db_products = cur.fetchall()  # [(id, name, cost), ...]
+        db_products = cur.fetchall()
         cur.close()
         name_list = [p[1] for p in db_products]
 
         updates = []
+        debug_log = []  # 🪵 Collect debug output here
+
         i = 0
         while i < len(lines) - 4:
             sku_line = lines[i].strip()
@@ -395,12 +399,10 @@ def upload_invoice():
             name_line_2 = lines[i + 2].strip()
             price_line = lines[i + 3].strip()
 
-            # Validate SKU pattern
             if not re.match(r'^[0-9A-Z\-]{6,}$', sku_line):
                 i += 1
                 continue
 
-            # Build product name
             name_parts = []
             if name_line_1 and not re.search(r'\$\d', name_line_1):
                 name_parts.append(name_line_1)
@@ -411,10 +413,9 @@ def upload_invoice():
                 i += 4
                 continue
 
-            product_name = " ".join(name_parts)
-            product_name = re.sub(r'\s+', ' ', product_name).strip()
+            product_name = " ".join(name_parts).strip()
+            product_name = re.sub(r'\s+', ' ', product_name)
 
-            # Extract price
             price_match = re.search(r"\$([\d\.,]+)\s*/", price_line)
             if not price_match:
                 i += 4
@@ -422,18 +423,15 @@ def upload_invoice():
 
             unit_price = float(price_match.group(1).replace(",", ""))
 
-            # DEBUG OUTPUT
-            log.info("🔍 Parsed Block:")
-            log.info(f"SKU Line: {sku_line}")
-            log.info(f"Name Lines: {name_parts}")
-            log.info(f"Combined Name: {product_name}")
-            log.info(f"Price Line: {price_line}")
-            log.info(f"Extracted Price: {unit_price}")
-            log.info(f"🤖 Matching '{product_name}' → '{match_name}' (Score: {score})")
+            # 🪵 Add full debug output
+            debug_log.append(f"Parsed block:")
+            debug_log.append(f"  SKU: {sku_line}")
+            debug_log.append(f"  Name: {product_name}")
+            debug_log.append(f"  Price Line: {price_line}")
+            debug_log.append(f"  Unit Price: {unit_price}")
 
-            # Fuzzy match
             match_name, score, idx = process.extractOne(product_name, name_list, scorer=fuzz.token_sort_ratio)
-            print(f"🤖 Matching '{product_name}' → '{match_name}' (Score: {score})")
+            debug_log.append(f"  Match → '{match_name}' (Score: {score})")
 
             if score >= 85:
                 product_id, _, old_price = db_products[idx]
@@ -455,7 +453,7 @@ def upload_invoice():
         if not updates:
             updates.append("⚠️ No matches or price changes found.")
 
-        return render_template("upload_result.html", updates=updates)
+        return render_template("upload_result.html", updates=updates, debug_log=debug_log)
 
     return render_template("upload_invoice.html")
     
