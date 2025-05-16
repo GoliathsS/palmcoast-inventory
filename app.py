@@ -436,7 +436,7 @@ def upload_invoice():
                 i += 1
 
             # Fuzzy match product name
-            match_name, score, idx = process.extractOne(name, name_list, scorer=fuzz.token_sort_ratio)
+            match_name, score, idx = process.extractOne(product_name, name_list, scorer=fuzz.token_sort_ratio)
             if score >= 90:
                 product_id, _, old_price = db_products[idx]
 
