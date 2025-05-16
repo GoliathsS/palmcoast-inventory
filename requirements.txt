@@ -3,5 +3,5 @@ playwright
 psycopg2-binary
 requests
 PyMuPDF>=1.22.0
-fuzzywuzzy
+rapidfuzz
 python-Levenshtein
