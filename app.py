@@ -411,7 +411,7 @@ def upload_invoice():
             product_name = " ".join(name_parts)
             product_name = re.sub(r'\s+', ' ', product_name).strip()
 
-            # Extract unit price
+            # Extract price
             price_match = re.search(r"\$([\d\.,]+)\s*/", price_line)
             if not price_match:
                 i += 4
@@ -419,8 +419,18 @@ def upload_invoice():
 
             unit_price = float(price_match.group(1).replace(",", ""))
 
+            # DEBUG OUTPUT
+            print("\n🔍 Parsed Block:")
+            print(f"SKU Line: {sku_line}")
+            print(f"Name Lines: {name_parts}")
+            print(f"Combined Name: {product_name}")
+            print(f"Price Line: {price_line}")
+            print(f"Extracted Price: {unit_price}")
+
             # Fuzzy match
             match_name, score, idx = process.extractOne(product_name, name_list, scorer=fuzz.token_sort_ratio)
+            print(f"🤖 Matching '{product_name}' → '{match_name}' (Score: {score})")
+
             if score >= 85:
                 product_id, _, old_price = db_products[idx]
                 if old_price != unit_price:
@@ -436,12 +446,15 @@ def upload_invoice():
             else:
                 updates.append(f"🔴 No match for: {product_name}")
 
-            i += 4  # Move to next block
+            i += 4
+
+        if not updates:
+            updates.append("⚠️ No matches or price changes found.")
 
         return render_template("upload_result.html", updates=updates)
 
     return render_template("upload_invoice.html")
-
+    
 @app.route('/static/debug')
 def view_debug_output():
     try:
