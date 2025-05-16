@@ -373,22 +373,77 @@ def upload_invoice():
         filepath = os.path.join('/tmp', filename)
         file.save(filepath)
 
-        import fitz  # PyMuPDF
-
         doc = fitz.open(filepath)
         lines = []
         for page in doc:
             lines.extend(page.get_text().splitlines())
 
+        # Pull product list from DB
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT id, name, cost_per_unit FROM products")
+        db_products = cur.fetchall()
+        cur.close()
+        name_list = [p[1] for p in db_products]
+
+        updates = []
         debug_log = []
-        debug_log.append(f"📄 PDF contains {len(lines)} total lines\n")
+        debug_log.append(f"📄 PDF contains {len(lines)} total lines")
 
-        # Dump all raw lines
-        for i, line in enumerate(lines):
-            debug_log.append(f"{i:03}: {line}")
+        i = 0
+        while i < len(lines) - 8:
+            sku = lines[i].strip()
 
-        # Fake update just to let the template render
-        updates = ["🛠 Debug mode: Showing all PDF lines extracted."]
+            if not re.match(r'^[0-9A-Z\-]{6,}$', sku):
+                i += 1
+                continue
+
+            name_line_1 = lines[i + 1].strip()
+            name_line_2 = lines[i + 2].strip()
+            name_line_3 = lines[i + 3].strip()
+            price_line = lines[i + 6].strip()
+
+            name_parts = [name_line_1, name_line_2, name_line_3]
+            product_name = " ".join(name_parts).replace("...", "").strip()
+            product_name = re.sub(r'\s+', ' ', product_name)
+
+            price_match = re.search(r"\$([\d\.,]+)\s*/", price_line)
+            if not price_match:
+                i += 9
+                continue
+
+            unit_price = float(price_match.group(1).replace(",", ""))
+
+            # 🪵 Debug output to browser
+            debug_log.append(f"✅ Block from line {i}:")
+            debug_log.append(f"  SKU: {sku}")
+            debug_log.append(f"  Name: {product_name}")
+            debug_log.append(f"  Price Line: {price_line}")
+            debug_log.append(f"  Extracted Price: {unit_price}")
+
+            match_name, score, idx = process.extractOne(product_name, name_list, scorer=fuzz.token_sort_ratio)
+            debug_log.append(f"  🤖 Match: '{match_name}' (Score: {score})")
+
+            if score >= 85:
+                product_id, _, old_price = db_products[idx]
+                if old_price != unit_price:
+                    conn = get_db_connection()
+                    cur = conn.cursor()
+                    cur.execute("UPDATE products SET cost_per_unit = %s WHERE id = %s", (unit_price, product_id))
+                    conn.commit()
+                    cur.close()
+                    conn.close()
+                    updates.append(f"🟢 {match_name}: ${old_price:.2f} → ${unit_price:.2f}")
+                else:
+                    updates.append(f"⚪ {match_name}: no change (${unit_price:.2f})")
+            else:
+                updates.append(f"🔴 No match for: {product_name}")
+
+            i += 9  # Skip to next product block
+
+        if not updates:
+            updates.append("⚠️ No matches or price changes found.")
+
         return render_template("upload_result.html", updates=updates, debug_log=debug_log)
 
     return render_template("upload_invoice.html")
