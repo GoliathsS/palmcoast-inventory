@@ -370,77 +370,59 @@ def upload_invoice():
         filepath = os.path.join('/tmp', filename)
         file.save(filepath)
 
-        import fitz  # PyMuPDF
+        # Extract PDF text
         doc = fitz.open(filepath)
-        full_text = "\n".join(page.get_text() for page in doc)
-        lines = full_text.split("\n")
+        lines = []
+        for page in doc:
+            lines.extend(page.get_text().splitlines())
 
-        # Fetch all product names from DB
+        # Get all products from DB
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("SELECT id, name, cost_per_unit FROM products")
         db_products = cur.fetchall()  # [(id, name, cost), ...]
         cur.close()
+        name_list = [p[1] for p in db_products]
 
-        name_list = [p[1] for p in db_products]  # just names
         updates = []
-
         i = 0
-        while i < len(lines):
-            line = lines[i].strip()
+        while i < len(lines) - 4:
+            sku_line = lines[i].strip()
+            name_line_1 = lines[i + 1].strip()
+            name_line_2 = lines[i + 2].strip()
+            price_line = lines[i + 3].strip()
 
-            # Detect potential SKU
-            if re.match(r'^[0-9A-Z\-]{6,}$', line):
-                name_lines = []
-                for j in range(i + 1, i + 4):
-                    if j < len(lines):
-                        next_line = lines[j].strip()
-                        if "$" in next_line and "/" in next_line:
-                            break
-                        name_lines.append(next_line)
-
-                if name_lines:
-                    product_name = " ".join(name_lines).strip()
-                    product_name = re.sub(r'\s+', ' ', product_name)
-
-                    # Find unit price within the next 10 lines
-                    unit_price = None
-                    for j in range(i + 1, i + 10):
-                        if j < len(lines):
-                            price_match = re.search(r"\$([\d\.,]+)\s*/", lines[j])
-                            if price_match:
-                                unit_price = float(price_match.group(1).replace(",", ""))
-                                break
-
-                    if unit_price is not None:
-                        # ✅ Safe to match and update
-                        match_name, score, idx = process.extractOne(
-                            product_name, name_list, scorer=fuzz.token_sort_ratio
-                        )
-                        if score >= 85:
-                            product_id, _, old_price = db_products[idx]
-                            if old_price != unit_price:
-                                conn = get_db_connection()
-                                cur = conn.cursor()
-                                cur.execute("UPDATE products SET cost_per_unit = %s WHERE id = %s", (unit_price, product_id))
-                                conn.commit()
-                                cur.close()
-                                conn.close()
-                                updates.append(f"🟢 {match_name}: ${old_price:.2f} → ${unit_price:.2f}")
-                            else:
-                                updates.append(f"⚪ {match_name}: no change (${unit_price:.2f})")
-                        else:
-                            updates.append(f"🔴 No match for: {product_name}")
-                # Advance index safely whether matched or not
-                i += 5
-            else:
+            # Validate SKU pattern
+            if not re.match(r'^[0-9A-Z\-]{6,}$', sku_line):
                 i += 1
+                continue
 
-            # Fuzzy match product name
+            # Build product name
+            name_parts = []
+            if name_line_1 and not re.search(r'\$\d', name_line_1):
+                name_parts.append(name_line_1)
+            if name_line_2 and not re.search(r'\$\d', name_line_2):
+                name_parts.append(name_line_2)
+
+            if not name_parts:
+                i += 4
+                continue
+
+            product_name = " ".join(name_parts)
+            product_name = re.sub(r'\s+', ' ', product_name).strip()
+
+            # Extract unit price
+            price_match = re.search(r"\$([\d\.,]+)\s*/", price_line)
+            if not price_match:
+                i += 4
+                continue
+
+            unit_price = float(price_match.group(1).replace(",", ""))
+
+            # Fuzzy match
             match_name, score, idx = process.extractOne(product_name, name_list, scorer=fuzz.token_sort_ratio)
-            if score >= 90:
+            if score >= 85:
                 product_id, _, old_price = db_products[idx]
-
                 if old_price != unit_price:
                     conn = get_db_connection()
                     cur = conn.cursor()
@@ -448,12 +430,13 @@ def upload_invoice():
                     conn.commit()
                     cur.close()
                     conn.close()
-
                     updates.append(f"🟢 {match_name}: ${old_price:.2f} → ${unit_price:.2f}")
                 else:
                     updates.append(f"⚪ {match_name}: no change (${unit_price:.2f})")
             else:
-                updates.append(f"🔴 No match for: {name}")
+                updates.append(f"🔴 No match for: {product_name}")
+
+            i += 4  # Move to next block
 
         return render_template("upload_result.html", updates=updates)
 
