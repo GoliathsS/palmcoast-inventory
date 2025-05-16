@@ -420,12 +420,13 @@ def upload_invoice():
             unit_price = float(price_match.group(1).replace(",", ""))
 
             # DEBUG OUTPUT
-            print("\n🔍 Parsed Block:")
-            print(f"SKU Line: {sku_line}")
-            print(f"Name Lines: {name_parts}")
-            print(f"Combined Name: {product_name}")
-            print(f"Price Line: {price_line}")
-            print(f"Extracted Price: {unit_price}")
+            print("\n🔍 Parsed Block:", flush=True)
+            print(f"SKU Line: {sku_line}", flush=True)
+            print(f"Name Lines: {name_parts}", flush=True)
+            print(f"Combined Name: {product_name}", flush=True)
+            print(f"Price Line: {price_line}", flush=True)
+            print(f"Extracted Price: {unit_price}", flush=True)
+            print(f"🤖 Matching '{product_name}' → '{match_name}' (Score: {score})", flush=True)
 
             # Fuzzy match
             match_name, score, idx = process.extractOne(product_name, name_list, scorer=fuzz.token_sort_ratio)
