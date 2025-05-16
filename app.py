@@ -362,6 +362,11 @@ def print_report():
 
     return render_template("print_report.html", products=products, now=datetime.now())
 
+def normalize(text):
+    text = re.sub(r'[^a-zA-Z0-9\s]', '', text)  # remove punctuation
+    text = re.sub(r'\s+', ' ', text)  # normalize spacing
+    return text.lower().strip()
+
 @app.route('/upload-invoice', methods=['GET', 'POST'])
 def upload_invoice():
     if request.method == 'POST':
@@ -378,13 +383,15 @@ def upload_invoice():
         for page in doc:
             lines.extend(page.get_text().splitlines())
 
-        # Pull product list from DB
+        # Load DB products
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("SELECT id, name, cost_per_unit FROM products")
         db_products = cur.fetchall()
         cur.close()
+
         name_list = [p[1] for p in db_products]
+        normalized_db_names = [normalize(n) for n in name_list]
 
         updates = []
         debug_log = []
@@ -407,6 +414,8 @@ def upload_invoice():
             product_name = " ".join(name_parts).replace("...", "").strip()
             product_name = re.sub(r'\s+', ' ', product_name)
 
+            normalized_product_name = normalize(product_name)
+
             price_match = re.search(r"\$([\d\.,]+)\s*/", price_line)
             if not price_match:
                 i += 9
@@ -414,17 +423,17 @@ def upload_invoice():
 
             unit_price = float(price_match.group(1).replace(",", ""))
 
-            # 🪵 Debug output to browser
             debug_log.append(f"✅ Block from line {i}:")
             debug_log.append(f"  SKU: {sku}")
             debug_log.append(f"  Name: {product_name}")
             debug_log.append(f"  Price Line: {price_line}")
             debug_log.append(f"  Extracted Price: {unit_price}")
 
-            match_name, score, idx = process.extractOne(product_name, name_list, scorer=fuzz.token_sort_ratio)
-            debug_log.append(f"  🤖 Match: '{match_name}' (Score: {score})")
+            match_name, score, idx = process.extractOne(normalized_product_name, normalized_db_names, scorer=fuzz.token_set_ratio)
+            actual_name = name_list[idx]
+            debug_log.append(f"  🤖 Match: '{actual_name}' (Score: {score})")
 
-            if score >= 85:
+            if score >= 75:
                 product_id, _, old_price = db_products[idx]
                 if old_price != unit_price:
                     conn = get_db_connection()
@@ -433,13 +442,13 @@ def upload_invoice():
                     conn.commit()
                     cur.close()
                     conn.close()
-                    updates.append(f"🟢 {match_name}: ${old_price:.2f} → ${unit_price:.2f}")
+                    updates.append(f"🟢 {actual_name}: ${old_price:.2f} → ${unit_price:.2f}")
                 else:
-                    updates.append(f"⚪ {match_name}: no change (${unit_price:.2f})")
+                    updates.append(f"⚪ {actual_name}: no change (${unit_price:.2f})")
             else:
                 updates.append(f"🔴 No match for: {product_name}")
 
-            i += 9  # Skip to next product block
+            i += 9  # Move to next product block
 
         if not updates:
             updates.append("⚠️ No matches or price changes found.")
