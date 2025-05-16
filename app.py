@@ -385,7 +385,7 @@ def upload_invoice():
         name_list = [p[1] for p in db_products]  # just names
         updates = []
 
-                i = 0
+        i = 0
         while i < len(lines):
             line = lines[i].strip()
 
