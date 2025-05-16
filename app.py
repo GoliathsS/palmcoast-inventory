@@ -385,19 +385,55 @@ def upload_invoice():
         name_list = [p[1] for p in db_products]  # just names
         updates = []
 
-        for i in range(len(lines)):
-            name = lines[i].strip()
+                i = 0
+        while i < len(lines):
+            line = lines[i].strip()
 
-            # Try to find a price within next 5 lines
-            price_line = next((l for l in lines[i+1:i+6] if "$" in l and "/" in l), None)
-            if not price_line:
-                continue
+            # Detect SKU (6+ alphanumeric, sometimes with dash)
+            if re.match(r'^[0-9A-Z\-]{6,}$', line):
+                name_lines = []
+                # Collect next 1–3 lines of name
+                for j in range(i+1, i+4):
+                    if j < len(lines):
+                        next_line = lines[j].strip()
+                        if "$" in next_line and "/" in next_line:
+                            break
+                        name_lines.append(next_line)
 
-            price_match = re.search(r"\$([\d\.,]+)\s*/", price_line)
-            if not price_match:
-                continue
+                product_name = " ".join(name_lines)
+                product_name = re.sub(r'\s+', ' ', product_name).strip()
 
-            unit_price = float(price_match.group(1).replace(",", ""))
+                # Look ahead for price
+                unit_price = None
+                for j in range(i+1, i+10):
+                    if j < len(lines):
+                        price_match = re.search(r"\$([\d\.,]+)\s*/", lines[j])
+                        if price_match:
+                            unit_price = float(price_match.group(1).replace(",", ""))
+                            break
+
+                if product_name and unit_price:
+                    # Fuzzy match
+                    match_name, score, idx = process.extractOne(
+                        product_name, name_list, scorer=fuzz.token_sort_ratio
+                    )
+                    if score >= 85:
+                        product_id, _, old_price = db_products[idx]
+                        if old_price != unit_price:
+                            conn = get_db_connection()
+                            cur = conn.cursor()
+                            cur.execute("UPDATE products SET cost_per_unit = %s WHERE id = %s", (unit_price, product_id))
+                            conn.commit()
+                            cur.close()
+                            conn.close()
+                            updates.append(f"🟢 {match_name}: ${old_price:.2f} → ${unit_price:.2f}")
+                        else:
+                            updates.append(f"⚪ {match_name}: no change (${unit_price:.2f})")
+                    else:
+                        updates.append(f"🔴 No match for: {product_name}")
+                i += 5  # skip ahead a bit
+            else:
+                i += 1
 
             # Fuzzy match product name
             match_name, score, idx = process.extractOne(name, name_list, scorer=fuzz.token_sort_ratio)
