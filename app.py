@@ -8,6 +8,9 @@ from datetime import datetime
 from technician_manager import add_technician, remove_technician, get_all_technicians
 from decimal import Decimal, ROUND_HALF_UP
 from rapidfuzz import process, fuzz
+import logging
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger("invoice")
 
 app = Flask(__name__)
 
@@ -420,13 +423,13 @@ def upload_invoice():
             unit_price = float(price_match.group(1).replace(",", ""))
 
             # DEBUG OUTPUT
-            print("\n🔍 Parsed Block:", flush=True)
-            print(f"SKU Line: {sku_line}", flush=True)
-            print(f"Name Lines: {name_parts}", flush=True)
-            print(f"Combined Name: {product_name}", flush=True)
-            print(f"Price Line: {price_line}", flush=True)
-            print(f"Extracted Price: {unit_price}", flush=True)
-            print(f"🤖 Matching '{product_name}' → '{match_name}' (Score: {score})", flush=True)
+            log.info("🔍 Parsed Block:")
+            log.info(f"SKU Line: {sku_line}")
+            log.info(f"Name Lines: {name_parts}")
+            log.info(f"Combined Name: {product_name}")
+            log.info(f"Price Line: {price_line}")
+            log.info(f"Extracted Price: {unit_price}")
+            log.info(f"🤖 Matching '{product_name}' → '{match_name}' (Score: {score})")
 
             # Fuzzy match
             match_name, score, idx = process.extractOne(product_name, name_list, scorer=fuzz.token_sort_ratio)
