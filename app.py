@@ -44,7 +44,10 @@ def index():
 
     cur.execute("SELECT COUNT(*) FROM products WHERE category = 'Pest'")
     pest_count = cur.fetchone()[0]
-    
+
+    cur.execute("SELECT COUNT(*) FROM products WHERE category = 'Wildlife'")
+    wildlife_count = cur.fetchone()[0]
+
     cur.close()
     conn.close()
 
@@ -56,6 +59,7 @@ def index():
         total_value=total_value,
         category_filter=category_filter,
         lawn_count=lawn_count,
+        wildlife_count=wildlife_count,
         pest_count=pest_count
     )
 
