@@ -69,6 +69,7 @@
         <option value="All" {% if category_filter == 'All' %}selected{% endif %}>All</option>
         <option value="Pest" {% if category_filter == 'Pest' %}selected{% endif %}>Pest</option>
         <option value="Lawn" {% if category_filter == 'Lawn' %}selected{% endif %}>Lawn</option>
+        <option value="Wildlife" {% if category_filter == 'Wildlife' %}selected{% endif %}>Wildlife</option>
       </select>
     </div>
   </div>
@@ -96,6 +97,7 @@
           <select class="form-select" name="category">
             <option value="Pest">Pest</option>
             <option value="Lawn">Lawn</option>
+            <option value="Wildlife">Wildlife</option>
           </select>
         </div>
         <div class="col-md-1 d-grid">
@@ -133,7 +135,7 @@
       <h5 class="text-muted">💰 Total Inventory Value:</h5>
       <h3 class="text-success fw-bold">${{ '%.2f' | format(total_value or 0.00) }}</h3>
       <small class="mt-2 d-block text-muted">
-        🌿 <strong>Lawn:</strong> {{ lawn_count }} &nbsp;&nbsp; 🐜 <strong>Pest:</strong> {{ pest_count }}
+        🌿 <strong>Lawn:</strong> {{ lawn_count }} &nbsp;&nbsp; 🐜 <strong>Pest:</strong> {{ pest_count }} &nbsp;&nbsp; 🦝 <strong>Wildlife:</strong> {{ wildlife_count }}
       </small>
     </div>
 
@@ -173,6 +175,8 @@
             <td>
               {% if product[7] == 'Lawn' %}
                 <span class="badge bg-success">Lawn</span>
+              {% elif product[7] == 'Wildlife' %}
+                <span class="badge bg-warning text-dark">Wildlife</span>
               {% else %}
                 <span class="badge bg-info text-dark">Pest</span>
               {% endif %}
@@ -223,6 +227,7 @@
                       <select name="category" class="form-select">
                         <option value="Pest" {% if product[7] == 'Pest' %}selected{% endif %}>Pest</option>
                         <option value="Lawn" {% if product[7] == 'Lawn' %}selected{% endif %}>Lawn</option>
+                        <option value="Wildlife" {% if product[7] == 'Wildlife' %}selected{% endif %}>Wildlife</option>
                       </select>
                     </div>
                     <div class="mb-3">
