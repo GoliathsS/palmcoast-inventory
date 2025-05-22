@@ -114,7 +114,15 @@
             </select>
           </td>
           <td><input type="text" name="technician" value="{{ log[4] or '' }}"></td>
-          <td><input type="number" step="0.01" name="unit_cost" value="{{ log[5] or 0 }}"></td>
+          <td>
+            {% if log[3] == 'in' %}
+              <span title="Box Cost">📦 ${{ "%.2f"|format(log[5]) }}</span>
+            {% else %}
+              <span title="Unit Cost">🔹 ${{ "%.2f"|format(log[5]) }}</span>
+            {% endif %}
+            <br>
+            <input type="number" step="0.01" name="unit_cost" value="{{ log[5] or 0 }}">
+          </td>
           <td style="display:flex; gap:8px; justify-content:center;">
             <button type="submit" name="action_type" value="update">💾 Save</button>
             <button type="submit" name="action_type" value="delete" style="background-color:#dc2626;">🗑 Delete</button>
