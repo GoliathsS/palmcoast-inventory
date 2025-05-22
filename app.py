@@ -168,11 +168,13 @@ def scan_action():
             (new_stock, units_remaining, product_id)
         )
 
-        # Log scan event WITH unit_cost
+        # Log scan event
         timestamp = datetime.now().isoformat()
+        logged_cost = unit_cost if direction == 'out' else round(unit_cost * units_per_item, 2)
+
         cur.execute(
             "INSERT INTO scan_logs (product_id, action, timestamp, technician, unit_cost) VALUES (%s, %s, %s, %s, %s)",
-            (product_id, direction, timestamp, technician, unit_cost)
+            (product_id, direction, timestamp, technician, logged_cost)
         )
 
         conn.commit()
