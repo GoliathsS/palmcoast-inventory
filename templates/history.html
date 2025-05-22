@@ -111,7 +111,13 @@
           <td>{{ row[0] }}</td>
           <td>{{ row[1].capitalize() }}</td>
           <td>{{ row[3] if row[3] else '—' }}</td>
-          <td>${{ '%.2f' | format(row[4] or 0.00) }}</td>
+          <td>
+            {% if row[1] == 'in' %}
+              <span title="Box Cost">📦 ${{ '%.2f' | format(row[4] or 0.00) }}</span>
+            {% else %}
+              <span title="Unit Cost">🔹 ${{ '%.2f' | format(row[4] or 0.00) }}</span>
+            {% endif %}
+          </td>
         </tr>
         {% endfor %}
       </tbody>
