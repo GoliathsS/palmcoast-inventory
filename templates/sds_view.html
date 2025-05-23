@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SDS Portal | Palm Coast</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 20px;
+            font-size: 1rem;
+        }
+        .product-card {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+    </style>
+    <script>
+        function searchProducts() {
+            let input = document.getElementById("searchInput").value.toLowerCase();
+            let cards = document.getElementsByClassName("product-card");
+            for (let card of cards) {
+                let name = card.getAttribute("data-name").toLowerCase();
+                card.style.display = name.includes(input) ? "" : "none";
+            }
+        }
+    </script>
+</head>
+<body>
+    <h2>SDS & Label Portal</h2>
+    <input type="text" id="searchInput" placeholder="Search products..." onkeyup="searchProducts()">
+
+    {% for product in products %}
+    <div class="product-card" data-name="{{ product.name }}">
+        <h3>{{ product.name }}</h3>
+        {% if product.epa_number %}
+            <p><strong>EPA Reg #:</strong> {{ product.epa_number }}</p>
+        {% endif %}
+
+        {% if product.sds_url %}
+            <p><a href="{{ product.sds_url }}" target="_blank">📄 Download SDS</a></p>
+        {% endif %}
+        {% if product.label_url %}
+            <p><a href="{{ product.label_url }}" target="_blank">🧾 Download Label</a></p>
+        {% endif %}
+        {% if product.barcode_img_url %}
+            <p><a href="{{ product.barcode_img_url }}" target="_blank">🧷 Download Barcode Image</a></p>
+        {% endif %}
+    </div>
+    {% endfor %}
+</body>
+</html>
