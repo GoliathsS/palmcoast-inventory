@@ -18,6 +18,13 @@
             padding: 15px;
             margin-bottom: 15px;
         }
+        .expired {
+            color: #b91c1c;
+            font-weight: bold;
+        }
+        .valid {
+            color: #15803d;
+        }
     </style>
     <script>
         function searchProducts() {
@@ -36,7 +43,7 @@
 
     {% for product in products %}
     <div class="product-card" data-name="{{ product[1] }}">
-        <h3>{{ product[1] }}</h3> <!-- name -->
+        <h3>{{ product[1] }}</h3>
         
         {% if product[2] %}
             <p><strong>EPA Reg #:</strong> {{ product[2] }}</p>
@@ -53,9 +60,16 @@
         {% endif %}
 
         {% if product[6] %}
-            <small class="text-muted">Uploaded: {{ product[6] }}</small>
+            {% set upload_date = product[6] %}
+            {% set expired_cutoff = today.replace(year=today.year - 3) %}
+            {% if upload_date < expired_cutoff %}
+                <p class="expired">🔴 SDS Expired (Uploaded: {{ upload_date }})</p>
+            {% else %}
+                <p class="valid">✅ SDS Valid (Uploaded: {{ upload_date }})</p>
+            {% endif %}
         {% endif %}
     </div>
     {% endfor %}
 </body>
 </html>
+
