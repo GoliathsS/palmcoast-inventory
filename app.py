@@ -186,6 +186,72 @@ def scan_action():
     conn.close()
     return jsonify({'status': status})
 
+@app.route('/edit-sds', methods=['GET', 'POST'])
+def edit_sds():
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    if request.method == 'POST':
+        product_id = request.form['product_id']
+
+        # Handle SDS PDF upload
+        sds_file = request.files.get('sds_pdf')
+        sds_url = None
+        if sds_file and sds_file.filename != '':
+            sds_filename = secure_filename(sds_file.filename)
+            sds_path = os.path.join('static/uploads/sds', sds_filename)
+            sds_file.save(sds_path)
+            sds_url = '/' + sds_path.replace("\\", "/")
+
+        # Handle Label PDF upload
+        label_file = request.files.get('label_pdf')
+        label_url = None
+        if label_file and label_file.filename != '':
+            label_filename = secure_filename(label_file.filename)
+            label_path = os.path.join('static/uploads/labels', label_filename)
+            label_file.save(label_path)
+            label_url = '/' + label_path.replace("\\", "/")
+
+        # Handle Barcode Image upload
+        barcode_file = request.files.get('barcode_img')
+        barcode_img_url = None
+        if barcode_file and barcode_file.filename != '':
+            barcode_filename = secure_filename(barcode_file.filename)
+            barcode_path = os.path.join('static/uploads/barcodes', barcode_filename)
+            barcode_file.save(barcode_path)
+            barcode_img_url = '/' + barcode_path.replace("\\", "/")
+
+        # Build dynamic SQL update (only update what was provided)
+        updates = []
+        values = []
+
+        if sds_url:
+            updates.append("sds_url = %s")
+            values.append(sds_url)
+        if label_url:
+            updates.append("label_url = %s")
+            values.append(label_url)
+        if barcode_img_url:
+            updates.append("barcode_img_url = %s")
+            values.append(barcode_img_url)
+
+        if updates:
+            values.append(product_id)
+            query = f"UPDATE products SET {', '.join(updates)} WHERE id = %s"
+            cur.execute(query, tuple(values))
+            conn.commit()
+
+        cur.close()
+        conn.close()
+        return redirect(url_for('edit_sds'))
+
+    # GET: Load product list
+    cur.execute("SELECT id, name FROM products ORDER BY name;")
+    products = cur.fetchall()
+    cur.close()
+    conn.close()
+    return render_template('edit_sds.html', products=products)
+
 @app.route('/corrections', methods=['GET', 'POST'])
 def corrections():
     conn = get_db_connection()
