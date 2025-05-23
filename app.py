@@ -224,49 +224,58 @@ def sds_portal():
 
 @app.route('/edit-sds', methods=['GET', 'POST'])
 def edit_sds():
+    # Only allow admins to access this route
+    if session.get('role') == 'tech':
+        return redirect(url_for('sds_portal'))
+
     conn = get_db_connection()
     cur = conn.cursor()
 
     if request.method == 'POST':
         product_id = request.form['product_id']
+        epa_number = request.form.get('epa_number')
 
-        # Handle SDS PDF upload
         sds_file = request.files.get('sds_pdf')
-        sds_url = None
+        label_file = request.files.get('label_pdf')
+        barcode_file = request.files.get('barcode_img')
+
+        sds_url = label_url = barcode_img_url = None
+
         if sds_file and sds_file.filename != '':
             sds_filename = secure_filename(sds_file.filename)
             sds_path = os.path.join('static/uploads/sds', sds_filename)
             sds_file.save(sds_path)
             sds_url = '/' + sds_path.replace("\\", "/")
 
-        # Handle Label PDF upload
-        label_file = request.files.get('label_pdf')
-        label_url = None
         if label_file and label_file.filename != '':
             label_filename = secure_filename(label_file.filename)
             label_path = os.path.join('static/uploads/labels', label_filename)
             label_file.save(label_path)
             label_url = '/' + label_path.replace("\\", "/")
 
-        # Handle Barcode Image upload
-        barcode_file = request.files.get('barcode_img')
-        barcode_img_url = None
         if barcode_file and barcode_file.filename != '':
             barcode_filename = secure_filename(barcode_file.filename)
             barcode_path = os.path.join('static/uploads/barcodes', barcode_filename)
             barcode_file.save(barcode_path)
             barcode_img_url = '/' + barcode_path.replace("\\", "/")
 
-        # Build dynamic SQL update (only update what was provided)
         updates = []
         values = []
+
+        if epa_number:
+            updates.append("epa_number = %s")
+            values.append(epa_number)
 
         if sds_url:
             updates.append("sds_url = %s")
             values.append(sds_url)
+            updates.append("sds_uploaded_on = %s")
+            values.append(date.today())  # Record the date of upload
+
         if label_url:
             updates.append("label_url = %s")
             values.append(label_url)
+
         if barcode_img_url:
             updates.append("barcode_img_url = %s")
             values.append(barcode_img_url)
@@ -282,12 +291,12 @@ def edit_sds():
         return redirect(url_for('edit_sds'))
 
     # GET: Load product list
-    cur.execute("SELECT id, name FROM products ORDER BY name;")
+    cur.execute("SELECT id, name, epa_number FROM products ORDER BY name;")
     products = cur.fetchall()
     cur.close()
     conn.close()
     return render_template('edit_sds.html', products=products)
-
+    
 @app.route('/corrections', methods=['GET', 'POST'])
 def corrections():
     conn = get_db_connection()
