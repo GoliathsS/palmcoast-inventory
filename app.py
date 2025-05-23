@@ -196,6 +196,22 @@ def scan_action():
     conn.close()
     return jsonify({'status': status})
 
+@app.route('/sds')
+def sds_portal():
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT id, name, epa_number, sds_url, label_url, barcode_img_url
+        FROM products
+        ORDER BY name;
+    """)
+    products = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    return render_template('sds_view.html', products=products)
+
 @app.route('/edit-sds', methods=['GET', 'POST'])
 def edit_sds():
     conn = get_db_connection()
