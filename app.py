@@ -222,6 +222,10 @@ def sds_portal():
     conn.close()
     return render_template('sds_view.html', products=products, today=date.today())
 
+@app.route('/static/uploads/<path:filename>')
+def uploaded_file(filename):
+    return send_from_directory('static/uploads', filename)
+
 @app.route('/edit-sds', methods=['GET', 'POST'])
 def edit_sds():
     # Only allow admins to access this route
