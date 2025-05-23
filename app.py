@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, send_from_directory
+from flask import Flask, render_template, request, jsonify, redirect, url_for, send_from_directory, session
 import psycopg2
 import os
 import fitz  # PyMuPDF
