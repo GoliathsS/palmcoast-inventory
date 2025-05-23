@@ -14,6 +14,16 @@ log = logging.getLogger("invoice")
 
 app = Flask(__name__)
 
+# Ensure upload folders exist
+UPLOAD_FOLDERS = [
+    'static/uploads/sds',
+    'static/uploads/labels',
+    'static/uploads/barcodes'
+]
+
+for folder in UPLOAD_FOLDERS:
+    os.makedirs(folder, exist_ok=True)
+
 # PostgreSQL connection settings (replace with your actual Render credentials)
 DATABASE_URL = os.environ.get("DATABASE_URL", "YOUR_RENDER_POSTGRES_CONNECTION_STRING")
 
