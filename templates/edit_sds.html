@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Edit SDS & Label Info | Palm Coast Inventory</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <h2>Edit SDS, Label & Barcode Info</h2>
+
+    <form method="POST" enctype="multipart/form-data">
+        <label for="product_id">Select Product:</label>
+        <select name="product_id" required>
+            {% for product in products %}
+                <option value="{{ product.id }}">{{ product.name }}</option>
+            {% endfor %}
+        </select><br><br>
+
+        <label for="sds_url">SDS PDF:</label>
+        <input type="file" name="sds_pdf" accept=".pdf"><br><br>
+
+        <label for="label_url">Product Label PDF:</label>
+        <input type="file" name="label_pdf" accept=".pdf"><br><br>
+
+        <label for="barcode_img">Barcode Image:</label>
+        <input type="file" name="barcode_img" accept="image/png, image/jpeg"><br><br>
+
+        <button type="submit">Upload & Save</button>
+    </form>
+</body>
+</html>
