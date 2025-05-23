@@ -35,20 +35,25 @@
     <input type="text" id="searchInput" placeholder="Search products..." onkeyup="searchProducts()">
 
     {% for product in products %}
-    <div class="product-card" data-name="{{ product.name }}">
-        <h3>{{ product.name }}</h3>
-        {% if product.epa_number %}
-            <p><strong>EPA Reg #:</strong> {{ product.epa_number }}</p>
+    <div class="product-card" data-name="{{ product[1] }}">
+        <h3>{{ product[1] }}</h3> <!-- name -->
+        
+        {% if product[2] %}
+            <p><strong>EPA Reg #:</strong> {{ product[2] }}</p>
         {% endif %}
 
-        {% if product.sds_url %}
-            <p><a href="{{ product.sds_url }}" target="_blank">📄 Download SDS</a></p>
+        {% if product[3] %}
+            <p><a href="{{ product[3] }}" target="_blank">📄 Download SDS</a></p>
         {% endif %}
-        {% if product.label_url %}
-            <p><a href="{{ product.label_url }}" target="_blank">🧾 Download Label</a></p>
+        {% if product[4] %}
+            <p><a href="{{ product[4] }}" target="_blank">🧾 Download Label</a></p>
         {% endif %}
-        {% if product.barcode_img_url %}
-            <p><a href="{{ product.barcode_img_url }}" target="_blank">🧷 Download Barcode Image</a></p>
+        {% if product[5] %}
+            <p><a href="{{ product[5] }}" target="_blank">🧷 Download Barcode Image</a></p>
+        {% endif %}
+
+        {% if product[6] %}
+            <small class="text-muted">Uploaded: {{ product[6] }}</small>
         {% endif %}
     </div>
     {% endfor %}
