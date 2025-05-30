@@ -235,7 +235,8 @@ def vehicle_inspection(vehicle_id):
         def save_photo(field):
             file = request.files.get(field)
             if file and file.filename:
-                filename = secure_filename(file.filename)
+                timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+                filename = f"{vehicle_id}_{field}_{timestamp}_{secure_filename(file.filename)}"
                 path = os.path.join('static/uploads', filename)
                 file.save(path)
                 return path
