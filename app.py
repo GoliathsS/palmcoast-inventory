@@ -8,6 +8,7 @@ from datetime import datetime, date
 from technician_manager import add_technician, remove_technician, get_all_technicians
 from decimal import Decimal, ROUND_HALF_UP
 from rapidfuzz import process, fuzz
+from psycopg2.extras import RealDictCursor
 import logging
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("invoice")
@@ -280,6 +281,10 @@ def vehicle_inspection(vehicle_id):
     conn.close()
     return render_template('vehicle_inspection.html', vehicle_id=vehicle_id, technician=tech)
 
+def get_db_connection():
+    return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+
+
 @app.route('/vehicles/<int:vehicle_id>')
 def vehicle_profile(vehicle_id):
     conn = get_db_connection()
@@ -304,9 +309,12 @@ def vehicle_profile(vehicle_id):
     """, (vehicle_id,))
     inventory = cur.fetchall()
 
-    # Get inspection history
+    # Get inspection history with all photo fields
     cur.execute("""
-        SELECT date, mileage, cleanliness, wrap_condition
+        SELECT date, mileage, cleanliness, wrap_condition,
+               photo_front, photo_back, photo_side_left, photo_side_right,
+               photo_tire_front_left, photo_tire_front_right,
+               photo_tire_rear_left, photo_tire_rear_right
         FROM vehicle_inspections
         WHERE vehicle_id = %s
         ORDER BY date DESC
@@ -315,6 +323,7 @@ def vehicle_profile(vehicle_id):
     inspections = cur.fetchall()
 
     conn.close()
+
     return render_template('vehicle_profile.html',
                            vehicle=vehicle,
                            inventory=inventory,
