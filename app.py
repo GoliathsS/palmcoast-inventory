@@ -167,8 +167,21 @@ def scan_action():
                 conn.close()
                 return jsonify({'status': 'not_enough_units'})
             units_remaining -= 1
+
+            # 🔧 Vehicle inventory sync
+            cur.execute("SELECT vehicle_id FROM technicians WHERE name = %s", (technician,))
+            vehicle_result = cur.fetchone()
+            if vehicle_result:
+                vehicle_id = vehicle_result[0]
+                cur.execute("""
+                    INSERT INTO vehicle_inventory (vehicle_id, product_id, quantity)
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT (vehicle_id, product_id)
+                    DO UPDATE SET quantity = vehicle_inventory.quantity + EXCLUDED.quantity,
+                                  last_updated = NOW();
+                """, (vehicle_id, product_id, 1))
         else:
-            units_remaining += units_per_item  # Add 1 item worth of units
+            units_remaining += units_per_item
             stock += 1
 
         new_stock = units_remaining // units_per_item
@@ -196,6 +209,14 @@ def scan_action():
     cur.close()
     conn.close()
     return jsonify({'status': status})
+
+def get_vehicle_id_for_technician(technician_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT vehicle_id FROM technicians WHERE id = %s;", (technician_id,))
+    result = cur.fetchone()
+    conn.close()
+    return result[0] if result else None
 
 @app.route('/sds')
 def sds_portal():
