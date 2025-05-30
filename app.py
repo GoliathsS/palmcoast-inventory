@@ -218,6 +218,24 @@ def get_vehicle_id_for_technician(technician_id):
     conn.close()
     return result[0] if result else None
 
+@app.route('/inspections')
+def inspections_list():
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT vi.inspection_id, vi.date, v.license_plate, t.name AS technician,
+               vi.mileage, vi.cleanliness, vi.wrap_condition
+        FROM vehicle_inspections vi
+        JOIN vehicles v ON vi.vehicle_id = v.vehicle_id
+        JOIN technicians t ON vi.technician_id = t.id
+        ORDER BY vi.date DESC;
+    """)
+    inspections = cur.fetchall()
+    conn.close()
+
+    return render_template('vehicle_inspections_list.html', inspections=inspections)
+
 @app.route('/sds')
 def sds_portal():
     filter_type = request.args.get('filter', '')
