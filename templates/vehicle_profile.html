@@ -86,22 +86,36 @@
     <div class="profile-box">
       <div class="subheading">🧾 Recent Inspections</div>
       {% if inspections %}
-        <table class="inspection-table">
-          <tr>
-            <th>Date</th>
-            <th>Mileage</th>
-            <th>Cleanliness</th>
-            <th>Wrap Condition</th>
-          </tr>
-          {% for i in inspections %}
-          <tr>
-            <td>{{ i.date.strftime('%Y-%m-%d') }}</td>
-            <td>{{ i.mileage }}</td>
-            <td>{{ i.cleanliness }}</td>
-            <td>{{ i.wrap_condition }}</td>
-          </tr>
-          {% endfor %}
-        </table>
+        {% for i in inspections %}
+          <div style="margin-bottom: 30px;">
+            <p><strong>Date:</strong> {{ i.date.strftime('%Y-%m-%d') }}<br>
+            <strong>Mileage:</strong> {{ i.mileage }} miles<br>
+            <strong>Cleanliness:</strong> {{ i.cleanliness }}<br>
+            <strong>Wrap Condition:</strong> {{ i.wrap_condition }}</p>
+
+            {% set photos = [
+              ('Front', i.photo_front),
+              ('Back', i.photo_back),
+              ('Left Side', i.photo_side_left),
+              ('Right Side', i.photo_side_right),
+              ('Tire FL', i.photo_tire_front_left),
+              ('Tire FR', i.photo_tire_front_right),
+              ('Tire RL', i.photo_tire_rear_left),
+              ('Tire RR', i.photo_tire_rear_right),
+            ] %}
+
+            <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+              {% for label, path in photos %}
+                {% if path %}
+                  <div style="text-align: center;">
+                    <img src="/{{ path }}" alt="{{ label }}" style="height: 100px; border: 1px solid #ccc; border-radius: 4px;" />
+                    <div style="font-size: 0.85rem; margin-top: 4px;">{{ label }}</div>
+                  </div>
+                {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+        {% endfor %}
       {% else %}
         <p>No inspections recorded yet.</p>
       {% endif %}
