@@ -210,6 +210,65 @@ def scan_action():
     conn.close()
     return jsonify({'status': status})
 
+@app.route('/vehicle-inspection/<int:vehicle_id>', methods=['GET', 'POST'])
+def vehicle_inspection(vehicle_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    if request.method == 'POST':
+        technician_id = request.form['technician_id']
+        mileage = request.form['mileage']
+        cleanliness = request.form['cleanliness']
+        wrap_condition = request.form['wrap_condition']
+        comments = request.form['comments']
+
+        def save_photo(field):
+            file = request.files.get(field)
+            if file and file.filename:
+                filename = secure_filename(file.filename)
+                path = os.path.join('static/uploads', filename)
+                file.save(path)
+                return path
+            return None
+
+        photo_fields = [
+            'photo_front', 'photo_back', 'photo_side_left', 'photo_side_right',
+            'photo_tire_front_left', 'photo_tire_front_right',
+            'photo_tire_rear_left', 'photo_tire_rear_right'
+        ]
+        photos = {field: save_photo(field) for field in photo_fields}
+
+        cur.execute("""
+            INSERT INTO vehicle_inspections (
+                vehicle_id, technician_id, mileage, cleanliness, wrap_condition, comments,
+                photo_front, photo_back, photo_side_left, photo_side_right,
+                photo_tire_front_left, photo_tire_front_right,
+                photo_tire_rear_left, photo_tire_rear_right
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            vehicle_id, technician_id, mileage, cleanliness, wrap_condition, comments,
+            photos['photo_front'], photos['photo_back'], photos['photo_side_left'], photos['photo_side_right'],
+            photos['photo_tire_front_left'], photos['photo_tire_front_right'],
+            photos['photo_tire_rear_left'], photos['photo_tire_rear_right']
+        ))
+
+        cur.execute("""
+            UPDATE vehicles
+            SET current_mileage = %s, last_inspection_date = CURRENT_DATE
+            WHERE vehicle_id = %s
+        """, (mileage, vehicle_id))
+
+        conn.commit()
+        cur.close()
+        conn.close()
+        return redirect(url_for('vehicle_profile', vehicle_id=vehicle_id))
+
+    # GET: show form
+    cur.execute("SELECT id, name FROM technicians WHERE vehicle_id = %s", (vehicle_id,))
+    tech = cur.fetchone()
+    conn.close()
+    return render_template('vehicle_inspection.html', vehicle_id=vehicle_id, technician=tech)
+
 @app.route('/vehicles/<int:vehicle_id>')
 def vehicle_profile(vehicle_id):
     conn = get_db_connection()
