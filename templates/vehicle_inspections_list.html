@@ -21,6 +21,7 @@
         h2 {
             text-align: center;
             color: #0A4D68;
+            margin-bottom: 20px;
         }
         table {
             width: 100%;
@@ -39,11 +40,20 @@
         tr:hover {
             background-color: #f5f5f5;
         }
+        .back-link {
+            display: inline-block;
+            margin-top: 25px;
+            text-decoration: none;
+            color: #0A4D68;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>Vehicle Inspections</h2>
+        <h2>📋 Vehicle Inspections</h2>
+
+        {% if inspections %}
         <table>
             <thead>
                 <tr>
@@ -52,14 +62,18 @@
                     <th>Technician</th>
                     <th>Mileage</th>
                     <th>Cleanliness</th>
-                    <th>Wrap Condition</th>
+                    <th>Wrap</th>
                 </tr>
             </thead>
             <tbody>
                 {% for i in inspections %}
                 <tr>
                     <td>{{ i[1] }}</td>
-                    <td>{{ i[2] }}</td>
+                    <td>
+                        <a href="/vehicles/{{ i[0] }}" style="color: #0066cc;">
+                            {{ i[2] }}
+                        </a>
+                    </td>
                     <td>{{ i[3] }}</td>
                     <td>{{ i[4] }}</td>
                     <td>{{ i[5] }}</td>
@@ -68,6 +82,11 @@
                 {% endfor %}
             </tbody>
         </table>
+        {% else %}
+        <p>No inspections have been recorded yet.</p>
+        {% endif %}
+
+        <a href="/" class="back-link">← Back to Dashboard</a>
     </div>
 </body>
 </html>
