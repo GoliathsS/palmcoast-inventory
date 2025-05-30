@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Vehicle Profiles | Palm Coast Inventory</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="container py-4">
+    <h1>🚛 Vehicle Profiles</h1>
+
+    <div class="d-flex justify-content-end mb-3">
+      <a href="/vehicles/new" class="btn btn-success">➕ Add New Vehicle</a>
+    </div>
+
+    <table class="table table-striped table-bordered">
+      <thead>
+        <tr>
+          <th>License Plate</th>
+          <th>Type</th>
+          <th>Technician</th>
+          <th>Profile</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for vehicle in vehicles %}
+        <tr>
+          <td>{{ vehicle.license_plate }}</td>
+          <td>{{ vehicle.vehicle_type }}</td>
+          <td>{{ vehicle.technician }}</td>
+          <td>
+            <a href="/vehicles/{{ vehicle.vehicle_id }}" class="btn btn-outline-primary btn-sm">View Profile</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <a href="/" class="btn btn-secondary mt-4">← Back to Dashboard</a>
+  </div>
+</body>
+</html>
