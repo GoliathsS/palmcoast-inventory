@@ -210,13 +210,45 @@ def scan_action():
     conn.close()
     return jsonify({'status': status})
 
-def get_vehicle_id_for_technician(technician_id):
+@app.route('/vehicles/<int:vehicle_id>')
+def vehicle_profile(vehicle_id):
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("SELECT vehicle_id FROM technicians WHERE id = %s;", (technician_id,))
-    result = cur.fetchone()
+
+    # Get vehicle info
+    cur.execute("""
+        SELECT v.vehicle_id, v.license_plate, v.vehicle_type, t.name AS technician
+        FROM vehicles v
+        LEFT JOIN technicians t ON v.vehicle_id = t.vehicle_id
+        WHERE v.vehicle_id = %s
+    """, (vehicle_id,))
+    vehicle = cur.fetchone()
+
+    # Get current truck inventory
+    cur.execute("""
+        SELECT p.name, vi.quantity
+        FROM vehicle_inventory vi
+        JOIN products p ON vi.product_id = p.id
+        WHERE vi.vehicle_id = %s
+        ORDER BY p.name
+    """, (vehicle_id,))
+    inventory = cur.fetchall()
+
+    # Get inspection history
+    cur.execute("""
+        SELECT date, mileage, cleanliness, wrap_condition
+        FROM vehicle_inspections
+        WHERE vehicle_id = %s
+        ORDER BY date DESC
+        LIMIT 5
+    """, (vehicle_id,))
+    inspections = cur.fetchall()
+
     conn.close()
-    return result[0] if result else None
+    return render_template('vehicle_profile.html',
+                           vehicle=vehicle,
+                           inventory=inventory,
+                           inspections=inspections)
 
 @app.route('/inspections')
 def inspections_list():
