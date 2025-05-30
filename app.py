@@ -291,11 +291,11 @@ def vehicle_profile(vehicle_id):
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # Get vehicle info
+    # ✅ Correct join using technician_id stored in the vehicle
     cur.execute("""
         SELECT v.vehicle_id, v.license_plate, v.vehicle_type, t.name AS technician
         FROM vehicles v
-        LEFT JOIN technicians t ON v.vehicle_id = t.vehicle_id
+        LEFT JOIN technicians t ON v.technician_id = t.id
         WHERE v.vehicle_id = %s
     """, (vehicle_id,))
     vehicle = cur.fetchone()
@@ -310,7 +310,7 @@ def vehicle_profile(vehicle_id):
     """, (vehicle_id,))
     inventory = cur.fetchall()
 
-    # Get inspection history with all photo fields
+    # Get inspection history
     cur.execute("""
         SELECT date, mileage, cleanliness, wrap_condition,
                photo_front, photo_back, photo_side_left, photo_side_right,
@@ -374,13 +374,46 @@ def create_vehicle():
     if request.method == 'POST':
         plate = request.form['license_plate']
         vehicle_type = request.form['vehicle_type']
-        cur.execute("INSERT INTO vehicles (license_plate, vehicle_type) VALUES (%s, %s)",
+        technician_id = request.form.get('technician_id')
+
+        # Insert vehicle
+        cur.execute("INSERT INTO vehicles (license_plate, vehicle_type) VALUES (%s, %s) RETURNING vehicle_id",
                     (plate, vehicle_type))
+        vehicle_id = cur.fetchone()[0]
+
+        # Optionally assign technician
+        if technician_id:
+            cur.execute("UPDATE technicians SET vehicle_id = %s WHERE id = %s", (vehicle_id, technician_id))
+
         conn.commit()
         conn.close()
         return redirect(url_for('vehicles_list'))
 
-    return render_template('create_vehicle.html')
+    technicians = get_all_technicians()
+    return render_template('create_vehicle.html', technicians=technicians)
+
+@app.route('/vehicles/create', methods=['GET', 'POST'])
+def create_vehicle():
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    if request.method == 'POST':
+        license_plate = request.form['license_plate']
+        vehicle_type = request.form['vehicle_type']
+        technician_id = request.form.get('technician_id') or None
+
+        cur.execute("""
+            INSERT INTO vehicles (license_plate, vehicle_type, technician_id)
+            VALUES (%s, %s, %s)
+        """, (license_plate, vehicle_type, technician_id))
+
+        conn.commit()
+        cur.close()
+        conn.close()
+        return redirect(url_for('vehicles'))
+
+    technicians = get_all_technicians()
+    return render_template('create_vehicle.html', technicians=technicians)
 
 @app.route('/sds')
 def sds_portal():
