@@ -47,15 +47,20 @@ def index():
         cur.execute("SELECT * FROM products WHERE category = %s ORDER BY id", (category_filter,))
     products = cur.fetchall()
 
-    cur.execute("SELECT id, name, category, stock, min_stock FROM products")
-    products = cur.fetchall()
+    # ✅ Total inventory value
+    cur.execute("SELECT SUM(stock * cost_per_unit) FROM products")
+    row = cur.fetchone()
+    total_value = row[0] if row and row[0] is not None else 0
 
+    # ✅ Lawn count
     cur.execute("SELECT COUNT(*) FROM products WHERE category = 'Lawn'")
     lawn_count = cur.fetchone()[0]
 
+    # ✅ Pest count
     cur.execute("SELECT COUNT(*) FROM products WHERE category = 'Pest'")
     pest_count = cur.fetchone()[0]
 
+    # ✅ Wildlife count
     cur.execute("SELECT COUNT(*) FROM products WHERE category = 'Wildlife'")
     wildlife_count = cur.fetchone()[0]
 
@@ -63,6 +68,7 @@ def index():
     conn.close()
 
     technicians = get_all_technicians()
+
     return render_template(
         'index.html',
         products=products,
