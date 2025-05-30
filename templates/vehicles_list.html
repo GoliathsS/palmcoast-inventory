@@ -29,7 +29,7 @@
           <td>{{ vehicle[2] }}</td>  {# Vehicle Type #}
           <td>{{ vehicle[3] }}</td>  {# Technician Name from COALESCE #}
           <td>
-            <a href="/vehicles/{{ vehicle.vehicle_id }}" class="btn btn-outline-primary btn-sm">View Profile</a>
+            <a href="/vehicles/{{ vehicle[0] }}" class="btn btn-outline-primary btn-sm">View Profile</a>
           </td>
         </tr>
         {% endfor %}
