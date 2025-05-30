@@ -8,7 +8,6 @@ from datetime import datetime, date
 from technician_manager import add_technician, remove_technician, get_all_technicians
 from decimal import Decimal, ROUND_HALF_UP
 from rapidfuzz import process, fuzz
-from psycopg2.extras import RealDictCursor
 import logging
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("invoice")
