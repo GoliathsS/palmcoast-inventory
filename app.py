@@ -342,6 +342,7 @@ def inspections_list():
 def vehicles_list():
     conn = get_db_connection()
     cur = conn.cursor()
+
     cur.execute("""
         SELECT v.vehicle_id, v.license_plate, v.vehicle_type,
                COALESCE(t.name, 'Unassigned') as technician
@@ -351,6 +352,7 @@ def vehicles_list():
     """)
     vehicles = cur.fetchall()
     conn.close()
+
     return render_template('vehicles_list.html', vehicles=vehicles)
 
 @app.route('/vehicles/new', methods=['GET', 'POST'])
