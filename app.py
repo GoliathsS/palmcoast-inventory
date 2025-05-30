@@ -48,17 +48,21 @@ def index():
         cur.execute("SELECT * FROM products WHERE category = %s ORDER BY id", (category_filter,))
     products = cur.fetchall()
 
-    cur.execute("SELECT SUM(stock * cost_per_unit) FROM products")
-    total_value = cur.fetchone()[0] or 0
+    cur.execute("SELECT SUM(stock * cost_per_unit) AS total_value FROM products")
+    row = cur.fetchone() or {}
+    total_value = row.get('total_value', 0)
 
-    cur.execute("SELECT COUNT(*) FROM products WHERE category = 'Lawn'")
-    lawn_count = cur.fetchone()[0]
+    cur.execute("SELECT COUNT(*) AS count FROM products WHERE category = 'Lawn'")
+    row = cur.fetchone() or {}
+    lawn_count = row.get('count', 0)
 
-    cur.execute("SELECT COUNT(*) FROM products WHERE category = 'Pest'")
-    pest_count = cur.fetchone()[0]
+    cur.execute("SELECT COUNT(*) AS count FROM products WHERE category = 'Pest'")
+    row = cur.fetchone() or {}
+    pest_count = row.get('count', 0)
 
-    cur.execute("SELECT COUNT(*) FROM products WHERE category = 'Wildlife'")
-    wildlife_count = cur.fetchone()[0]
+    cur.execute("SELECT COUNT(*) AS count FROM products WHERE category = 'Wildlife'")
+    row = cur.fetchone() or {}
+    wildlife_count = row.get('count', 0)
 
     cur.close()
     conn.close()
