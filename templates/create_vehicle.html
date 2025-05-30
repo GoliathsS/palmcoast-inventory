@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Create Vehicle | Palm Coast Inventory</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="container py-4">
+    <h1>➕ Add New Vehicle</h1>
+
+    <form method="POST">
+      <div class="mb-3">
+        <label for="license_plate" class="form-label">License Plate</label>
+        <input type="text" name="license_plate" class="form-control" required>
+      </div>
+
+      <div class="mb-3">
+        <label for="vehicle_type" class="form-label">Vehicle Type</label>
+        <input type="text" name="vehicle_type" class="form-control" placeholder="e.g., Truck, Van" required>
+      </div>
+
+      <button type="submit" class="btn btn-primary">Create Vehicle</button>
+      <a href="/vehicles" class="btn btn-secondary ms-2">Cancel</a>
+    </form>
+  </div>
+</body>
+</html>
