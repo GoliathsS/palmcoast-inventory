@@ -392,29 +392,6 @@ def create_vehicle():
     technicians = get_all_technicians()
     return render_template('create_vehicle.html', technicians=technicians)
 
-@app.route('/vehicles/create', methods=['GET', 'POST'])
-def create_vehicle():
-    conn = get_db_connection()
-    cur = conn.cursor()
-
-    if request.method == 'POST':
-        license_plate = request.form['license_plate']
-        vehicle_type = request.form['vehicle_type']
-        technician_id = request.form.get('technician_id') or None
-
-        cur.execute("""
-            INSERT INTO vehicles (license_plate, vehicle_type, technician_id)
-            VALUES (%s, %s, %s)
-        """, (license_plate, vehicle_type, technician_id))
-
-        conn.commit()
-        cur.close()
-        conn.close()
-        return redirect(url_for('vehicles'))
-
-    technicians = get_all_technicians()
-    return render_template('create_vehicle.html', technicians=technicians)
-
 @app.route('/sds')
 def sds_portal():
     filter_type = request.args.get('filter', '')
