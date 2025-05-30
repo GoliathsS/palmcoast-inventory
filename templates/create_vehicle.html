@@ -4,11 +4,53 @@
   <meta charset="UTF-8">
   <title>Create Vehicle | Palm Coast Inventory</title>
   <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      padding: 2rem;
+      max-width: 600px;
+      margin: 2rem auto;
+    }
+    h1 {
+      font-size: 1.75rem;
+      margin-bottom: 1.5rem;
+      font-weight: 600;
+      color: #333;
+    }
+    .form-label {
+      font-weight: 500;
+      color: #444;
+    }
+    .form-control, .form-select {
+      width: 100%;
+      padding: 0.6rem;
+      font-size: 1rem;
+      margin-bottom: 1.2rem;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+    .btn {
+      padding: 0.6rem 1.2rem;
+      border-radius: 8px;
+      font-weight: 500;
+    }
+    .btn-primary {
+      background-color: #007bff;
+      color: white;
+      border: none;
+    }
+    .btn-secondary {
+      background-color: #6c757d;
+      color: white;
+      border: none;
+    }
+  </style>
 </head>
 <body>
-  <div class="container py-4">
+  <div class="card">
     <h1>➕ Add New Vehicle</h1>
-
     <form method="POST">
       <div class="mb-3">
         <label for="license_plate" class="form-label">License Plate</label>
@@ -20,8 +62,20 @@
         <input type="text" name="vehicle_type" class="form-control" placeholder="e.g., Truck, Van" required>
       </div>
 
-      <button type="submit" class="btn btn-primary">Create Vehicle</button>
-      <a href="/vehicles" class="btn btn-secondary ms-2">Cancel</a>
+      <div class="mb-3">
+        <label for="technician_id" class="form-label">Assign Technician</label>
+        <select name="technician_id" class="form-select">
+          <option value="">-- None --</option>
+          {% for tech in technicians %}
+            <option value="{{ tech.id }}">{{ tech.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="d-flex">
+        <button type="submit" class="btn btn-primary">Create Vehicle</button>
+        <a href="/vehicles" class="btn btn-secondary ms-2">Cancel</a>
+      </div>
     </form>
   </div>
 </body>
