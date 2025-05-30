@@ -23,9 +23,10 @@ def remove_technician(name):
 def get_all_technicians():
     conn = psycopg2.connect(DATABASE_URL)
     cur = conn.cursor()
-    cur.execute("SELECT name FROM technicians ORDER BY name ASC")
-    results = [row[0] for row in cur.fetchall()]
+    cur.execute("SELECT id, name FROM technicians ORDER BY name ASC")
+    results = cur.fetchall()  # returns list of (id, name) tuples
     cur.close()
     conn.close()
     return results
+
 
