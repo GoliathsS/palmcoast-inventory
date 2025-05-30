@@ -280,9 +280,6 @@ def vehicle_inspection(vehicle_id):
     conn.close()
     return render_template('vehicle_inspection.html', vehicle_id=vehicle_id, technician=tech)
 
-def get_db_connection():
-    cur = conn.cursor()  # instead of RealDictCursor
-
 @app.route('/vehicles/<int:vehicle_id>')
 def vehicle_profile(vehicle_id):
     conn = get_db_connection()
