@@ -25,9 +25,9 @@
       <tbody>
         {% for vehicle in vehicles %}
         <tr>
-          <td>{{ vehicle.license_plate }}</td>
-          <td>{{ vehicle.vehicle_type }}</td>
-          <td>{{ vehicle.technician }}</td>
+          <td>{{ vehicle[1] }}</td>  {# License Plate #}
+          <td>{{ vehicle[2] }}</td>  {# Vehicle Type #}
+          <td>{{ vehicle[3] }}</td>  {# Technician Name from COALESCE #}
           <td>
             <a href="/vehicles/{{ vehicle.vehicle_id }}" class="btn btn-outline-primary btn-sm">View Profile</a>
           </td>
