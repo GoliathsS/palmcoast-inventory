@@ -210,6 +210,16 @@ def scan_action():
     conn.close()
     return jsonify({'status': status})
 
+@app.route('/assign-technician/<int:vehicle_id>', methods=['POST'])
+def assign_technician(vehicle_id):
+    tech_id = request.form['technician_id']
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("UPDATE technicians SET vehicle_id = %s WHERE id = %s", (vehicle_id, tech_id))
+    conn.commit()
+    conn.close()
+    return redirect(url_for('vehicle_profile', vehicle_id=vehicle_id))
+
 @app.route('/vehicle-inspection/<int:vehicle_id>', methods=['GET', 'POST'])
 def vehicle_inspection(vehicle_id):
     conn = get_db_connection()
@@ -326,6 +336,37 @@ def inspections_list():
     conn.close()
 
     return render_template('vehicle_inspections_list.html', inspections=inspections)
+
+@app.route('/vehicles')
+def vehicles_list():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT v.vehicle_id, v.license_plate, v.vehicle_type,
+               COALESCE(t.name, 'Unassigned') as technician
+        FROM vehicles v
+        LEFT JOIN technicians t ON v.vehicle_id = t.vehicle_id
+        ORDER BY v.license_plate
+    """)
+    vehicles = cur.fetchall()
+    conn.close()
+    return render_template('vehicles_list.html', vehicles=vehicles)
+
+@app.route('/vehicles/new', methods=['GET', 'POST'])
+def create_vehicle():
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    if request.method == 'POST':
+        plate = request.form['license_plate']
+        vehicle_type = request.form['vehicle_type']
+        cur.execute("INSERT INTO vehicles (license_plate, vehicle_type) VALUES (%s, %s)",
+                    (plate, vehicle_type))
+        conn.commit()
+        conn.close()
+        return redirect(url_for('vehicles_list'))
+
+    return render_template('create_vehicle.html')
 
 @app.route('/sds')
 def sds_portal():
