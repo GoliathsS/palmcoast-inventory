@@ -48,9 +48,8 @@ def index():
         cur.execute("SELECT * FROM products WHERE category = %s ORDER BY id", (category_filter,))
     products = cur.fetchall()
 
-    cur.execute("SELECT id, name, category, stock, threshold FROM products")
+    cur.execute("SELECT id, name, category, stock, min_stock FROM products")
     products = cur.fetchall()
-    products = [tuple(p.values()) for p in products]  # <-- this line fixes your error
 
     cur.execute("SELECT COUNT(*) FROM products WHERE category = 'Lawn'")
     lawn_count = cur.fetchone()[0]
