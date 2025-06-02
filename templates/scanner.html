@@ -137,10 +137,10 @@
       <option value="out">Scan Out</option>
     </select>
 
-    <select id="technician">
+    <select id="technician" name="technician">
       <option value="">-- Select Technician --</option>
       {% for tech in technicians %}
-        <option value="{{ tech }}">{{ tech }}</option>
+        <option value="{{ tech.id }}">{{ tech.name }}</option>
       {% endfor %}
     </select>
 
