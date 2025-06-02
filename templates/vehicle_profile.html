@@ -70,11 +70,13 @@
           <tr>
             <th>Product</th>
             <th>Quantity</th>
+            <th>Last Scanned</th>
           </tr>
           {% for item in inventory %}
           <tr>
             <td>{{ item.name }}</td>
             <td>{{ item.quantity }}</td>
+            <td>{{ item.last_scanned.strftime('%Y-%m-%d') if item.last_scanned else '—' }}</td>
           </tr>
           {% endfor %}
         </table>
