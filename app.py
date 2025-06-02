@@ -281,10 +281,11 @@ def vehicle_inspection(vehicle_id):
         return redirect(url_for('vehicle_profile', vehicle_id=vehicle_id))
 
     # GET: show form
-    cur.execute("SELECT id, name FROM technicians WHERE vehicle_id = %s", (vehicle_id,))
     tech = cur.fetchone()
+    tech_name = tech['name'] if tech else None
     conn.close()
-    return render_template('vehicle_inspection.html', vehicle_id=vehicle_id, technician=tech)
+
+    return render_template('vehicle_inspection.html', vehicle_id=vehicle_id, technician=tech_name)
 
 @app.route('/vehicles/<int:vehicle_id>')
 def vehicle_profile(vehicle_id):
