@@ -175,8 +175,14 @@ def scan_action():
             units_remaining -= 1
 
             # 🔧 Vehicle inventory sync
-            cur.execute("SELECT vehicle_id FROM technicians WHERE name = %s", (technician,))
+            cur.execute("""
+                SELECT v.vehicle_id
+                FROM vehicles v
+                JOIN technicians t ON v.technician_id = t.id
+                WHERE t.name = %s
+            """, (technician,))
             vehicle_result = cur.fetchone()
+            
             if vehicle_result:
                 vehicle_id = vehicle_result[0]
                 cur.execute("""
