@@ -25,9 +25,10 @@ def get_all_technicians():
     conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
     cur = conn.cursor()
     cur.execute("SELECT id, name FROM technicians ORDER BY name ASC")
-    results = cur.fetchall()  # returns list of dicts: [{id: ..., name: ...}]
+    rows = cur.fetchall()
     cur.close()
     conn.close()
-    return results
+    return [{'id': row['id'], 'name': row['name']} for row in rows]
+
 
 
