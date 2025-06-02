@@ -377,14 +377,11 @@ def create_vehicle():
         vehicle_type = request.form['vehicle_type']
         technician_id = request.form.get('technician_id')
 
-        # Insert vehicle
-        cur.execute("INSERT INTO vehicles (license_plate, vehicle_type) VALUES (%s, %s) RETURNING vehicle_id",
-                    (plate, vehicle_type))
-        vehicle_id = cur.fetchone()[0]
-
-        # Optionally assign technician
-        if technician_id:
-            cur.execute("UPDATE technicians SET vehicle_id = %s WHERE id = %s", (vehicle_id, technician_id))
+        # New: insert vehicle WITH technician_id
+        cur.execute("""
+            INSERT INTO vehicles (license_plate, vehicle_type, technician_id)
+            VALUES (%s, %s, %s)
+        """, (plate, vehicle_type, technician_id or None))
 
         conn.commit()
         conn.close()
