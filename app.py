@@ -310,7 +310,7 @@ def vehicle_profile(vehicle_id):
 
     # Truck inventory
     cur.execute("""
-        SELECT p.name, vi.quantity
+        SELECT p.name, vi.quantity, vi.last_scanned
         FROM vehicle_inventory vi
         JOIN products p ON vi.product_id = p.id
         WHERE vi.vehicle_id = %s
