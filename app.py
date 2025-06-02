@@ -606,7 +606,10 @@ def history():
         FROM scan_logs s
         JOIN products p ON s.product_id = p.id
         LEFT JOIN technicians t 
-          ON s.technician ~ '^\d+$' AND CAST(s.technician AS INTEGER) = t.id
+          ON CASE 
+               WHEN s.technician ~ '^\d+$' THEN CAST(s.technician AS INTEGER) = t.id
+               ELSE FALSE
+             END
         WHERE 1=1
     """
     params = []
@@ -634,7 +637,10 @@ def history():
         FROM scan_logs s
         JOIN products p ON s.product_id = p.id
         LEFT JOIN technicians t 
-          ON s.technician ~ '^\d+$' AND CAST(s.technician AS INTEGER) = t.id
+          ON CASE 
+               WHEN s.technician ~ '^\d+$' THEN CAST(s.technician AS INTEGER) = t.id
+               ELSE FALSE
+             END
         WHERE s.action = 'out'
     """
     summary_params = []
