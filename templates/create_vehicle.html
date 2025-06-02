@@ -67,7 +67,7 @@
         <select name="technician_id" class="form-select">
           <option value="">-- None --</option>
           {% for tech in technicians %}
-            <option value="{{ tech[0] }}">{{ tech[1] }}</option>
+            <option value="{{ tech['id'] }}">{{ tech['name'] }}</option>
           {% endfor %}
         </select>
       </div>
