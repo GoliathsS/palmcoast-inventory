@@ -605,7 +605,7 @@ def history():
             s.unit_cost
         FROM scan_logs s
         JOIN products p ON s.product_id = p.id
-        LEFT JOIN technicians t ON s.technician::int = t.id
+        LEFT JOIN technicians t ON s.technician ~ '^\d+$' AND s.technician::int = t.id
         WHERE 1=1
     """
     params = []
@@ -632,7 +632,7 @@ def history():
             SUM(s.unit_cost)
         FROM scan_logs s
         JOIN products p ON s.product_id = p.id
-        LEFT JOIN technicians t ON s.technician::int = t.id
+        LEFT JOIN technicians t ON s.technician ~ '^\d+$' AND s.technician::int = t.id
         WHERE s.action = 'out'
     """
     summary_params = []
