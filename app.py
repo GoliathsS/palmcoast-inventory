@@ -394,6 +394,24 @@ def create_vehicle():
     technicians = get_all_technicians()
     return render_template('create_vehicle.html', technicians=technicians)
 
+@app.route('/delete-vehicle/<int:vehicle_id>', methods=['POST'])
+def delete_vehicle(vehicle_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # Unassign any tech
+    cur.execute("UPDATE technicians SET vehicle_id = NULL WHERE vehicle_id = %s", (vehicle_id,))
+
+    # Clear inventory links
+    cur.execute("DELETE FROM vehicle_inventory WHERE vehicle_id = %s", (vehicle_id,))
+
+    # Delete the vehicle
+    cur.execute("DELETE FROM vehicles WHERE vehicle_id = %s", (vehicle_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return redirect(url_for('vehicles_list'))
+
 @app.route('/sds')
 def sds_portal():
     filter_type = request.args.get('filter', '')
