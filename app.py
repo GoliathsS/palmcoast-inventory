@@ -190,7 +190,8 @@ def scan_action():
                     VALUES (%s, %s, %s)
                     ON CONFLICT (vehicle_id, product_id)
                     DO UPDATE SET quantity = vehicle_inventory.quantity + EXCLUDED.quantity,
-                                  last_updated = NOW();
+                                  last_updated = NOW(),
+                                  last_scanned = NOW();
                 """, (vehicle_id, product_id, 1))
         else:
             units_remaining += units_per_item
