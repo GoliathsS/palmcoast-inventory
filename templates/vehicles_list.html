@@ -4,6 +4,35 @@
   <meta charset="UTF-8">
   <title>Vehicle Profiles | Palm Coast Inventory</title>
   <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .btn-sm {
+      padding: 4px 10px;
+      font-size: 0.85rem;
+      border-radius: 6px;
+    }
+    .btn-outline-primary {
+      color: #0d6efd;
+      border: 1px solid #0d6efd;
+      background-color: transparent;
+    }
+    .btn-outline-primary:hover {
+      background-color: #0d6efd;
+      color: #fff;
+    }
+    .btn-outline-danger {
+      color: #dc3545;
+      border: 1px solid #dc3545;
+      background-color: transparent;
+    }
+    .btn-outline-danger:hover {
+      background-color: #dc3545;
+      color: #fff;
+    }
+    .d-flex.gap-2 {
+      display: flex;
+      gap: 0.5rem;
+    }
+  </style>
 </head>
 <body>
   <div class="container py-4">
@@ -19,7 +48,7 @@
           <th>License Plate</th>
           <th>Type</th>
           <th>Technician</th>
-          <th>Profile</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -27,9 +56,12 @@
         <tr>
           <td>{{ vehicle[1] }}</td>  {# License Plate #}
           <td>{{ vehicle[2] }}</td>  {# Vehicle Type #}
-          <td>{{ vehicle[3] }}</td>  {# Technician Name from COALESCE #}
-          <td>
+          <td>{{ vehicle[3] }}</td>  {# Technician #}
+          <td class="d-flex gap-2">
             <a href="/vehicles/{{ vehicle[0] }}" class="btn btn-outline-primary btn-sm">View Profile</a>
+            <form action="/delete-vehicle/{{ vehicle[0] }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this vehicle?')" style="display:inline;">
+              <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
+            </form>
           </td>
         </tr>
         {% endfor %}
@@ -40,3 +72,4 @@
   </div>
 </body>
 </html>
+
