@@ -292,17 +292,16 @@ def vehicle_profile(vehicle_id):
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # ✅ Correct join using technician_id stored in the vehicle
+    # ✅ Fix the JOIN to match technician_id in vehicles table
     cur.execute("""
         SELECT v.vehicle_id, v.license_plate, v.vehicle_type, t.name AS technician
         FROM vehicles v
-        LEFT JOIN technicians t ON t.vehicle_id = v.vehicle_id
+        LEFT JOIN technicians t ON v.technician_id = t.id
         WHERE v.vehicle_id = %s
     """, (vehicle_id,))
-
     vehicle = cur.fetchone()
 
-    # Get current truck inventory
+    # Truck inventory
     cur.execute("""
         SELECT p.name, vi.quantity
         FROM vehicle_inventory vi
@@ -312,7 +311,7 @@ def vehicle_profile(vehicle_id):
     """, (vehicle_id,))
     inventory = cur.fetchall()
 
-    # Get inspection history
+    # Inspection history
     cur.execute("""
         SELECT date, mileage, cleanliness, wrap_condition,
                photo_front, photo_back, photo_side_left, photo_side_right,
