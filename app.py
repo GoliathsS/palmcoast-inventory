@@ -550,9 +550,11 @@ def corrections():
 
     # Build query
     base_query = """
-        SELECT s.id, s.timestamp, p.name, s.action, s.technician, s.unit_cost
+        SELECT s.id, s.timestamp, p.name AS product_name, s.action, s.technician, s.unit_cost,
+               COALESCE(t.name, s.technician) AS technician_name
         FROM scan_logs s
         JOIN products p ON s.product_id = p.id
+        LEFT JOIN technicians t ON CAST(s.technician AS TEXT) = CAST(t.id AS TEXT)
         WHERE s.timestamp BETWEEN %s AND %s
     """
     params = [start, end + " 23:59:59"]
