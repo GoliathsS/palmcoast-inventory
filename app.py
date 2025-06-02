@@ -590,11 +590,12 @@ def history():
     cur.execute("SELECT DISTINCT TO_CHAR(timestamp::date, 'YYYY-MM') FROM scan_logs ORDER BY 1 DESC")
     months = [row[0] for row in cur.fetchall()]
 
-    # Technician list
-    cur.execute("SELECT DISTINCT technician FROM scan_logs WHERE technician IS NOT NULL AND technician != '' ORDER BY technician")
-    technicians = [row[0] for row in cur.fetchall()]
+    # Technician list as (id, name)
+    cur.execute("SELECT id, name FROM technicians ORDER BY name")
+    tech_rows = cur.fetchall()
+    technicians = [row[1] for row in tech_rows]  # Just names for dropdown
 
-    # Logs with unit_cost from scan_logs
+    # Main log query
     base_query = """
         SELECT 
             p.name AS product_name,
@@ -607,26 +608,31 @@ def history():
         LEFT JOIN technicians t ON s.technician::int = t.id
         WHERE 1=1
     """
-
     params = []
 
     if selected_month:
         base_query += " AND TO_CHAR(s.timestamp::date, 'YYYY-MM') = %s"
         params.append(selected_month)
 
-    if selected_tech:
-        base_query += " AND s.technician = %s"
+    if selected_tech and selected_tech.strip() != "":
+        base_query += " AND COALESCE(t.name, s.technician) = %s"
         params.append(selected_tech)
 
     base_query += " ORDER BY s.timestamp DESC"
     cur.execute(base_query, tuple(params))
     logs = cur.fetchall()
 
-    # Summary by technician + product
+    # Summary query (use technician name here too)
     summary_query = """
-        SELECT s.technician, p.name, COUNT(*) AS quantity, MAX(s.unit_cost), SUM(s.unit_cost)
+        SELECT 
+            COALESCE(t.name, s.technician) AS technician_name,
+            p.name,
+            COUNT(*) AS quantity,
+            MAX(s.unit_cost),
+            SUM(s.unit_cost)
         FROM scan_logs s
         JOIN products p ON s.product_id = p.id
+        LEFT JOIN technicians t ON s.technician::int = t.id
         WHERE s.action = 'out'
     """
     summary_params = []
@@ -635,11 +641,11 @@ def history():
         summary_query += " AND TO_CHAR(s.timestamp::date, 'YYYY-MM') = %s"
         summary_params.append(selected_month)
 
-    if selected_tech:
-        summary_query += " AND s.technician = %s"
+    if selected_tech and selected_tech.strip() != "":
+        summary_query += " AND COALESCE(t.name, s.technician) = %s"
         summary_params.append(selected_tech)
 
-    summary_query += " GROUP BY s.technician, p.name ORDER BY s.technician, p.name"
+    summary_query += " GROUP BY technician_name, p.name ORDER BY technician_name, p.name"
     cur.execute(summary_query, tuple(summary_params))
     summary = cur.fetchall()
 
