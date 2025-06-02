@@ -606,7 +606,7 @@ def history():
         FROM scan_logs s
         JOIN products p ON s.product_id = p.id
         LEFT JOIN technicians t 
-          ON s.technician ~ '^\d+$' AND s.technician::int = t.id
+          ON s.technician ~ '^\d+$' AND CAST(s.technician AS INTEGER) = t.id
         WHERE 1=1
     """
     params = []
@@ -615,9 +615,9 @@ def history():
         base_query += " AND TO_CHAR(s.timestamp::date, 'YYYY-MM') = %s"
         params.append(selected_month)
 
-    if selected_tech:
+    if selected_tech is not None and selected_tech.strip() != "":
         base_query += " AND COALESCE(t.name, s.technician) = %s"
-        params.append(selected_tech)
+        params.append(selected_tech.strip())
 
     base_query += " ORDER BY s.timestamp DESC"
     cur.execute(base_query, tuple(params))
@@ -634,7 +634,7 @@ def history():
         FROM scan_logs s
         JOIN products p ON s.product_id = p.id
         LEFT JOIN technicians t 
-          ON s.technician ~ '^\d+$' AND s.technician::int = t.id
+          ON s.technician ~ '^\d+$' AND CAST(s.technician AS INTEGER) = t.id
         WHERE s.action = 'out'
     """
     summary_params = []
@@ -643,9 +643,9 @@ def history():
         summary_query += " AND TO_CHAR(s.timestamp::date, 'YYYY-MM') = %s"
         summary_params.append(selected_month)
 
-    if selected_tech:
+    if selected_tech is not None and selected_tech.strip() != "":
         base_query += " AND COALESCE(t.name, s.technician) = %s"
-        params.append(selected_tech)
+        params.append(selected_tech.strip())
 
     summary_query += " GROUP BY technician_name, p.name ORDER BY technician_name, p.name"
     cur.execute(summary_query, tuple(summary_params))
