@@ -58,9 +58,9 @@
 
     <div class="profile-box">
       <div class="profile-header">🚛 Vehicle Profile</div>
-      <p><strong>License Plate:</strong> {{ vehicle.license_plate }}</p>
-      <p><strong>Vehicle Type:</strong> {{ vehicle.vehicle_type }}</p>
-      <p><strong>Assigned Technician:</strong> {{ vehicle.technician or 'Unassigned' }}</p>
+      <p><strong>License Plate:</strong> {{ vehicle[1] }}</p>
+      <p><strong>Vehicle Type:</strong> {{ vehicle[2] }}</p>
+      <p><strong>Assigned Technician:</strong> {{ vehicle[3] or 'Unassigned' }}</p>
     </div>
 
     <div class="profile-box">
