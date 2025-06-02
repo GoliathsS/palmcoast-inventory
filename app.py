@@ -615,8 +615,8 @@ def history():
         base_query += " AND TO_CHAR(s.timestamp::date, 'YYYY-MM') = %s"
         params.append(selected_month)
 
-    if selected_tech and selected_tech.strip().isdigit():
-        base_query += " AND s.technician = %s"
+    if selected_tech:
+        base_query += " AND COALESCE(t.name, s.technician) = %s"
         params.append(selected_tech)
 
     base_query += " ORDER BY s.timestamp DESC"
@@ -643,9 +643,9 @@ def history():
         summary_query += " AND TO_CHAR(s.timestamp::date, 'YYYY-MM') = %s"
         summary_params.append(selected_month)
 
-    if selected_tech and selected_tech.strip().isdigit():
-        summary_query += " AND s.technician = %s"
-        summary_params.append(selected_tech)
+    if selected_tech:
+        base_query += " AND COALESCE(t.name, s.technician) = %s"
+        params.append(selected_tech)
 
     summary_query += " GROUP BY technician_name, p.name ORDER BY technician_name, p.name"
     cur.execute(summary_query, tuple(summary_params))
