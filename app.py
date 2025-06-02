@@ -296,9 +296,10 @@ def vehicle_profile(vehicle_id):
     cur.execute("""
         SELECT v.vehicle_id, v.license_plate, v.vehicle_type, t.name AS technician
         FROM vehicles v
-        LEFT JOIN technicians t ON v.vehicle_id = t.vehicle_id
+        LEFT JOIN technicians t ON t.vehicle_id = v.vehicle_id
         WHERE v.vehicle_id = %s
     """, (vehicle_id,))
+
     vehicle = cur.fetchone()
 
     # Get current truck inventory
