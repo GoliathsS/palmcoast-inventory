@@ -113,7 +113,8 @@
               <option value="out" {% if log[3] == 'out' %}selected{% endif %}>Out</option>
             </select>
           </td>
-          <td><input type="text" name="technician" value="{{ log[4] or '' }}"></td>
+          <td><input type="hidden" name="technician" value="{{ log[4] or '' }}"> 
+              <input type="text" value="{{ log[6] or 'Unassigned' }}" readonly></td>
           <td>
             {% if log[3] == 'in' %}
               <span title="Box Cost">📦 ${{ "%.2f"|format(log[5]) }}</span>
