@@ -596,11 +596,18 @@ def history():
 
     # Logs with unit_cost from scan_logs
     base_query = """
-        SELECT p.name, s.action, s.timestamp, s.technician, s.unit_cost
+        SELECT 
+            p.name AS product_name,
+            s.action,
+            s.timestamp,
+            COALESCE(t.name, s.technician) AS technician_name,
+            s.unit_cost
         FROM scan_logs s
         JOIN products p ON s.product_id = p.id
+        LEFT JOIN technicians t ON s.technician::int = t.id
         WHERE 1=1
     """
+
     params = []
 
     if selected_month:
