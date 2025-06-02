@@ -359,7 +359,7 @@ def vehicles_list():
         SELECT v.vehicle_id, v.license_plate, v.vehicle_type,
                COALESCE(t.name, 'Unassigned') as technician
         FROM vehicles v
-        LEFT JOIN technicians t ON v.vehicle_id = t.vehicle_id
+        LEFT JOIN technicians t ON v.technician_id = t.id
         ORDER BY v.license_plate
     """)
     vehicles = cur.fetchall()
