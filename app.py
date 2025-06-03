@@ -297,8 +297,14 @@ def vehicle_inspection(vehicle_id):
         return redirect(url_for('vehicle_profile', vehicle_id=vehicle_id))
 
     # GET: show form
+    cur.execute("""
+        SELECT t.name
+        FROM technicians t
+        JOIN vehicles v ON t.id = v.technician_id
+        WHERE v.vehicle_id = %s
+    """, (vehicle_id,))
     tech = cur.fetchone()
-    tech_name = tech['name'] if tech else None
+    tech_name = tech[0] if tech else None
     conn.close()
 
     return render_template('vehicle_inspection.html', vehicle_id=vehicle_id, technician=tech_name)
