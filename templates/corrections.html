@@ -83,7 +83,7 @@
     <select name="technician">
       <option value="">All Technicians</option>
       {% for tech in technicians %}
-        <option value="{{ tech }}" {% if request.args.get('technician') == tech %}selected{% endif %}>{{ tech }}</option>
+        <option value="{{ tech[0] }}" {% if request.args.get('technician') == tech[0]|string %}selected{% endif %}>{{ tech[1] }}</option>
       {% endfor %}
     </select>
     <button type="submit">🔍 Filter</button>
