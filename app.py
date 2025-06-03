@@ -329,9 +329,8 @@ def vehicle_inspection(vehicle_id):
 @app.route('/vehicles/<int:vehicle_id>')
 def vehicle_profile(vehicle_id):
     conn = get_db_connection()
-    cur = conn.cursor()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
-    # ✅ Fix the JOIN to match technician_id in vehicles table
     cur.execute("""
         SELECT v.vehicle_id, v.license_plate, v.vehicle_type, t.name AS technician
         FROM vehicles v
@@ -340,7 +339,6 @@ def vehicle_profile(vehicle_id):
     """, (vehicle_id,))
     vehicle = cur.fetchone()
 
-    # Truck inventory
     cur.execute("""
         SELECT p.name, vi.quantity, vi.last_scanned
         FROM vehicle_inventory vi
@@ -350,7 +348,6 @@ def vehicle_profile(vehicle_id):
     """, (vehicle_id,))
     inventory = cur.fetchall()
 
-    # Inspection history
     cur.execute("""
         SELECT date, mileage, cleanliness, wrap_condition,
                photo_front, photo_back, photo_side_left, photo_side_right,
