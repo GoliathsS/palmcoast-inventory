@@ -179,8 +179,9 @@ def scan_action():
                 SELECT v.vehicle_id
                 FROM vehicles v
                 JOIN technicians t ON v.technician_id = t.id
-                WHERE t.name = %s
+                WHERE LOWER(TRIM(t.name)) = LOWER(TRIM(%s))
             """, (technician,))
+
             vehicle_result = cur.fetchone()
             
             if vehicle_result:
