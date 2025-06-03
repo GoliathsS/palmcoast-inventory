@@ -148,102 +148,110 @@ def delete_product(product_id):
     conn.close()
     return redirect(url_for('index'))
 
-@app.route('/scan-action', methods=['POST']) 
+@app.route('/scan-action', methods=['POST'])
 def scan_action():
-    barcode = request.json['barcode']
-    direction = request.json['direction'].strip().lower()
-    technician = request.json.get('technician', '').strip()
+    from datetime import datetime
 
-    conn = get_db_connection()
-    cur = conn.cursor()
+    try:
+        barcode = request.json['barcode']
+        direction_raw = request.json['direction']
+        technician_raw = request.json.get('technician', '').strip()
 
-    # Fetch product info
-    cur.execute("""
-        SELECT id, stock, units_per_item, units_remaining, unit_cost 
-        FROM products 
-        WHERE barcode = %s
-    """, (barcode,))
-    result = cur.fetchone()
+        direction = direction_raw.strip().lower()
+        print(f"\n🔍 Incoming scan request:")
+        print(f"  Barcode: {barcode}")
+        print(f"  Direction (raw): {direction_raw}")
+        print(f"  Technician (raw): {technician_raw}")
+        print(f"  Direction (normalized): {direction}")
 
-    if not result:
-        cur.close()
-        conn.close()
-        return jsonify({'status': 'not_found'})
+        conn = get_db_connection()
+        cur = conn.cursor()
 
-    product_id, stock, units_per_item, units_remaining, unit_cost = result
-    product_id = int(product_id)
-    units_per_item = units_per_item or 1
-    units_remaining = units_remaining or (stock * units_per_item)
-    unit_cost = unit_cost or 0.0
-
-    if direction == 'out':
-        if units_remaining <= 0:
-            cur.close()
-            conn.close()
-            return jsonify({'status': 'not_enough_units'})
-        units_remaining -= 1
-
-        # Vehicle lookup by technician name (case insensitive)
+        # Step 1: Fetch product info
         cur.execute("""
-            SELECT v.vehicle_id
-            FROM vehicles v
-            JOIN technicians t ON v.technician_id = t.id
-            WHERE LOWER(TRIM(t.name)) = LOWER(TRIM(%s))
-        """, (technician,))
-        vehicle_result = cur.fetchone()
+            SELECT id, stock, units_per_item, units_remaining, unit_cost 
+            FROM products 
+            WHERE barcode = %s
+        """, (barcode,))
+        result = cur.fetchone()
 
-        if vehicle_result:
-            vehicle_id = int(vehicle_result[0])
+        if not result:
+            print("❌ No product found with that barcode.")
+            return jsonify({'status': 'not_found'})
 
-            # DEBUG: print("Inserting vehicle inventory", vehicle_id, product_id)
+        product_id, stock, units_per_item, units_remaining, unit_cost = result
+        units_per_item = units_per_item or 1
+        units_remaining = units_remaining or (stock * units_per_item)
+        unit_cost = unit_cost or 0.0
 
-            # Check if this product already exists in vehicle_inventory
+        print(f"✅ Found product ID {product_id}, stock={stock}, units_remaining={units_remaining}")
+
+        if direction == 'out':
+            if units_remaining <= 0:
+                print("⚠️ Not enough units to scan out.")
+                return jsonify({'status': 'not_enough_units'})
+            units_remaining -= 1
+
+            # Lookup vehicle from technician
             cur.execute("""
-                SELECT quantity FROM vehicle_inventory
-                WHERE vehicle_id = %s AND product_id = %s
-            """, (vehicle_id, product_id))
-            exists = cur.fetchone()
+                SELECT v.vehicle_id
+                FROM vehicles v
+                JOIN technicians t ON v.technician_id = t.id
+                WHERE LOWER(TRIM(t.name)) = LOWER(TRIM(%s))
+            """, (technician_raw,))
+            vehicle_result = cur.fetchone()
 
-            if exists:
-                cur.execute("""
-                    UPDATE vehicle_inventory
-                    SET quantity = quantity + 1,
-                        last_updated = NOW(),
-                        last_scanned = NOW()
-                    WHERE vehicle_id = %s AND product_id = %s
-                """, (vehicle_id, product_id))
-            else:
+            if vehicle_result:
+                vehicle_id = vehicle_result[0]
+                print(f"✅ Matched technician '{technician_raw}' to vehicle_id {vehicle_id}")
+
+                # Insert or update vehicle inventory
                 cur.execute("""
                     INSERT INTO vehicle_inventory (vehicle_id, product_id, quantity, last_updated, last_scanned)
-                    VALUES (%s, %s, 1, NOW(), NOW())
-                """, (vehicle_id, product_id))
+                    VALUES (%s, %s, %s, NOW(), NOW())
+                    ON CONFLICT (vehicle_id, product_id)
+                    DO UPDATE SET 
+                        quantity = COALESCE(vehicle_inventory.quantity, 0) + EXCLUDED.quantity,
+                        last_updated = NOW(),
+                        last_scanned = NOW();
+                """, (vehicle_id, product_id, 1))
+                print(f"✅ Inventory updated: +1 to vehicle {vehicle_id} for product {product_id}")
+            else:
+                print(f"❌ No vehicle found for technician: {technician_raw}")
+                return jsonify({'status': 'no_vehicle'})
+        else:
+            # INBOUND SCAN (restocking)
+            units_remaining += units_per_item
+            stock += 1
+            print(f"🔄 Scanned IN: New stock = {stock}, units_remaining = {units_remaining}")
 
-    else:
-        # Direction is 'in'
-        units_remaining += units_per_item
-        stock += 1
+        # Update product table
+        new_stock = units_remaining // units_per_item
+        cur.execute(
+            "UPDATE products SET stock=%s, units_remaining=%s WHERE id=%s",
+            (new_stock, units_remaining, product_id)
+        )
+        print(f"📦 Product stock updated in DB: stock={new_stock}, units_remaining={units_remaining}")
 
-    # Update product inventory
-    new_stock = units_remaining // units_per_item
-    cur.execute("""
-        UPDATE products
-        SET stock = %s, units_remaining = %s
-        WHERE id = %s
-    """, (new_stock, units_remaining, product_id))
+        # Insert scan log
+        timestamp = datetime.now().isoformat()
+        logged_cost = unit_cost if direction == 'out' else round(unit_cost * units_per_item, 2)
 
-    # Log the scan
-    timestamp = datetime.now().isoformat()
-    logged_cost = unit_cost if direction == 'out' else round(unit_cost * units_per_item, 2)
+        cur.execute("""
+            INSERT INTO scan_logs (product_id, action, timestamp, technician, unit_cost)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (product_id, direction, timestamp, technician_raw, logged_cost))
+        print(f"📝 Scan logged: {direction.upper()} - Technician: {technician_raw} - Product: {product_id}")
 
-    cur.execute("""
-        INSERT INTO scan_logs (product_id, action, timestamp, technician, unit_cost)
-        VALUES (%s, %s, %s, %s, %s)
-    """, (product_id, direction, timestamp, technician, logged_cost))
+        conn.commit()
+        cur.close()
+        conn.close()
+        print("✅ Scan processed successfully. Returning status: success\n")
+        return jsonify({'status': 'success'})
 
-    conn.commit()
-    cur.close()
-    conn.close()
-    return jsonify({'status': 'success'})
+    except Exception as e:
+        print(f"🔥 ERROR in scan_action: {e}")
+        return jsonify({'status': 'error', 'message': str(e)})
 
 @app.route('/assign-technician/<int:vehicle_id>', methods=['POST'])
 def assign_technician(vehicle_id):
