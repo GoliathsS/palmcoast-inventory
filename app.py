@@ -193,13 +193,14 @@ def scan_action():
                 # ✅ INSERT or UPDATE inventory
                 cur.execute("""
                     INSERT INTO vehicle_inventory (vehicle_id, product_id, quantity, last_updated, last_scanned)
-                    VALUES (%s, %s, 1, NOW(), NOW())
+                    VALUES (%s, %s, %s, NOW(), NOW())
                     ON CONFLICT (vehicle_id, product_id)
                     DO UPDATE SET 
-                        quantity = vehicle_inventory.quantity + 1,
+                        quantity = vehicle_inventory.quantity + EXCLUDED.quantity,
                         last_updated = NOW(),
                         last_scanned = NOW();
-                """, (vehicle_id, product_id))
+                """, (vehicle_id, product_id, 1))
+
         else:
             units_remaining += units_per_item
             stock += 1
