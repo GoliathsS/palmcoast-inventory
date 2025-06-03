@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Inspection Details | Palm Coast</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f1f4f9;
+      padding: 0;
+      margin: 0;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    h2 {
+      text-align: center;
+      color: #0A4D68;
+      margin-bottom: 20px;
+    }
+
+    .details p {
+      margin: 8px 0;
+      font-size: 1rem;
+    }
+
+    .details p strong {
+      display: inline-block;
+      width: 140px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .photo-gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 15px;
+      margin-top: 25px;
+    }
+
+    .photo-box {
+      text-align: center;
+    }
+
+    .photo-box img {
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    .photo-box span {
+      display: block;
+      font-size: 0.85rem;
+      margin-top: 6px;
+      color: #555;
+    }
+
+    .actions {
+      margin-top: 30px;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .btn {
+      background: #007aff;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 10px;
+      text-decoration: none;
+      font-weight: bold;
+      font-size: 1rem;
+      text-align: center;
+      flex: 1;
+    }
+
+    .btn.print {
+      background: #6c757d;
+    }
+
+    .btn:hover {
+      opacity: 0.9;
+    }
+
+    @media (max-width: 480px) {
+      .details p strong {
+        width: 100%;
+        margin-bottom: 4px;
+      }
+      .details p {
+        font-size: 0.95rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>🧾 Inspection Details</h2>
+
+    <div class="details">
+      <p><strong>Date:</strong> {{ inspection.date.strftime('%Y-%m-%d') }}</p>
+      <p><strong>Mileage:</strong> {{ inspection.mileage }} miles</p>
+      <p><strong>Cleanliness:</strong> {{ inspection.cleanliness }}</p>
+      <p><strong>Wrap Condition:</strong> {{ inspection.wrap_condition }}</p>
+      <p><strong>Technician ID:</strong> {{ inspection.technician_id }}</p>
+      <p><strong>Vehicle ID:</strong> {{ inspection.vehicle_id }}</p>
+      <p><strong>Comments:</strong> {{ inspection.comments or '—' }}</p>
+    </div>
+
+    <div class="photo-gallery">
+      {% for label, photo in [
+        ('Front', inspection.photo_front),
+        ('Back', inspection.photo_back),
+        ('Left Side', inspection.photo_side_left),
+        ('Right Side', inspection.photo_side_right),
+        ('Front Left Tire', inspection.photo_tire_front_left),
+        ('Front Right Tire', inspection.photo_tire_front_right),
+        ('Rear Left Tire', inspection.photo_tire_rear_left),
+        ('Rear Right Tire', inspection.photo_tire_rear_right)
+      ] %}
+        {% if photo %}
+        <div class="photo-box">
+          <img src="/{{ photo }}" alt="{{ label }}">
+          <span>{{ label }}</span>
+        </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+
+    <div class="actions">
+      <a href="/inspections" class="btn">← Back to Inspections</a>
+      <a href="#" class="btn print" onclick="window.print()">🖨️ Print</a>
+    </div>
+  </div>
+</body>
+</html>
