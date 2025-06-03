@@ -181,8 +181,9 @@ def scan_action():
                 JOIN technicians t ON v.technician_id = t.id
                 WHERE LOWER(TRIM(t.name)) = LOWER(TRIM(%s))
             """, (technician,))
-
             vehicle_result = cur.fetchone()
+            print("TECH NAME:", technician)
+            print("VEHICLE RESULT:", vehicle_result)
             
             if vehicle_result:
                 vehicle_id = vehicle_result[0]
