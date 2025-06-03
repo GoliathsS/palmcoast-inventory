@@ -174,42 +174,41 @@ def scan_action():
                 return jsonify({'status': 'not_enough_units'})
             units_remaining -= 1
 
-            # ✅ Resolve technician ID first
-            cur.execute("SELECT id FROM technicians WHERE LOWER(TRIM(name)) = LOWER(TRIM(%s))", (technician,))
-            tech_result = cur.fetchone()
+            # ✅ Match by technician name to get their vehicle
+            cur.execute("""
+                SELECT v.vehicle_id
+                FROM vehicles v
+                JOIN technicians t ON v.technician_id = t.id
+                WHERE LOWER(TRIM(t.name)) = LOWER(TRIM(%s))
+            """, (technician,))
+            vehicle_result = cur.fetchone()
 
-            if tech_result:
-                tech_id = tech_result[0]
+            if vehicle_result:
+                vehicle_id = vehicle_result[0]
 
-                # ✅ Now get vehicle assigned to technician
-                cur.execute("SELECT vehicle_id FROM vehicles WHERE technician_id = %s", (tech_id,))
-                vehicle_result = cur.fetchone()
-
-                if vehicle_result:
-                    vehicle_id = vehicle_result[0]
-
-                    # ✅ Insert/update vehicle inventory
-                    cur.execute("""
-                        INSERT INTO vehicle_inventory (vehicle_id, product_id, quantity)
-                        VALUES (%s, %s, %s)
-                        ON CONFLICT (vehicle_id, product_id)
-                        DO UPDATE SET quantity = vehicle_inventory.quantity + EXCLUDED.quantity,
-                                      last_updated = NOW(),
-                                      last_scanned = NOW();
-                    """, (vehicle_id, product_id, 1))
+                # ✅ Add or update inventory for vehicle
+                cur.execute("""
+                    INSERT INTO vehicle_inventory (vehicle_id, product_id, quantity, last_scanned, last_updated)
+                    VALUES (%s, %s, 1, NOW(), NOW())
+                    ON CONFLICT (vehicle_id, product_id)
+                    DO UPDATE SET 
+                        quantity = vehicle_inventory.quantity + 1,
+                        last_scanned = NOW(),
+                        last_updated = NOW();
+                """, (vehicle_id, product_id))
         else:
             units_remaining += units_per_item
             stock += 1
 
         new_stock = units_remaining // units_per_item
 
-        # Update product stock
+        # Update main stock
         cur.execute(
             "UPDATE products SET stock=%s, units_remaining=%s WHERE id=%s",
             (new_stock, units_remaining, product_id)
         )
 
-        # Log scan event
+        # Log scan
         timestamp = datetime.now().isoformat()
         logged_cost = unit_cost if direction == 'out' else round(unit_cost * units_per_item, 2)
 
