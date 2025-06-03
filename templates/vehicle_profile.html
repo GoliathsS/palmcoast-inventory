@@ -74,9 +74,9 @@
           </tr>
           {% for item in inventory %}
           <tr>
-            <td>{{ item.name }}</td>
-            <td>{{ item.quantity }}</td>
-            <td>{{ item.last_scanned.strftime('%Y-%m-%d') if item.last_scanned else '—' }}</td>
+            <td>{{ item[0] }}</td>
+            <td>{{ item[1] }}</td>
+            <td>{{ item[2].strftime('%Y-%m-%d') if item[2] else '—' }}</td>
           </tr>
           {% endfor %}
         </table>
