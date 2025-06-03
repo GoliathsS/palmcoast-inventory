@@ -2,66 +2,93 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Vehicle Inspection | Palm Coast</title>
   <link rel="stylesheet" href="/static/style.css" />
   <style>
     body {
-      font-family: "Segoe UI", sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background: #f1f4f9;
       margin: 0;
-      padding: 20px;
+      padding: 0;
     }
+
     .form-box {
       background: white;
-      max-width: 800px;
+      max-width: 100%;
       margin: 0 auto;
-      padding: 25px;
-      border-radius: 10px;
-      box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
+
     h2 {
       text-align: center;
       margin-bottom: 25px;
-      color: #1a7f1a;
+      font-size: 1.5rem;
+      color: #146314;
     }
+
     label {
-      font-weight: bold;
+      font-weight: 600;
       display: block;
-      margin-top: 15px;
+      margin-top: 18px;
+      font-size: 1rem;
     }
-    input[type="text"], input[type="number"], select, textarea {
+
+    input[type="text"],
+    input[type="number"],
+    select,
+    textarea {
       width: 100%;
-      padding: 10px;
-      margin-top: 5px;
+      font-size: 1rem;
+      padding: 14px;
+      margin-top: 6px;
       border: 1px solid #ccc;
-      border-radius: 6px;
+      border-radius: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
     }
+
     input[type="file"] {
-      margin-top: 5px;
+      margin-top: 6px;
+      font-size: 0.9rem;
       width: 100%;
     }
+
     .photo-section {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 15px;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+      margin-top: 10px;
     }
+
     .photo-section label {
       font-weight: 500;
+      font-size: 0.95rem;
     }
+
     button {
+      position: sticky;
+      bottom: 0;
       margin-top: 30px;
       width: 100%;
-      padding: 12px;
-      font-size: 1rem;
-      background-color: #0066cc;
+      padding: 16px;
+      font-size: 1.1rem;
+      background-color: #007aff;
       color: white;
       border: none;
-      border-radius: 6px;
+      border-radius: 12px;
       cursor: pointer;
-      font-weight: bold;
+      font-weight: 600;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
     }
+
     button:hover {
-      background-color: #004999;
+      background-color: #005bb5;
+    }
+
+    textarea {
+      resize: vertical;
     }
   </style>
 </head>
@@ -78,7 +105,7 @@
       {% endif %}
 
       <label for="mileage">Mileage</label>
-      <input type="number" name="mileage" required />
+      <input type="number" name="mileage" required inputmode="numeric" />
 
       <label for="cleanliness">Cleanliness</label>
       <select name="cleanliness" required>
@@ -103,38 +130,21 @@
 
       <label style="margin-top: 25px;">📸 Vehicle Photos</label>
       <div class="photo-section">
-        <div>
-          <label>Front</label>
-          <input type="file" name="photo_front" accept="image/*" capture="environment" />
-        </div>
-        <div>
-          <label>Back</label>
-          <input type="file" name="photo_back" accept="image/*" capture="environment" />
-        </div>
-        <div>
-          <label>Left Side</label>
-          <input type="file" name="photo_side_left" accept="image/*" capture="environment" />
-        </div>
-        <div>
-          <label>Right Side</label>
-          <input type="file" name="photo_side_right" accept="image/*" capture="environment" />
-        </div>
-        <div>
-          <label>Front Left Tire</label>
-          <input type="file" name="photo_tire_front_left" accept="image/*" capture="environment" />
-        </div>
-        <div>
-          <label>Front Right Tire</label>
-          <input type="file" name="photo_tire_front_right" accept="image/*" capture="environment" />
-        </div>
-        <div>
-          <label>Rear Left Tire</label>
-          <input type="file" name="photo_tire_rear_left" accept="image/*" capture="environment" />
-        </div>
-        <div>
-          <label>Rear Right Tire</label>
-          <input type="file" name="photo_tire_rear_right" accept="image/*" capture="environment" />
-        </div>
+        {% for label, name in [
+          ('Front', 'photo_front'),
+          ('Back', 'photo_back'),
+          ('Left Side', 'photo_side_left'),
+          ('Right Side', 'photo_side_right'),
+          ('Front Left Tire', 'photo_tire_front_left'),
+          ('Front Right Tire', 'photo_tire_front_right'),
+          ('Rear Left Tire', 'photo_tire_rear_left'),
+          ('Rear Right Tire', 'photo_tire_rear_right')
+        ] %}
+          <div>
+            <label>{{ label }}</label>
+            <input type="file" name="{{ name }}" accept="image/*" capture="environment" />
+          </div>
+        {% endfor %}
       </div>
 
       <button type="submit">✅ Submit Inspection</button>
