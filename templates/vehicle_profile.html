@@ -2,53 +2,123 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Truck Profile | Palm Coast</title>
   <link rel="stylesheet" href="/static/style.css" />
   <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f1f4f9;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      padding: 20px;
+      max-width: 100%;
+    }
+
     .profile-box {
       background: #fff;
-      border-radius: 10px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      border-radius: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
       padding: 20px;
-      margin-bottom: 30px;
+      margin-bottom: 25px;
     }
+
     .profile-header {
       font-size: 1.4rem;
       font-weight: bold;
       margin-bottom: 10px;
+      color: #146314;
     }
+
     .subheading {
       font-weight: bold;
-      margin-top: 20px;
+      margin-top: 10px;
       font-size: 1.2rem;
       color: #333;
     }
-    .inventory-table, .inspection-table {
-      width: 100%;
-      border-collapse: collapse;
+
+    .scroll-table {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
       margin-top: 10px;
     }
-    .inventory-table th, .inventory-table td,
-    .inspection-table th, .inspection-table td {
-      border: 1px solid #ddd;
-      padding: 8px;
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.95rem;
     }
-    .inventory-table th, .inspection-table th {
-      background-color: #f9f9f9;
+
+    th, td {
+      padding: 12px;
+      border: 1px solid #ddd;
       text-align: left;
     }
-    .btn-inspect {
-      display: inline-block;
-      margin-top: 20px;
-      background: #0066cc;
-      color: #fff;
-      padding: 10px 20px;
-      border-radius: 5px;
-      text-decoration: none;
-      font-weight: bold;
+
+    th {
+      background-color: #f9f9f9;
+      font-weight: 600;
     }
+
+    .inspection-card {
+      margin-bottom: 25px;
+      padding: 15px;
+      background: #fefefe;
+      border: 1px solid #e1e1e1;
+      border-radius: 10px;
+    }
+
+    .inspection-card p {
+      margin-bottom: 8px;
+      font-size: 0.95rem;
+    }
+
+    .photo-gallery {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .photo-gallery img {
+      height: 100px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+
+    .photo-gallery div {
+      text-align: center;
+      font-size: 0.8rem;
+    }
+
+    .btn-inspect {
+      display: block;
+      text-align: center;
+      margin: 30px auto 0;
+      background: #007aff;
+      color: white;
+      padding: 14px 24px;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      text-decoration: none;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    }
+
     .btn-inspect:hover {
-      background: #004c99;
+      background-color: #005bb5;
+    }
+
+    @media (max-width: 480px) {
+      th, td {
+        padding: 10px;
+        font-size: 0.9rem;
+      }
     }
   </style>
 </head>
@@ -66,20 +136,22 @@
     <div class="profile-box">
       <div class="subheading">📦 Truck Inventory</div>
       {% if inventory %}
-        <table class="inventory-table">
-          <tr>
-            <th>Product</th>
-            <th>Quantity</th>
-            <th>Last Scanned</th>
-          </tr>
-          {% for item in inventory %}
-          <tr>
-            <td>{{ item[0] }}</td>
-            <td>{{ item[1] }}</td>
-            <td>{{ item[2].strftime('%Y-%m-%d') if item[2] else '—' }}</td>
-          </tr>
-          {% endfor %}
-        </table>
+        <div class="scroll-table">
+          <table>
+            <tr>
+              <th>Product</th>
+              <th>Quantity</th>
+              <th>Last Scanned</th>
+            </tr>
+            {% for item in inventory %}
+            <tr>
+              <td>{{ item[0] }}</td>
+              <td>{{ item[1] }}</td>
+              <td>{{ item[2].strftime('%Y-%m-%d') if item[2] else '—' }}</td>
+            </tr>
+            {% endfor %}
+          </table>
+        </div>
       {% else %}
         <p>This truck currently has no products assigned.</p>
       {% endif %}
@@ -89,11 +161,11 @@
       <div class="subheading">🧾 Recent Inspections</div>
       {% if inspections %}
         {% for i in inspections %}
-          <div style="margin-bottom: 30px;">
-            <p><strong>Date:</strong> {{ i.date.strftime('%Y-%m-%d') }}<br>
-            <strong>Mileage:</strong> {{ i.mileage }} miles<br>
-            <strong>Cleanliness:</strong> {{ i.cleanliness }}<br>
-            <strong>Wrap Condition:</strong> {{ i.wrap_condition }}</p>
+          <div class="inspection-card">
+            <p><strong>Date:</strong> {{ i.date.strftime('%Y-%m-%d') }}</p>
+            <p><strong>Mileage:</strong> {{ i.mileage }} miles</p>
+            <p><strong>Cleanliness:</strong> {{ i.cleanliness }}</p>
+            <p><strong>Wrap Condition:</strong> {{ i.wrap_condition }}</p>
 
             {% set photos = [
               ('Front', i.photo_front),
@@ -106,12 +178,12 @@
               ('Tire RR', i.photo_tire_rear_right),
             ] %}
 
-            <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+            <div class="photo-gallery">
               {% for label, path in photos %}
                 {% if path %}
-                  <div style="text-align: center;">
-                    <img src="/{{ path }}" alt="{{ label }}" style="height: 100px; border: 1px solid #ccc; border-radius: 4px;" />
-                    <div style="font-size: 0.85rem; margin-top: 4px;">{{ label }}</div>
+                  <div>
+                    <img src="/{{ path }}" alt="{{ label }}">
+                    <div>{{ label }}</div>
                   </div>
                 {% endif %}
               {% endfor %}
