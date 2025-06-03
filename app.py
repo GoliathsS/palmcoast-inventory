@@ -152,60 +152,45 @@ def delete_product(product_id):
 def scan_action():
     from datetime import datetime
 
-    try:
-        barcode = request.json['barcode']
-        direction_raw = request.json['direction']
-        technician_raw = request.json.get('technician', '').strip()
+    barcode = request.json['barcode']
+    direction = request.json['direction']  # No .lower(), use as-is
+    technician = request.json.get('technician', '').strip()
 
-        direction = direction_raw.strip().lower()
-        print(f"\n🔍 Incoming scan request:")
-        print(f"  Barcode: {barcode}")
-        print(f"  Direction (raw): {direction_raw}")
-        print(f"  Technician (raw): {technician_raw}")
-        print(f"  Direction (normalized): {direction}")
+    conn = get_db_connection()
+    cur = conn.cursor()
 
-        conn = get_db_connection()
-        cur = conn.cursor()
+    # Fetch product info
+    cur.execute("""
+        SELECT id, stock, units_per_item, units_remaining, unit_cost 
+        FROM products 
+        WHERE barcode = %s
+    """, (barcode,))
+    result = cur.fetchone()
 
-        # Step 1: Fetch product info
-        cur.execute("""
-            SELECT id, stock, units_per_item, units_remaining, unit_cost 
-            FROM products 
-            WHERE barcode = %s
-        """, (barcode,))
-        result = cur.fetchone()
-
-        if not result:
-            print("❌ No product found with that barcode.")
-            return jsonify({'status': 'not_found'})
-
+    if result:
         product_id, stock, units_per_item, units_remaining, unit_cost = result
         units_per_item = units_per_item or 1
         units_remaining = units_remaining or (stock * units_per_item)
         unit_cost = unit_cost or 0.0
 
-        print(f"✅ Found product ID {product_id}, stock={stock}, units_remaining={units_remaining}")
-
-        if direction == 'out':
+        if direction == 'Out':  # Use your working case-sensitive check
             if units_remaining <= 0:
-                print("⚠️ Not enough units to scan out.")
+                cur.close()
+                conn.close()
                 return jsonify({'status': 'not_enough_units'})
             units_remaining -= 1
 
-            # Lookup vehicle from technician
             cur.execute("""
                 SELECT v.vehicle_id
                 FROM vehicles v
                 JOIN technicians t ON v.technician_id = t.id
                 WHERE LOWER(TRIM(t.name)) = LOWER(TRIM(%s))
-            """, (technician_raw,))
+            """, (technician,))
             vehicle_result = cur.fetchone()
 
             if vehicle_result:
                 vehicle_id = vehicle_result[0]
-                print(f"✅ Matched technician '{technician_raw}' to vehicle_id {vehicle_id}")
 
-                # Insert or update vehicle inventory
                 cur.execute("""
                     INSERT INTO vehicle_inventory (vehicle_id, product_id, quantity, last_updated, last_scanned)
                     VALUES (%s, %s, %s, NOW(), NOW())
@@ -215,15 +200,32 @@ def scan_action():
                         last_updated = NOW(),
                         last_scanned = NOW();
                 """, (vehicle_id, product_id, 1))
-                print(f"✅ Inventory updated: +1 to vehicle {vehicle_id} for product {product_id}")
-            else:
-                print(f"❌ No vehicle found for technician: {technician_raw}")
-                return jsonify({'status': 'no_vehicle'})
         else:
-            # INBOUND SCAN (restocking)
             units_remaining += units_per_item
             stock += 1
-            print(f"🔄 Scanned IN: New stock = {stock}, units_remaining = {units_remaining}")
+
+        new_stock = units_remaining // units_per_item
+        cur.execute(
+            "UPDATE products SET stock=%s, units_remaining=%s WHERE id=%s",
+            (new_stock, units_remaining, product_id)
+        )
+
+        timestamp = datetime.now().isoformat()
+        logged_cost = unit_cost if direction == 'Out' else round(unit_cost * units_per_item, 2)
+
+        cur.execute("""
+            INSERT INTO scan_logs (product_id, action, timestamp, technician, unit_cost)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (product_id, direction, timestamp, technician, logged_cost))
+
+        conn.commit()
+        status = 'success'
+    else:
+        status = 'not_found'
+
+    cur.close()
+    conn.close()
+    return jsonify({'status': status})
 
         # Update product table
         new_stock = units_remaining // units_per_item
