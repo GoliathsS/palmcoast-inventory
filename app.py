@@ -11,6 +11,8 @@ from rapidfuzz import process, fuzz
 import logging
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("invoice")
+log = logging.getLogger("scan_action")
+log.setLevel(logging.INFO)
 
 app = Flask(__name__)
 
@@ -153,33 +155,35 @@ def scan_action():
     from datetime import datetime
 
     barcode = request.json['barcode']
-    direction = request.json['direction']  # No .lower(), use as-is
+    direction = request.json['direction']  # Use as-is; case-sensitive 'Out'
     technician = request.json.get('technician', '').strip()
 
-    conn = get_db_connection()
-    cur = conn.cursor()
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
 
-    # Fetch product info
-    cur.execute("""
-        SELECT id, stock, units_per_item, units_remaining, unit_cost 
-        FROM products 
-        WHERE barcode = %s
-    """, (barcode,))
-    result = cur.fetchone()
+        # Fetch product info
+        cur.execute("""
+            SELECT id, stock, units_per_item, units_remaining, unit_cost 
+            FROM products 
+            WHERE barcode = %s
+        """, (barcode,))
+        result = cur.fetchone()
 
-    if result:
+        if not result:
+            return jsonify({'status': 'not_found'})
+
         product_id, stock, units_per_item, units_remaining, unit_cost = result
         units_per_item = units_per_item or 1
         units_remaining = units_remaining or (stock * units_per_item)
         unit_cost = unit_cost or 0.0
 
-        if direction == 'Out':  # Use your working case-sensitive check
+        if direction == 'Out':
             if units_remaining <= 0:
-                cur.close()
-                conn.close()
                 return jsonify({'status': 'not_enough_units'})
             units_remaining -= 1
 
+            # Vehicle lookup by technician
             cur.execute("""
                 SELECT v.vehicle_id
                 FROM vehicles v
@@ -190,69 +194,42 @@ def scan_action():
 
             if vehicle_result:
                 vehicle_id = vehicle_result[0]
-
+                # Insert or update vehicle inventory
                 cur.execute("""
                     INSERT INTO vehicle_inventory (vehicle_id, product_id, quantity, last_updated, last_scanned)
-                    VALUES (%s, %s, %s, NOW(), NOW())
+                    VALUES (%s, %s, 1, NOW(), NOW())
                     ON CONFLICT (vehicle_id, product_id)
                     DO UPDATE SET 
-                        quantity = COALESCE(vehicle_inventory.quantity, 0) + EXCLUDED.quantity,
+                        quantity = COALESCE(vehicle_inventory.quantity, 0) + 1,
                         last_updated = NOW(),
                         last_scanned = NOW();
-                """, (vehicle_id, product_id, 1))
+                """, (vehicle_id, product_id))
         else:
             units_remaining += units_per_item
             stock += 1
 
+        # Update product table
         new_stock = units_remaining // units_per_item
-        cur.execute(
-            "UPDATE products SET stock=%s, units_remaining=%s WHERE id=%s",
-            (new_stock, units_remaining, product_id)
-        )
+        cur.execute("""
+            UPDATE products SET stock=%s, units_remaining=%s WHERE id=%s
+        """, (new_stock, units_remaining, product_id))
 
+        # Insert scan log
         timestamp = datetime.now().isoformat()
         logged_cost = unit_cost if direction == 'Out' else round(unit_cost * units_per_item, 2)
-
         cur.execute("""
             INSERT INTO scan_logs (product_id, action, timestamp, technician, unit_cost)
             VALUES (%s, %s, %s, %s, %s)
         """, (product_id, direction, timestamp, technician, logged_cost))
 
         conn.commit()
-        status = 'success'
-    else:
-        status = 'not_found'
-
-    cur.close()
-    conn.close()
-    return jsonify({'status': status})
-
-        # Update product table
-        new_stock = units_remaining // units_per_item
-        cur.execute(
-            "UPDATE products SET stock=%s, units_remaining=%s WHERE id=%s",
-            (new_stock, units_remaining, product_id)
-        )
-        print(f"📦 Product stock updated in DB: stock={new_stock}, units_remaining={units_remaining}")
-
-        # Insert scan log
-        timestamp = datetime.now().isoformat()
-        logged_cost = unit_cost if direction == 'out' else round(unit_cost * units_per_item, 2)
-
-        cur.execute("""
-            INSERT INTO scan_logs (product_id, action, timestamp, technician, unit_cost)
-            VALUES (%s, %s, %s, %s, %s)
-        """, (product_id, direction, timestamp, technician_raw, logged_cost))
-        print(f"📝 Scan logged: {direction.upper()} - Technician: {technician_raw} - Product: {product_id}")
-
-        conn.commit()
         cur.close()
         conn.close()
-        print("✅ Scan processed successfully. Returning status: success\n")
+        print(f"✅ Scan logged: {direction} | Tech: {technician} | Product ID: {product_id}")
         return jsonify({'status': 'success'})
 
     except Exception as e:
-        print(f"🔥 ERROR in scan_action: {e}")
+        print(f"🔥 ERROR in /scan-action: {e}")
         return jsonify({'status': 'error', 'message': str(e)})
 
 @app.route('/assign-technician/<int:vehicle_id>', methods=['POST'])
