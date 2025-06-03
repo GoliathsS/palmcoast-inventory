@@ -22,6 +22,7 @@
     h2 {
       text-align: center;
       margin-bottom: 25px;
+      color: #1a7f1a;
     }
     label {
       font-weight: bold;
@@ -37,6 +38,7 @@
     }
     input[type="file"] {
       margin-top: 5px;
+      width: 100%;
     }
     .photo-section {
       display: grid;
@@ -69,7 +71,6 @@
     <h2>🚛 Vehicle Inspection</h2>
     <form method="POST" enctype="multipart/form-data">
 
-      <!-- Technician Display + Hidden ID -->
       <label>Technician</label>
       <input type="text" value="{{ technician }}" readonly />
       {% if technician_id %}
@@ -104,35 +105,35 @@
       <div class="photo-section">
         <div>
           <label>Front</label>
-          <input type="file" name="photo_front" accept="image/*" />
+          <input type="file" name="photo_front" accept="image/*" capture="environment" />
         </div>
         <div>
           <label>Back</label>
-          <input type="file" name="photo_back" accept="image/*" />
+          <input type="file" name="photo_back" accept="image/*" capture="environment" />
         </div>
         <div>
           <label>Left Side</label>
-          <input type="file" name="photo_side_left" accept="image/*" />
+          <input type="file" name="photo_side_left" accept="image/*" capture="environment" />
         </div>
         <div>
           <label>Right Side</label>
-          <input type="file" name="photo_side_right" accept="image/*" />
+          <input type="file" name="photo_side_right" accept="image/*" capture="environment" />
         </div>
         <div>
           <label>Front Left Tire</label>
-          <input type="file" name="photo_tire_front_left" accept="image/*" />
+          <input type="file" name="photo_tire_front_left" accept="image/*" capture="environment" />
         </div>
         <div>
           <label>Front Right Tire</label>
-          <input type="file" name="photo_tire_front_right" accept="image/*" />
+          <input type="file" name="photo_tire_front_right" accept="image/*" capture="environment" />
         </div>
         <div>
           <label>Rear Left Tire</label>
-          <input type="file" name="photo_tire_rear_left" accept="image/*" />
+          <input type="file" name="photo_tire_rear_left" accept="image/*" capture="environment" />
         </div>
         <div>
           <label>Rear Right Tire</label>
-          <input type="file" name="photo_tire_rear_right" accept="image/*" />
+          <input type="file" name="photo_tire_rear_right" accept="image/*" capture="environment" />
         </div>
       </div>
 
