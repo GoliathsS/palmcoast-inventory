@@ -155,18 +155,14 @@ def scan_action():
     from datetime import datetime
 
     barcode = request.json['barcode']
-    direction = request.json['direction'].lower()  # ensure lowercase comparison
+    direction = request.json['direction'].lower()
     technician = request.json.get('technician', '').strip()
 
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # Fetch product info
-    cur.execute("""
-        SELECT id, stock, units_per_item, units_remaining, unit_cost
-        FROM products
-        WHERE barcode = %s
-    """, (barcode,))
+    # Fetch product
+    cur.execute("SELECT id, stock, units_per_item, units_remaining, unit_cost FROM products WHERE barcode=%s", (barcode,))
     result = cur.fetchone()
 
     if not result:
@@ -184,52 +180,26 @@ def scan_action():
             cur.close()
             conn.close()
             return jsonify({'status': 'not_enough_units'})
-        
-        # Subtract from warehouse
-        units_remaining -= 1
-
-        # 🔧 Update vehicle inventory (+1 to truck)
-        cur.execute("""
-            SELECT v.vehicle_id
-            FROM vehicles v
-            JOIN technicians t ON v.technician_id = t.id
-            WHERE LOWER(TRIM(t.name)) = LOWER(TRIM(%s))
-        """, (technician,))
-        vehicle_result = cur.fetchone()
-        if vehicle_result:
-            vehicle_id = vehicle_result[0]
-            cur.execute("""
-                INSERT INTO vehicle_inventory (vehicle_id, product_id, quantity)
-                VALUES (%s, %s, 1)
-                ON CONFLICT (vehicle_id, product_id)
-                DO UPDATE SET 
-                    quantity = vehicle_inventory.quantity + 1,
-                    last_updated = NOW(),
-                    last_scanned = NOW();
-            """, (vehicle_id, product_id))
-
-        # ✅ Do NOT modify `stock` here — only adjust units_remaining
-        cur.execute("""
-            UPDATE products SET units_remaining = %s WHERE id = %s
-        """, (units_remaining, product_id))
-
+        units_remaining -= 1  # ✅ Remove 1 unit
     else:
-        # ✅ "in" scan
-        units_remaining += units_per_item
+        units_remaining += units_per_item  # ✅ Add 1 full item worth of units
         stock += 1
-        new_stock = units_remaining // units_per_item
-        cur.execute("""
-            UPDATE products SET stock = %s, units_remaining = %s WHERE id = %s
-        """, (new_stock, units_remaining, product_id))
 
-    # 📋 Log the scan
+    # 🔁 Always recalculate stock from units
+    new_stock = units_remaining // units_per_item
+
+    # ✅ Update product
+    cur.execute("UPDATE products SET stock=%s, units_remaining=%s WHERE id=%s",
+                (new_stock, units_remaining, product_id))
+
+    # ✅ Log the scan
     timestamp = datetime.now().isoformat()
     logged_cost = unit_cost if direction == 'out' else round(unit_cost * units_per_item, 2)
 
-    cur.execute("""
-        INSERT INTO scan_logs (product_id, action, timestamp, technician, unit_cost)
-        VALUES (%s, %s, %s, %s, %s)
-    """, (product_id, direction, timestamp, technician, logged_cost))
+    cur.execute(
+        "INSERT INTO scan_logs (product_id, action, timestamp, technician, unit_cost) VALUES (%s, %s, %s, %s, %s)",
+        (product_id, direction, timestamp, technician, logged_cost)
+    )
 
     conn.commit()
     cur.close()
