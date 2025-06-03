@@ -1,75 +1,169 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Vehicle Profiles | Palm Coast Inventory</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/style.css" />
   <style>
-    .btn-sm {
-      padding: 4px 10px;
-      font-size: 0.85rem;
-      border-radius: 6px;
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f1f4f9;
+      margin: 0;
+      padding: 0;
     }
+
+    .container {
+      max-width: 100%;
+      padding: 20px;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      color: #145214;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .btn {
+      display: inline-block;
+      text-align: center;
+      padding: 10px 16px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
+      text-decoration: none;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .btn-success {
+      background-color: #28a745;
+      color: white;
+    }
+
+    .btn-success:hover {
+      background-color: #1f7f35;
+    }
+
+    .btn-secondary {
+      background-color: #6c757d;
+      color: white;
+    }
+
     .btn-outline-primary {
-      color: #0d6efd;
-      border: 1px solid #0d6efd;
-      background-color: transparent;
+      color: #007bff;
+      border: 1px solid #007bff;
+      background-color: white;
     }
+
     .btn-outline-primary:hover {
-      background-color: #0d6efd;
-      color: #fff;
+      background-color: #007bff;
+      color: white;
     }
+
     .btn-outline-danger {
       color: #dc3545;
       border: 1px solid #dc3545;
-      background-color: transparent;
+      background-color: white;
     }
+
     .btn-outline-danger:hover {
       background-color: #dc3545;
-      color: #fff;
+      color: white;
     }
-    .d-flex.gap-2 {
+
+    .table-container {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.95rem;
+    }
+
+    th, td {
+      padding: 14px;
+      border-bottom: 1px solid #eee;
+      text-align: left;
+    }
+
+    th {
+      background-color: #f9f9f9;
+      font-weight: 600;
+    }
+
+    .actions {
       display: flex;
-      gap: 0.5rem;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    @media (max-width: 480px) {
+      th, td {
+        padding: 10px;
+        font-size: 0.9rem;
+      }
+
+      .btn {
+        font-size: 0.9rem;
+        padding: 8px 12px;
+      }
+
+      .btn-sm {
+        padding: 6px 10px;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="container py-4">
+  <div class="container">
+
     <h1>🚛 Vehicle Profiles</h1>
 
-    <div class="d-flex justify-content-end mb-3">
+    <div style="text-align: right; margin-bottom: 15px;">
       <a href="/vehicles/new" class="btn btn-success">➕ Add New Vehicle</a>
     </div>
 
-    <table class="table table-striped table-bordered">
-      <thead>
-        <tr>
-          <th>License Plate</th>
-          <th>Type</th>
-          <th>Technician</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for vehicle in vehicles %}
-        <tr>
-          <td>{{ vehicle[1] }}</td>  {# License Plate #}
-          <td>{{ vehicle[2] }}</td>  {# Vehicle Type #}
-          <td>{{ vehicle[3] }}</td>  {# Technician #}
-          <td class="d-flex gap-2">
-            <a href="/vehicles/{{ vehicle[0] }}" class="btn btn-outline-primary btn-sm">View Profile</a>
-            <form action="/delete-vehicle/{{ vehicle[0] }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this vehicle?')" style="display:inline;">
-              <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
-            </form>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>License Plate</th>
+            <th>Type</th>
+            <th>Technician</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for vehicle in vehicles %}
+          <tr>
+            <td>{{ vehicle[1] }}</td>
+            <td>{{ vehicle[2] }}</td>
+            <td>{{ vehicle[3] }}</td>
+            <td>
+              <div class="actions">
+                <a href="/vehicles/{{ vehicle[0] }}" class="btn btn-outline-primary btn-sm">View</a>
+                <form action="/delete-vehicle/{{ vehicle[0] }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this vehicle?')" style="display:inline;">
+                  <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
 
-    <a href="/" class="btn btn-secondary mt-4">← Back to Dashboard</a>
+    <div style="text-align: center; margin-top: 30px;">
+      <a href="/" class="btn btn-secondary">← Back to Dashboard</a>
+    </div>
+
   </div>
 </body>
 </html>
-
