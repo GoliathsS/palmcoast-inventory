@@ -171,7 +171,7 @@ def scan_action():
         units_remaining = units_remaining or (stock * units_per_item)
         unit_cost = unit_cost or 0.0
 
-        if direction == 'out':
+        if direction == 'Out':
             if units_remaining <= 0:
                 cur.close()
                 conn.close()
@@ -214,7 +214,7 @@ def scan_action():
 
         # Log the scan
         timestamp = datetime.now().isoformat()
-        logged_cost = unit_cost if direction == 'out' else round(unit_cost * units_per_item, 2)
+        logged_cost = unit_cost if direction == 'Out' else round(unit_cost * units_per_item, 2)
 
         cur.execute("""
             INSERT INTO scan_logs (product_id, action, timestamp, technician, unit_cost)
@@ -653,7 +653,7 @@ def history():
                WHEN s.technician ~ '^\d+$' THEN CAST(s.technician AS INTEGER) = t.id
                ELSE FALSE
              END
-        WHERE s.action = 'out'
+        WHERE s.action = 'Out'
     """
     summary_params = []
 
