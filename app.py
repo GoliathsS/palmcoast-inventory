@@ -298,13 +298,30 @@ def vehicle_inspection(vehicle_id):
 
     # GET: show form
     cur.execute("""
-        SELECT t.name
+        SELECT t.name, t.id
         FROM technicians t
         JOIN vehicles v ON t.id = v.technician_id
         WHERE v.vehicle_id = %s
     """, (vehicle_id,))
     tech = cur.fetchone()
-    tech_name = tech[0] if tech else None
+
+    # Handle if no technician is assigned
+    if tech:
+        technician_name = tech[0]
+        technician_id = tech[1]
+    else:
+        technician_name = "Unassigned"
+        technician_id = None  # You can handle this in the form too
+
+    conn.close()
+
+    return render_template(
+        'vehicle_inspection.html',
+        vehicle_id=vehicle_id,
+        technician=technician_name,
+        technician_id=technician_id
+    )
+
     conn.close()
 
     return render_template('vehicle_inspection.html', vehicle_id=vehicle_id, technician=tech_name)
