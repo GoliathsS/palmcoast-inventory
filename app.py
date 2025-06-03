@@ -543,18 +543,59 @@ def corrections():
         log_id = request.form['log_id']
         action_type = request.form.get('action_type', 'update')
 
-        if action_type == 'delete':
-            cur.execute("DELETE FROM scan_logs WHERE id = %s", (log_id,))
-        else:
-            action = request.form['action']
-            technician = request.form['technician']
-            unit_cost = float(request.form.get('unit_cost') or 0.0)
+        # Fetch the original scan log
+        cur.execute("SELECT product_id, action FROM scan_logs WHERE id = %s", (log_id,))
+        log = cur.fetchone()
 
-            cur.execute("""
-                UPDATE scan_logs
-                SET action = %s, technician = %s, unit_cost = %s
-                WHERE id = %s
-            """, (action, technician, unit_cost, log_id))
+        if log:
+            product_id, old_action = log
+
+            if action_type == 'delete':
+                # Reverse inventory effect of the old log before deletion
+                if old_action == 'out':
+                    cur.execute("UPDATE products SET units_remaining = units_remaining + 1 WHERE id = %s", (product_id,))
+                elif old_action == 'in':
+                    cur.execute("""
+                        UPDATE products
+                        SET units_remaining = units_remaining - units_per_item,
+                            stock = stock - 1
+                        WHERE id = %s
+                    """, (product_id,))
+                cur.execute("DELETE FROM scan_logs WHERE id = %s", (log_id,))
+
+            else:  # action_type is update
+                new_action = request.form['action']
+                technician = request.form['technician']
+                unit_cost = float(request.form.get('unit_cost') or 0.0)
+
+                # Reverse previous action
+                if old_action == 'out':
+                    cur.execute("UPDATE products SET units_remaining = units_remaining + 1 WHERE id = %s", (product_id,))
+                elif old_action == 'in':
+                    cur.execute("""
+                        UPDATE products
+                        SET units_remaining = units_remaining - units_per_item,
+                            stock = stock - 1
+                        WHERE id = %s
+                    """, (product_id,))
+
+                # Apply new action
+                if new_action == 'out':
+                    cur.execute("UPDATE products SET units_remaining = units_remaining - 1 WHERE id = %s", (product_id,))
+                elif new_action == 'in':
+                    cur.execute("""
+                        UPDATE products
+                        SET units_remaining = units_remaining + units_per_item,
+                            stock = stock + 1
+                        WHERE id = %s
+                    """, (product_id,))
+
+                # Update scan log
+                cur.execute("""
+                    UPDATE scan_logs
+                    SET action = %s, technician = %s, unit_cost = %s
+                    WHERE id = %s
+                """, (new_action, technician, unit_cost, log_id))
 
         conn.commit()
 
@@ -563,36 +604,33 @@ def corrections():
     end = request.args.get('end') or datetime.now().strftime('%Y-%m-%d')
     technician_filter = request.args.get('technician') or ""
 
-    # Build scan log query with JOIN to technicians
+    # Build query for scan logs
     base_query = """
-        SELECT s.id, s.timestamp, p.name AS product_name, s.action, s.technician, s.unit_cost,
-               COALESCE(t.name, s.technician) AS technician_name
+        SELECT s.id, s.timestamp, p.name AS product_name, s.action, s.technician, s.unit_cost
         FROM scan_logs s
         JOIN products p ON s.product_id = p.id
-        LEFT JOIN technicians t ON CAST(s.technician AS TEXT) = CAST(t.id AS TEXT)
         WHERE s.timestamp BETWEEN %s AND %s
     """
     params = [start, end + " 23:59:59"]
 
     if technician_filter:
-        base_query += " AND (s.technician = %s OR CAST(s.technician AS TEXT) = %s)"
-        params.extend([technician_filter, technician_filter])
+        base_query += " AND s.technician = %s"
+        params.append(technician_filter)
 
     base_query += " ORDER BY s.timestamp DESC"
-
     cur.execute(base_query, tuple(params))
     logs = cur.fetchall()
 
-    # Technician list for dropdown (clean names only, no raw IDs)
-    cur.execute("SELECT id, name FROM technicians ORDER BY name")
-    techs = cur.fetchall()
+    # Technician list for dropdown
+    cur.execute("SELECT DISTINCT technician FROM scan_logs WHERE technician IS NOT NULL AND technician != '' ORDER BY technician")
+    techs = [row[0] for row in cur.fetchall()]
 
     cur.close()
     conn.close()
 
     return render_template("corrections.html",
         logs=logs,
-        technicians=techs,  # now list of (id, name)
+        technicians=techs,
         selected_tech=technician_filter,
         start=start,
         end=end
