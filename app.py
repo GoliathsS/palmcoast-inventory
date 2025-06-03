@@ -386,6 +386,18 @@ def inspections_list():
 
     return render_template('vehicle_inspections_list.html', inspections=inspections)
 
+@app.route('/delete-inspection/<int:inspection_id>', methods=['POST'])
+def delete_inspection(inspection_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # Optional: Delete related photo files if needed here
+
+    cur.execute("DELETE FROM vehicle_inspections WHERE id = %s", (inspection_id,))
+    conn.commit()
+    conn.close()
+    return redirect(url_for('inspections_list'))
+
 @app.route('/vehicles')
 def vehicles_list():
     conn = get_db_connection()
