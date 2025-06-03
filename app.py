@@ -548,7 +548,7 @@ def corrections():
     end = request.args.get('end') or datetime.now().strftime('%Y-%m-%d')
     technician_filter = request.args.get('technician') or ""
 
-    # Build query
+    # Build scan log query with JOIN to technicians
     base_query = """
         SELECT s.id, s.timestamp, p.name AS product_name, s.action, s.technician, s.unit_cost,
                COALESCE(t.name, s.technician) AS technician_name
@@ -560,24 +560,29 @@ def corrections():
     params = [start, end + " 23:59:59"]
 
     if technician_filter:
-        base_query += " AND s.technician = %s"
-        params.append(technician_filter)
+        base_query += " AND (s.technician = %s OR CAST(s.technician AS TEXT) = %s)"
+        params.extend([technician_filter, technician_filter])
 
     base_query += " ORDER BY s.timestamp DESC"
 
     cur.execute(base_query, tuple(params))
     logs = cur.fetchall()
 
-    # Technician list for filter dropdown
-    cur.execute("SELECT DISTINCT technician FROM scan_logs WHERE technician IS NOT NULL AND technician != '' ORDER BY technician")
-    techs = [row[0] for row in cur.fetchall()]
+    # Technician list for dropdown (clean names only, no raw IDs)
+    cur.execute("""
+        SELECT DISTINCT t.id, t.name
+        FROM technicians t
+        JOIN scan_logs s ON CAST(s.technician AS TEXT) = CAST(t.id AS TEXT)
+        ORDER BY t.name
+    """)
+    techs = cur.fetchall()
 
     cur.close()
     conn.close()
 
     return render_template("corrections.html",
         logs=logs,
-        technicians=techs,
+        technicians=techs,  # now list of (id, name)
         selected_tech=technician_filter,
         start=start,
         end=end
