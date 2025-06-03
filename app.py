@@ -152,7 +152,7 @@ def delete_product(product_id):
 def scan_action():
     barcode = request.json['barcode']
     direction = request.json['direction']
-    technician = request.json.get('technician', '')
+    technician = request.json.get('technician', '').strip()
 
     conn = get_db_connection()
     cur = conn.cursor()
@@ -174,27 +174,29 @@ def scan_action():
                 return jsonify({'status': 'not_enough_units'})
             units_remaining -= 1
 
-            # 🔧 Vehicle inventory sync
-            cur.execute("""
-                SELECT v.vehicle_id
-                FROM vehicles v
-                JOIN technicians t ON v.technician_id = t.id
-                WHERE LOWER(TRIM(t.name)) = LOWER(TRIM(%s))
-            """, (technician,))
-            vehicle_result = cur.fetchone()
-            print("TECH NAME:", technician)
-            print("VEHICLE RESULT:", vehicle_result)
-            
-            if vehicle_result:
-                vehicle_id = vehicle_result[0]
-                cur.execute("""
-                    INSERT INTO vehicle_inventory (vehicle_id, product_id, quantity)
-                    VALUES (%s, %s, %s)
-                    ON CONFLICT (vehicle_id, product_id)
-                    DO UPDATE SET quantity = vehicle_inventory.quantity + EXCLUDED.quantity,
-                                  last_updated = NOW(),
-                                  last_scanned = NOW();
-                """, (vehicle_id, product_id, 1))
+            # ✅ Resolve technician ID first
+            cur.execute("SELECT id FROM technicians WHERE LOWER(TRIM(name)) = LOWER(TRIM(%s))", (technician,))
+            tech_result = cur.fetchone()
+
+            if tech_result:
+                tech_id = tech_result[0]
+
+                # ✅ Now get vehicle assigned to technician
+                cur.execute("SELECT vehicle_id FROM vehicles WHERE technician_id = %s", (tech_id,))
+                vehicle_result = cur.fetchone()
+
+                if vehicle_result:
+                    vehicle_id = vehicle_result[0]
+
+                    # ✅ Insert/update vehicle inventory
+                    cur.execute("""
+                        INSERT INTO vehicle_inventory (vehicle_id, product_id, quantity)
+                        VALUES (%s, %s, %s)
+                        ON CONFLICT (vehicle_id, product_id)
+                        DO UPDATE SET quantity = vehicle_inventory.quantity + EXCLUDED.quantity,
+                                      last_updated = NOW(),
+                                      last_scanned = NOW();
+                    """, (vehicle_id, product_id, 1))
         else:
             units_remaining += units_per_item
             stock += 1
