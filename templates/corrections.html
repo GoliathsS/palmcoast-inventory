@@ -80,10 +80,12 @@
   <form method="GET" class="filter-form">
     <input type="date" name="start" value="{{ request.args.get('start', '') }}" required>
     <input type="date" name="end" value="{{ request.args.get('end', '') }}" required>
-    <select name="technician">
+    <select name="technician" class="form-control">
       <option value="">All Technicians</option>
-      {% for tech in technicians %}
-        <option value="{{ tech[0] }}" {% if request.args.get('technician') == tech[0]|string %}selected{% endif %}>{{ tech[1] }}</option>
+      {% for tech_id, tech_name in technicians %}
+        <option value="{{ tech_id }}" {% if selected_tech == tech_id|string %}selected{% endif %}>
+          {{ tech_name }}
+        </option>
       {% endfor %}
     </select>
     <button type="submit">🔍 Filter</button>
