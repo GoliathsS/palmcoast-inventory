@@ -69,8 +69,12 @@
     <h2>🚛 Vehicle Inspection</h2>
     <form method="POST" enctype="multipart/form-data">
 
+      <!-- Technician Display + Hidden ID -->
       <label>Technician</label>
-      <input type="text" value="{{ technician.name }}" readonly />
+      <input type="text" value="{{ technician }}" readonly />
+      {% if technician_id %}
+        <input type="hidden" name="technician_id" value="{{ technician_id }}">
+      {% endif %}
 
       <label for="mileage">Mileage</label>
       <input type="number" name="mileage" required />
