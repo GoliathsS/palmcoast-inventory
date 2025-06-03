@@ -569,12 +569,7 @@ def corrections():
     logs = cur.fetchall()
 
     # Technician list for dropdown (clean names only, no raw IDs)
-    cur.execute("""
-        SELECT DISTINCT t.id, t.name
-        FROM technicians t
-        JOIN scan_logs s ON CAST(s.technician AS TEXT) = CAST(t.id AS TEXT)
-        ORDER BY t.name
-    """)
+    cur.execute("SELECT id, name FROM technicians ORDER BY name")
     techs = cur.fetchall()
 
     cur.close()
