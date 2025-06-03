@@ -196,7 +196,7 @@ def scan_action():
                     VALUES (%s, %s, %s, NOW(), NOW())
                     ON CONFLICT (vehicle_id, product_id)
                     DO UPDATE SET 
-                        quantity = vehicle_inventory.quantity + EXCLUDED.quantity,
+                        quantity = COALESCE(vehicle_inventory.quantity, 0) + EXCLUDED.quantity,
                         last_updated = NOW(),
                         last_scanned = NOW();
                 """, (vehicle_id, product_id, 1))
