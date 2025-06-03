@@ -622,8 +622,8 @@ def corrections():
     logs = cur.fetchall()
 
     # Technician list for dropdown
-    cur.execute("SELECT DISTINCT technician FROM scan_logs WHERE technician IS NOT NULL AND technician != '' ORDER BY technician")
-    techs = [row[0] for row in cur.fetchall()]
+    cur.execute("SELECT id, name FROM technicians ORDER BY name")
+    techs = cur.fetchall()
 
     cur.close()
     conn.close()
