@@ -599,9 +599,9 @@ def history():
     # Technician list as (id, name)
     cur.execute("SELECT id, name FROM technicians ORDER BY name")
     tech_rows = cur.fetchall()
-    technicians = [row[1] for row in tech_rows]  # Just names for dropdown
+    technicians = [row[1] for row in tech_rows]  # Only names for dropdown
 
-    # Main log query
+    # 🔎 Main scan log query
     base_query = """
         SELECT 
             p.name AS product_name,
@@ -624,18 +624,15 @@ def history():
         base_query += " AND TO_CHAR(s.timestamp::date, 'YYYY-MM') = %s"
         params.append(selected_month)
 
-    if selected_tech is not None and selected_tech.strip() != "":
+    if selected_tech:
         base_query += " AND COALESCE(t.name, s.technician) = %s"
         params.append(selected_tech.strip())
-
-        summary_query += " AND COALESCE(t.name, s.technician) = %s"
-        summary_params.append(selected_tech.strip())
 
     base_query += " ORDER BY s.timestamp DESC"
     cur.execute(base_query, tuple(params))
     logs = cur.fetchall()
 
-    # Summary query (use technician name here too)
+    # ✅ Summary query — now filtered correctly
     summary_query = """
         SELECT 
             COALESCE(t.name, s.technician) AS technician_name,
@@ -658,9 +655,9 @@ def history():
         summary_query += " AND TO_CHAR(s.timestamp::date, 'YYYY-MM') = %s"
         summary_params.append(selected_month)
 
-    if selected_tech is not None and selected_tech.strip() != "":
-        base_query += " AND COALESCE(t.name, s.technician) = %s"
-        params.append(selected_tech.strip())
+    if selected_tech:
+        summary_query += " AND COALESCE(t.name, s.technician) = %s"
+        summary_params.append(selected_tech.strip())
 
     summary_query += " GROUP BY technician_name, p.name ORDER BY technician_name, p.name"
     cur.execute(summary_query, tuple(summary_params))
