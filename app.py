@@ -152,13 +152,17 @@ def delete_product(product_id):
 def scan_action():
     barcode = request.json['barcode']
     direction = request.json['direction']
-    technician = request.json.get('technician', '')
+    technician = request.json.get('technician', '').strip()
 
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # 🔍 Fetch product info
-    cur.execute("SELECT id, stock, units_per_item, units_remaining, unit_cost FROM products WHERE barcode=%s", (barcode,))
+    # Fetch product info
+    cur.execute("""
+        SELECT id, stock, units_per_item, units_remaining, unit_cost 
+        FROM products 
+        WHERE barcode = %s
+    """, (barcode,))
     result = cur.fetchone()
 
     if result:
@@ -174,7 +178,7 @@ def scan_action():
                 return jsonify({'status': 'not_enough_units'})
             units_remaining -= 1
 
-            # 🔧 Vehicle inventory sync
+            # Vehicle lookup by technician name (case insensitive)
             cur.execute("""
                 SELECT v.vehicle_id
                 FROM vehicles v
@@ -185,48 +189,45 @@ def scan_action():
 
             if vehicle_result:
                 vehicle_id = vehicle_result[0]
-                print(f"[DEBUG] Technician: {technician} → Vehicle ID: {vehicle_id} | Product ID: {product_id}")
+
+                # ✅ INSERT or UPDATE inventory
                 cur.execute("""
                     INSERT INTO vehicle_inventory (vehicle_id, product_id, quantity, last_updated, last_scanned)
-                    VALUES (%s, %s, %s, NOW(), NOW())
+                    VALUES (%s, %s, 1, NOW(), NOW())
                     ON CONFLICT (vehicle_id, product_id)
-                    DO UPDATE SET quantity = vehicle_inventory.quantity + EXCLUDED.quantity,
-                                  last_updated = NOW(),
-                                  last_scanned = NOW()
-                """, (vehicle_id, product_id, 1))
-            else:
-                print(f"[WARN] No vehicle found for technician: {technician}")
+                    DO UPDATE SET 
+                        quantity = vehicle_inventory.quantity + 1,
+                        last_updated = NOW(),
+                        last_scanned = NOW();
+                """, (vehicle_id, product_id))
         else:
             units_remaining += units_per_item
             stock += 1
 
+        # Update product stock
         new_stock = units_remaining // units_per_item
-
-        # ✅ Update product stock
         cur.execute(
             "UPDATE products SET stock=%s, units_remaining=%s WHERE id=%s",
             (new_stock, units_remaining, product_id)
         )
 
-        # 📝 Log scan event
+        # Log the scan
         timestamp = datetime.now().isoformat()
         logged_cost = unit_cost if direction == 'out' else round(unit_cost * units_per_item, 2)
 
-        cur.execute(
-            "INSERT INTO scan_logs (product_id, action, timestamp, technician, unit_cost) VALUES (%s, %s, %s, %s, %s)",
-            (product_id, direction, timestamp, technician, logged_cost)
-        )
+        cur.execute("""
+            INSERT INTO scan_logs (product_id, action, timestamp, technician, unit_cost)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (product_id, direction, timestamp, technician, logged_cost))
 
         conn.commit()
         status = 'success'
     else:
-        print(f"[ERROR] Product not found for barcode: {barcode}")
         status = 'not_found'
 
     cur.close()
     conn.close()
     return jsonify({'status': status})
-
 
 @app.route('/assign-technician/<int:vehicle_id>', methods=['POST'])
 def assign_technician(vehicle_id):
