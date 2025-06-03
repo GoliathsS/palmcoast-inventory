@@ -114,7 +114,7 @@
             </select>
           </td>
           <td><input type="hidden" name="technician" value="{{ log[4] or '' }}"> 
-              <input type="text" value="{{ log[6] or 'Unassigned' }}" readonly></td>
+              <input type="text" name="technician" value="{{ log[6] or '' }}">
           <td>
             {% if log[3] == 'in' %}
               <span title="Box Cost">📦 ${{ "%.2f"|format(log[5]) }}</span>
