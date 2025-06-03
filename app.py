@@ -367,14 +367,14 @@ def vehicle_profile(vehicle_id):
                            inventory=inventory,
                            inspections=inspections)
 
-@app.route('/inspections')
+@app.route('/inspections') 
 def inspections_list():
     conn = get_db_connection()
     cur = conn.cursor()
 
     cur.execute("""
         SELECT v.vehicle_id, vi.date, v.license_plate, t.name AS technician,
-               vi.mileage, vi.cleanliness, vi.wrap_condition
+               vi.mileage, vi.cleanliness, vi.wrap_condition, vi.id
         FROM vehicle_inspections vi
         JOIN vehicles v ON vi.vehicle_id = v.vehicle_id
         JOIN technicians t ON vi.technician_id = t.id
