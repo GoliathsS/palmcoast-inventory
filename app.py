@@ -628,6 +628,9 @@ def history():
         base_query += " AND COALESCE(t.name, s.technician) = %s"
         params.append(selected_tech.strip())
 
+        summary_query += " AND COALESCE(t.name, s.technician) = %s"
+        summary_params.append(selected_tech.strip())
+
     base_query += " ORDER BY s.timestamp DESC"
     cur.execute(base_query, tuple(params))
     logs = cur.fetchall()
