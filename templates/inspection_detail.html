@@ -142,6 +142,10 @@
     <div class="actions">
       <a href="/inspections" class="btn">← Back to Inspections</a>
       <a href="#" class="btn print" onclick="window.print()">🖨️ Print</a>
+
+      <form action="/delete-inspection/{{ inspection.id }}" method="POST" onsubmit="return confirm('Are you sure you want to permanently delete this inspection?');" style="flex: 1;">
+        <button type="submit" class="btn" style="background:#dc3545;">🗑️ Delete</button>
+      </form>
     </div>
   </div>
 </body>
