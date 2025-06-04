@@ -816,27 +816,32 @@ def upload_invoice():
 
         # New invoice item line matcher
         product_line_regex = re.compile(
-            r"^\d+\s+([A-Z0-9\-]+)\s+(.+?)\s+(\d+)\s+(\d+)\s+\d+\s+\d+\s+([\d\.]+)\s*/\s*\w+", re.IGNORECASE)
+            r"^\d+\s+([A-Z0-9\-]+)\s+(.+?)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+([\d\.]+)\s*/\s*\w+", re.IGNORECASE)
+
+        matched_any = False  # flag to detect at least one match
 
         for line in lines:
+            debug_log.append(f"🔎 Line: {line}")
             match = product_line_regex.match(line)
             if not match:
+                debug_log.append("   ⛔ No match.")
                 continue
 
             item_number = match.group(1).strip()
             product_name = re.sub(r'\s+', ' ', match.group(2).strip())
-            unit_price = float(match.group(5).replace(",", ""))
+            unit_price = float(match.group(7).replace(",", ""))
+            matched_any = True
 
             normalized_product_name = normalize(product_name)
             match_name, score, idx = process.extractOne(
                 normalized_product_name, normalized_db_names, scorer=fuzz.token_set_ratio)
             actual_name = name_list[idx]
 
-            debug_log.append(f"🧾 Line Match:")
-            debug_log.append(f"  SKU: {item_number}")
-            debug_log.append(f"  Name: {product_name}")
-            debug_log.append(f"  Price: ${unit_price:.2f}")
-            debug_log.append(f"  🤖 Matched DB Product: {actual_name} (Score: {score})")
+            debug_log.append(f"   ✅ Matched:")
+            debug_log.append(f"      SKU: {item_number}")
+            debug_log.append(f"      Name: {product_name}")
+            debug_log.append(f"      Unit Price: ${unit_price:.2f}")
+            debug_log.append(f"      🤖 DB Match: {actual_name} (Score: {score})")
 
             if score >= 75:
                 product_id, _, old_price = db_products[idx]
@@ -851,10 +856,8 @@ def upload_invoice():
             else:
                 updates.append(f"🔴 No match for: {product_name}")
 
-        conn.close()
-
-        if not updates:
-            updates.append("⚠️ No matches or price changes found.")
+        if not matched_any:
+            debug_log.append("⚠️ No product lines matched the invoice format.")
 
         return render_template("upload_result.html", updates=updates, debug_log=debug_log)
 
