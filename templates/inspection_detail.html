@@ -9,8 +9,8 @@
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background-color: #f1f4f9;
-      padding: 0;
       margin: 0;
+      padding: 0;
     }
 
     .container {
@@ -110,23 +110,23 @@
     <h2>🧾 Inspection Details</h2>
 
     <div class="details">
-      <p><strong>Date:</strong> {{ inspection[0]|string|truncate(10, True, '') if inspection[0] else '—' }}</p>
-      <p><strong>Technician:</strong> {{ inspection[1] or '—' }}</p>
-      <p><strong>Mileage:</strong> {{ inspection[2] }} miles</p>
-      <p><strong>Cleanliness:</strong> {{ inspection[3] }}</p>
-      <p><strong>Wrap Condition:</strong> {{ inspection[4] }}</p>
+      <p><strong>Date:</strong> {{ inspection[1].strftime('%Y-%m-%d') if inspection[1] else '—' }}</p>
+      <p><strong>Technician:</strong> {{ inspection[2] or '—' }}</p>
+      <p><strong>Mileage:</strong> {{ inspection[3] }} miles</p>
+      <p><strong>Cleanliness:</strong> {{ inspection[4] }}</p>
+      <p><strong>Wrap Condition:</strong> {{ inspection[5] }}</p>
     </div>
 
     <div class="photo-gallery">
       {% for label, photo in [
-        ('Front', inspection[5]),
-        ('Back', inspection[6]),
-        ('Left Side', inspection[7]),
-        ('Right Side', inspection[8]),
-        ('Front Left Tire', inspection[9]),
-        ('Front Right Tire', inspection[10]),
-        ('Rear Left Tire', inspection[11]),
-        ('Rear Right Tire', inspection[12])
+        ('Front', inspection[6]),
+        ('Back', inspection[7]),
+        ('Left Side', inspection[8]),
+        ('Right Side', inspection[9]),
+        ('Front Left Tire', inspection[10]),
+        ('Front Right Tire', inspection[11]),
+        ('Rear Left Tire', inspection[12]),
+        ('Rear Right Tire', inspection[13])
       ] %}
         {% if photo %}
         <div class="photo-box">
@@ -141,7 +141,7 @@
       <a href="/inspections" class="btn">← Back to Inspections</a>
       <a href="#" class="btn print" onclick="window.print()">🖨️ Print</a>
 
-      <form action="/delete-inspection/{{ inspection_id }}" method="POST" onsubmit="return confirm('Are you sure you want to permanently delete this inspection?');" style="flex: 1;">
+      <form action="/delete-inspection/{{ inspection[0] }}" method="POST" onsubmit="return confirm('Are you sure you want to permanently delete this inspection?');" style="flex: 1;">
         <button type="submit" class="btn" style="background:#dc3545;">🗑️ Delete</button>
       </form>
     </div>
