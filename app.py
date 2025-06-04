@@ -16,6 +16,7 @@ log = logging.getLogger("scan_action")
 log.setLevel(logging.INFO)
 
 app = Flask(__name__)
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB limit
 
 # Set up S3 client using environment variables
 s3 = boto3.client(
