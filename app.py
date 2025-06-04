@@ -231,8 +231,7 @@ def vehicle_inspection(vehicle_id):
     from werkzeug.utils import secure_filename
     from datetime import datetime
 
-    S3_BUCKET = 'your-bucket-name'  # Replace with your actual bucket name
-    s3 = boto3.client('s3')
+    S3_BUCKET = 'palmcoast-inspections'
 
     conn = get_db_connection()
     cur = conn.cursor()
