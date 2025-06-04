@@ -110,25 +110,25 @@
     <h2>🧾 Inspection Details</h2>
 
     <div class="details">
-      <p><strong>Date:</strong> {{ inspection.date.strftime('%Y-%m-%d') }}</p>
-      <p><strong>Mileage:</strong> {{ inspection.mileage }} miles</p>
-      <p><strong>Cleanliness:</strong> {{ inspection.cleanliness }}</p>
-      <p><strong>Wrap Condition:</strong> {{ inspection.wrap_condition }}</p>
-      <p><strong>Technician ID:</strong> {{ inspection.technician_id }}</p>
-      <p><strong>Vehicle ID:</strong> {{ inspection.vehicle_id }}</p>
-      <p><strong>Comments:</strong> {{ inspection.comments or '—' }}</p>
+      <p><strong>Date:</strong> {{ inspection[1].strftime('%Y-%m-%d') }}</p>
+      <p><strong>Mileage:</strong> {{ inspection[4] }} miles</p>
+      <p><strong>Cleanliness:</strong> {{ inspection[5] }}</p>
+      <p><strong>Wrap Condition:</strong> {{ inspection[6] }}</p>
+      <p><strong>Technician ID:</strong> {{ inspection[2] }}</p>
+      <p><strong>Vehicle ID:</strong> {{ inspection[3] }}</p>
+      <p><strong>Comments:</strong> {{ inspection[7] or '—' }}</p>
     </div>
 
     <div class="photo-gallery">
       {% for label, photo in [
-        ('Front', inspection.photo_front),
-        ('Back', inspection.photo_back),
-        ('Left Side', inspection.photo_side_left),
-        ('Right Side', inspection.photo_side_right),
-        ('Front Left Tire', inspection.photo_tire_front_left),
-        ('Front Right Tire', inspection.photo_tire_front_right),
-        ('Rear Left Tire', inspection.photo_tire_rear_left),
-        ('Rear Right Tire', inspection.photo_tire_rear_right)
+        ('Front', inspection[8]),
+        ('Back', inspection[9]),
+        ('Left Side', inspection[10]),
+        ('Right Side', inspection[11]),
+        ('Front Left Tire', inspection[12]),
+        ('Front Right Tire', inspection[13]),
+        ('Rear Left Tire', inspection[14]),
+        ('Rear Right Tire', inspection[15])
       ] %}
         {% if photo %}
         <div class="photo-box">
