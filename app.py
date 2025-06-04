@@ -362,18 +362,6 @@ def inspections_list():
 
     return render_template('vehicle_inspections_list.html', inspections=inspections)
 
-@app.route('/delete-inspection/<int:inspection_id>', methods=['POST'])
-def delete_inspection(inspection_id):
-    conn = get_db_connection()
-    cur = conn.cursor()
-
-    # Optional: Delete related photo files if needed here
-
-    cur.execute("DELETE FROM vehicle_inspections WHERE id = %s", (inspection_id,))
-    conn.commit()
-    conn.close()
-    return redirect(url_for('inspections_list'))
-
 @app.route('/inspection/<int:inspection_id>')
 def inspection_detail(inspection_id):
     conn = get_db_connection()
@@ -381,7 +369,7 @@ def inspection_detail(inspection_id):
 
     cur.execute("""
         SELECT vi.id, vi.date, t.name AS technician, vi.mileage, vi.cleanliness, vi.wrap_condition,
-               vi.comments, vi.vehicle_id,
+               vi.comments,
                vi.photo_front, vi.photo_back, vi.photo_side_left, vi.photo_side_right,
                vi.photo_tire_front_left, vi.photo_tire_front_right,
                vi.photo_tire_rear_left, vi.photo_tire_rear_right
@@ -389,7 +377,7 @@ def inspection_detail(inspection_id):
         LEFT JOIN technicians t ON vi.technician_id = t.id
         WHERE vi.id = %s
     """, (inspection_id,))
-    
+
     inspection = cur.fetchone()
     cur.close()
     conn.close()
@@ -398,6 +386,19 @@ def inspection_detail(inspection_id):
         return "Inspection not found", 404
 
     return render_template("inspection_detail.html", inspection=inspection)
+
+
+@app.route('/delete-inspection/<int:inspection_id>', methods=['POST'])
+def delete_inspection(inspection_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("DELETE FROM vehicle_inspections WHERE id = %s", (inspection_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return redirect(url_for('inspections_list'))
 
 @app.route('/vehicles')
 def vehicles_list():
