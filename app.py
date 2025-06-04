@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, send_from_directory, session
 import psycopg2
 import os
+import boto3
 import fitz  # PyMuPDF
 import re
 from werkzeug.utils import secure_filename
@@ -15,6 +16,14 @@ log = logging.getLogger("scan_action")
 log.setLevel(logging.INFO)
 
 app = Flask(__name__)
+
+# Set up S3 client using environment variables
+s3 = boto3.client(
+    's3',
+    region_name=os.environ.get("AWS_REGION"),
+    aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
+    aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY")
+)
 
 # Ensure upload folders exist
 UPLOAD_FOLDERS = [
@@ -218,6 +227,13 @@ def assign_technician(vehicle_id):
 
 @app.route('/vehicle-inspection/<int:vehicle_id>', methods=['GET', 'POST'])
 def vehicle_inspection(vehicle_id):
+    import boto3
+    from werkzeug.utils import secure_filename
+    from datetime import datetime
+
+    S3_BUCKET = 'your-bucket-name'  # Replace with your actual bucket name
+    s3 = boto3.client('s3')
+
     conn = get_db_connection()
     cur = conn.cursor()
 
@@ -231,12 +247,17 @@ def vehicle_inspection(vehicle_id):
         def save_photo(field):
             file = request.files.get(field)
             if file and file.filename:
-                os.makedirs('static/uploads', exist_ok=True)  # Ensure the upload directory exists
                 timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
                 filename = f"{vehicle_id}_{field}_{timestamp}_{secure_filename(file.filename)}"
-                path = os.path.join('static/uploads', filename)
-                file.save(path)
-                return path
+                s3_key = f"inspections/{filename}"
+
+                s3.upload_fileobj(
+                    file,
+                    S3_BUCKET,
+                    s3_key,
+                    ExtraArgs={"ACL": "public-read"}
+                )
+                return f"https://{S3_BUCKET}.s3.amazonaws.com/{s3_key}"
             return None
 
         photo_fields = [
