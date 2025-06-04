@@ -807,6 +807,9 @@ def upload_invoice():
         updates = []
         debug_log = []
 
+        import pdfplumber
+        from rapidfuzz import process, fuzz
+
         with pdfplumber.open(filepath) as pdf:
             for page in pdf.pages:
                 table = page.extract_table()
@@ -814,18 +817,16 @@ def upload_invoice():
                     continue
 
                 for row in table:
-                    # Skip headers or broken rows
-                    if not row or len(row) < 7:
+                    # Skip headers or broken rows or rows with None values
+                    if not row or len(row) < 6 or any(cell is None for cell in row):
                         continue
 
-                    # Extract text fields
                     try:
                         sku = row[0].strip()
                         desc = row[1].strip()
                         unit_price_text = row[5].strip()
 
                         unit_price = float(unit_price_text.replace("$", "").split("/")[0].strip())
-
                         normalized_desc = normalize(desc)
 
                         # Match with DB product name
@@ -848,7 +849,6 @@ def upload_invoice():
                             updates.append(f"🔴 No good match for: {desc}")
                     except Exception as e:
                         debug_log.append(f"⚠️ Error parsing row: {row} → {e}")
-                        continue
 
         if not updates:
             updates.append("⚠️ No matches or price changes found.")
