@@ -110,7 +110,7 @@
     <h2>🧾 Inspection Details</h2>
 
     <div class="details">
-      <p><strong>Date:</strong> {{ inspection[0].strftime('%Y-%m-%d') if inspection[0] else '—' }}</p>
+      <p><strong>Date:</strong> {{ inspection[0]|string|truncate(10, True, '') if inspection[0] else '—' }}</p>
       <p><strong>Technician:</strong> {{ inspection[1] or '—' }}</p>
       <p><strong>Mileage:</strong> {{ inspection[2] }} miles</p>
       <p><strong>Cleanliness:</strong> {{ inspection[3] }}</p>
