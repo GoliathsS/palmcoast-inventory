@@ -5,3 +5,4 @@ requests
 PyMuPDF>=1.22.0
 rapidfuzz
 python-Levenshtein
+boto3
