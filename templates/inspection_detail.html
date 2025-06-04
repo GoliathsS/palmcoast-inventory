@@ -110,25 +110,23 @@
     <h2>🧾 Inspection Details</h2>
 
     <div class="details">
-      <p><strong>Date:</strong> {{ inspection[1][:10] }}</p>
+      <p><strong>Date:</strong> {{ inspection[0].strftime('%Y-%m-%d') if inspection[0] else '—' }}</p>
+      <p><strong>Technician:</strong> {{ inspection[1] or '—' }}</p>
       <p><strong>Mileage:</strong> {{ inspection[2] }} miles</p>
       <p><strong>Cleanliness:</strong> {{ inspection[3] }}</p>
       <p><strong>Wrap Condition:</strong> {{ inspection[4] }}</p>
-      <p><strong>Technician ID:</strong> {{ inspection[5] }}</p>
-      <p><strong>Vehicle ID:</strong> {{ inspection[6] or 'None' }}</p>
-      <p><strong>Comments:</strong> {{ inspection[7] or '—' }}</p>
     </div>
 
     <div class="photo-gallery">
       {% for label, photo in [
-        ('Front', inspection[8]),
-        ('Back', inspection[9]),
-        ('Left Side', inspection[10]),
-        ('Right Side', inspection[11]),
-        ('Front Left Tire', inspection[12]),
-        ('Front Right Tire', inspection[13]),
-        ('Rear Left Tire', inspection[14]),
-        ('Rear Right Tire', inspection[15])
+        ('Front', inspection[5]),
+        ('Back', inspection[6]),
+        ('Left Side', inspection[7]),
+        ('Right Side', inspection[8]),
+        ('Front Left Tire', inspection[9]),
+        ('Front Right Tire', inspection[10]),
+        ('Rear Left Tire', inspection[11]),
+        ('Rear Right Tire', inspection[12])
       ] %}
         {% if photo %}
         <div class="photo-box">
@@ -143,7 +141,7 @@
       <a href="/inspections" class="btn">← Back to Inspections</a>
       <a href="#" class="btn print" onclick="window.print()">🖨️ Print</a>
 
-      <form action="/delete-inspection/{{ inspection[0] }}" method="POST" onsubmit="return confirm('Are you sure you want to permanently delete this inspection?');" style="flex: 1;">
+      <form action="/delete-inspection/{{ inspection_id }}" method="POST" onsubmit="return confirm('Are you sure you want to permanently delete this inspection?');" style="flex: 1;">
         <button type="submit" class="btn" style="background:#dc3545;">🗑️ Delete</button>
       </form>
     </div>
