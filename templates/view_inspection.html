@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Inspection Details</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    img { height: 120px; border: 1px solid #ccc; border-radius: 6px; margin: 5px; }
+  </style>
+</head>
+<body>
+  <h2>🚛 Inspection Details - {{ inspection.license_plate }}</h2>
+  <p><strong>Date:</strong> {{ inspection.date }}</p>
+  <p><strong>Technician:</strong> {{ inspection.technician }}</p>
+  <p><strong>Mileage:</strong> {{ inspection.mileage }}</p>
+  <p><strong>Cleanliness:</strong> {{ inspection.cleanliness }}</p>
+  <p><strong>Wrap Condition:</strong> {{ inspection.wrap_condition }}</p>
+
+  <h3>📸 Photos</h3>
+  <div>
+    {% for label, img in [
+      ('Front', inspection.photo_front),
+      ('Back', inspection.photo_back),
+      ('Left Side', inspection.photo_side_left),
+      ('Right Side', inspection.photo_side_right),
+      ('Tire FL', inspection.photo_tire_front_left),
+      ('Tire FR', inspection.photo_tire_front_right),
+      ('Tire RL', inspection.photo_tire_rear_left),
+      ('Tire RR', inspection.photo_tire_rear_right)
+    ] %}
+      {% if img %}
+        <div style="display:inline-block; text-align:center;">
+          <img src="/{{ img }}" alt="{{ label }}">
+          <div>{{ label }}</div>
+        </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+
+  <br>
+  <a href="/inspections">← Back to Inspections</a>
+</body>
+</html>
