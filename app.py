@@ -766,17 +766,6 @@ def remove_technician_route():
 def manifest():
     return send_from_directory('static', 'manifest.json', mimetype='application/manifest+json')
 
-@app.route("/sync-siteone", methods=["POST"])
-def sync_siteone():
-    email = request.form.get("email")
-    password = request.form.get("password")
-
-    if not email or not password:
-        return "Missing login credentials", 400
-
-    success, message = run_siteone_sync()
-    return redirect(url_for("index"))
-
 @app.route("/print-report")
 def print_report():
     conn = get_db_connection()
@@ -825,58 +814,44 @@ def upload_invoice():
         debug_log = []
         debug_log.append(f"📄 PDF contains {len(lines)} total lines")
 
-        i = 0
-        while i < len(lines) - 8:
-            sku = lines[i].strip()
+        # New invoice item line matcher
+        product_line_regex = re.compile(
+            r"^\d+\s+([A-Z0-9\-]+)\s+(.+?)\s+(\d+)\s+(\d+)\s+\d+\s+\d+\s+([\d\.]+)\s*/\s*\w+", re.IGNORECASE)
 
-            if not re.match(r'^[0-9A-Z\-]{6,}$', sku):
-                i += 1
+        for line in lines:
+            match = product_line_regex.match(line)
+            if not match:
                 continue
 
-            name_line_1 = lines[i + 1].strip()
-            name_line_2 = lines[i + 2].strip()
-            name_line_3 = lines[i + 3].strip()
-            price_line = lines[i + 6].strip()
-
-            name_parts = [name_line_1, name_line_2, name_line_3]
-            product_name = " ".join(name_parts).replace("...", "").strip()
-            product_name = re.sub(r'\s+', ' ', product_name)
+            item_number = match.group(1).strip()
+            product_name = re.sub(r'\s+', ' ', match.group(2).strip())
+            unit_price = float(match.group(5).replace(",", ""))
 
             normalized_product_name = normalize(product_name)
-
-            price_match = re.search(r"\$([\d\.,]+)\s*/", price_line)
-            if not price_match:
-                i += 9
-                continue
-
-            unit_price = float(price_match.group(1).replace(",", ""))
-
-            debug_log.append(f"✅ Block from line {i}:")
-            debug_log.append(f"  SKU: {sku}")
-            debug_log.append(f"  Name: {product_name}")
-            debug_log.append(f"  Price Line: {price_line}")
-            debug_log.append(f"  Extracted Price: {unit_price}")
-
-            match_name, score, idx = process.extractOne(normalized_product_name, normalized_db_names, scorer=fuzz.token_set_ratio)
+            match_name, score, idx = process.extractOne(
+                normalized_product_name, normalized_db_names, scorer=fuzz.token_set_ratio)
             actual_name = name_list[idx]
-            debug_log.append(f"  🤖 Match: '{actual_name}' (Score: {score})")
+
+            debug_log.append(f"🧾 Line Match:")
+            debug_log.append(f"  SKU: {item_number}")
+            debug_log.append(f"  Name: {product_name}")
+            debug_log.append(f"  Price: ${unit_price:.2f}")
+            debug_log.append(f"  🤖 Matched DB Product: {actual_name} (Score: {score})")
 
             if score >= 75:
                 product_id, _, old_price = db_products[idx]
                 if old_price != unit_price:
-                    conn = get_db_connection()
                     cur = conn.cursor()
                     cur.execute("UPDATE products SET cost_per_unit = %s WHERE id = %s", (unit_price, product_id))
                     conn.commit()
                     cur.close()
-                    conn.close()
                     updates.append(f"🟢 {actual_name}: ${old_price:.2f} → ${unit_price:.2f}")
                 else:
                     updates.append(f"⚪ {actual_name}: no change (${unit_price:.2f})")
             else:
                 updates.append(f"🔴 No match for: {product_name}")
 
-            i += 9  # Move to next product block
+        conn.close()
 
         if not updates:
             updates.append("⚠️ No matches or price changes found.")
