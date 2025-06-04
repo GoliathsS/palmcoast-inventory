@@ -380,7 +380,8 @@ def inspection_detail(inspection_id):
     cur = conn.cursor()
 
     cur.execute("""
-        SELECT vi.date, t.name AS technician, vi.mileage, vi.cleanliness, vi.wrap_condition,
+        SELECT vi.id, vi.date, t.name AS technician, vi.mileage, vi.cleanliness, vi.wrap_condition,
+               vi.comments, vi.vehicle_id,
                vi.photo_front, vi.photo_back, vi.photo_side_left, vi.photo_side_right,
                vi.photo_tire_front_left, vi.photo_tire_front_right,
                vi.photo_tire_rear_left, vi.photo_tire_rear_right
@@ -396,7 +397,7 @@ def inspection_detail(inspection_id):
     if not inspection:
         return "Inspection not found", 404
 
-    return render_template("inspection_detail.html", inspection=inspection, inspection_id=inspection_id)
+    return render_template("inspection_detail.html", inspection=inspection)
 
 @app.route('/vehicles')
 def vehicles_list():
