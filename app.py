@@ -4,6 +4,7 @@ import os
 import boto3
 import fitz  # PyMuPDF
 import re
+import pdfplumber
 from werkzeug.utils import secure_filename
 from datetime import datetime, date
 from technician_manager import add_technician, remove_technician, get_all_technicians
@@ -780,9 +781,7 @@ def print_report():
     return render_template("print_report.html", products=products, now=datetime.now())
 
 def normalize(text):
-    text = re.sub(r'[^a-zA-Z0-9\s]', '', text)  # remove punctuation
-    text = re.sub(r'\s+', ' ', text)  # normalize spacing
-    return text.lower().strip()
+    return re.sub(r'[^a-z0-9]+', ' ', text.lower()).strip()
 
 @app.route('/upload-invoice', methods=['GET', 'POST'])
 def upload_invoice():
@@ -795,12 +794,7 @@ def upload_invoice():
         filepath = os.path.join('/tmp', filename)
         file.save(filepath)
 
-        doc = fitz.open(filepath)
-        lines = []
-        for page in doc:
-            lines.extend(page.get_text().splitlines())
-
-        # Load DB products
+        # Load current product names from DB
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("SELECT id, name, cost_per_unit FROM products")
@@ -812,52 +806,52 @@ def upload_invoice():
 
         updates = []
         debug_log = []
-        debug_log.append(f"📄 PDF contains {len(lines)} total lines")
 
-        # New invoice item line matcher
-        product_line_regex = re.compile(
-            r"^\d+\s+([A-Z0-9\-]+)\s+(.+?)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+([\d\.]+)\s*/\s*\w+", re.IGNORECASE)
+        with pdfplumber.open(filepath) as pdf:
+            for page in pdf.pages:
+                table = page.extract_table()
+                if not table:
+                    continue
 
-        matched_any = False  # flag to detect at least one match
+                for row in table:
+                    # Skip headers or broken rows
+                    if not row or len(row) < 7:
+                        continue
 
-        for line in lines:
-            debug_log.append(f"🔎 Line: {line}")
-            match = product_line_regex.match(line)
-            if not match:
-                debug_log.append("   ⛔ No match.")
-                continue
+                    # Extract text fields
+                    try:
+                        sku = row[0].strip()
+                        desc = row[1].strip()
+                        unit_price_text = row[5].strip()
 
-            item_number = match.group(1).strip()
-            product_name = re.sub(r'\s+', ' ', match.group(2).strip())
-            unit_price = float(match.group(7).replace(",", ""))
-            matched_any = True
+                        unit_price = float(unit_price_text.replace("$", "").split("/")[0].strip())
 
-            normalized_product_name = normalize(product_name)
-            match_name, score, idx = process.extractOne(
-                normalized_product_name, normalized_db_names, scorer=fuzz.token_set_ratio)
-            actual_name = name_list[idx]
+                        normalized_desc = normalize(desc)
 
-            debug_log.append(f"   ✅ Matched:")
-            debug_log.append(f"      SKU: {item_number}")
-            debug_log.append(f"      Name: {product_name}")
-            debug_log.append(f"      Unit Price: ${unit_price:.2f}")
-            debug_log.append(f"      🤖 DB Match: {actual_name} (Score: {score})")
+                        # Match with DB product name
+                        match_name, score, idx = process.extractOne(normalized_desc, normalized_db_names, scorer=fuzz.token_set_ratio)
+                        actual_name = name_list[idx]
 
-            if score >= 75:
-                product_id, _, old_price = db_products[idx]
-                if old_price != unit_price:
-                    cur = conn.cursor()
-                    cur.execute("UPDATE products SET cost_per_unit = %s WHERE id = %s", (unit_price, product_id))
-                    conn.commit()
-                    cur.close()
-                    updates.append(f"🟢 {actual_name}: ${old_price:.2f} → ${unit_price:.2f}")
-                else:
-                    updates.append(f"⚪ {actual_name}: no change (${unit_price:.2f})")
-            else:
-                updates.append(f"🔴 No match for: {product_name}")
+                        debug_log.append(f"📦 {sku} → '{actual_name}' ({score}) → ${unit_price}")
 
-        if not matched_any:
-            debug_log.append("⚠️ No product lines matched the invoice format.")
+                        if score >= 75:
+                            product_id, _, old_price = db_products[idx]
+                            if old_price != unit_price:
+                                cur = conn.cursor()
+                                cur.execute("UPDATE products SET cost_per_unit = %s WHERE id = %s", (unit_price, product_id))
+                                conn.commit()
+                                cur.close()
+                                updates.append(f"🟢 {actual_name}: ${old_price:.2f} → ${unit_price:.2f}")
+                            else:
+                                updates.append(f"⚪ {actual_name}: no change (${unit_price:.2f})")
+                        else:
+                            updates.append(f"🔴 No good match for: {desc}")
+                    except Exception as e:
+                        debug_log.append(f"⚠️ Error parsing row: {row} → {e}")
+                        continue
+
+        if not updates:
+            updates.append("⚠️ No matches or price changes found.")
 
         return render_template("upload_result.html", updates=updates, debug_log=debug_log)
 
