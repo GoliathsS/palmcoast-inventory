@@ -372,6 +372,32 @@ def delete_inspection(inspection_id):
     conn.close()
     return redirect(url_for('inspections_list'))
 
+@app.route('/inspection/<int:inspection_id>')
+def view_inspection(inspection_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # Fetch inspection data
+    cur.execute("""
+        SELECT vi.date, vi.mileage, vi.cleanliness, vi.wrap_condition,
+               vi.photo_front, vi.photo_back, vi.photo_side_left, vi.photo_side_right,
+               vi.photo_tire_front_left, vi.photo_tire_front_right,
+               vi.photo_tire_rear_left, vi.photo_tire_rear_right,
+               v.license_plate, t.name AS technician
+        FROM vehicle_inspections vi
+        JOIN vehicles v ON vi.vehicle_id = v.vehicle_id
+        JOIN technicians t ON vi.technician_id = t.id
+        WHERE vi.id = %s
+    """, (inspection_id,))
+    inspection = cur.fetchone()
+
+    conn.close()
+
+    if not inspection:
+        return "Inspection not found", 404
+
+    return render_template('view_inspection.html', inspection=inspection)
+
 @app.route('/vehicles')
 def vehicles_list():
     conn = get_db_connection()
