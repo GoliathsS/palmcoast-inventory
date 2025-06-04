@@ -323,10 +323,12 @@ def vehicle_profile(vehicle_id):
     inventory = cur.fetchall()
 
     cur.execute("""
-        SELECT date, mileage, cleanliness, wrap_condition,
-               photo_front, photo_back, photo_side_left, photo_side_right,
-               photo_tire_front_left, photo_tire_front_right,
-               photo_tire_rear_left, photo_tire_rear_right
+        SELECT
+            id, date, technician_id, vehicle_id, mileage,
+            cleanliness, wrap_condition, comments,
+            photo_front, photo_back, photo_side_left, photo_side_right,
+            photo_tire_front_left, photo_tire_front_right,
+            photo_tire_rear_left, photo_tire_rear_right
         FROM vehicle_inspections
         WHERE vehicle_id = %s
         ORDER BY date DESC
