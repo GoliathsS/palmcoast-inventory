@@ -254,7 +254,6 @@ def vehicle_inspection(vehicle_id):
                     file,
                     S3_BUCKET,
                     s3_key,
-                    ExtraArgs={"ACL": "public-read"}
                 )
                 return f"https://{S3_BUCKET}.s3.amazonaws.com/{s3_key}"
             return None
