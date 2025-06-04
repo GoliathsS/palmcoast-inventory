@@ -231,6 +231,7 @@ def vehicle_inspection(vehicle_id):
         def save_photo(field):
             file = request.files.get(field)
             if file and file.filename:
+                os.makedirs('static/uploads', exist_ok=True)  # Ensure the upload directory exists
                 timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
                 filename = f"{vehicle_id}_{field}_{timestamp}_{secure_filename(file.filename)}"
                 path = os.path.join('static/uploads', filename)
@@ -279,13 +280,12 @@ def vehicle_inspection(vehicle_id):
     """, (vehicle_id,))
     tech = cur.fetchone()
 
-    # Handle if no technician is assigned
     if tech:
         technician_name = tech[0]
         technician_id = tech[1]
     else:
         technician_name = "Unassigned"
-        technician_id = None  # You can handle this in the form too
+        technician_id = None
 
     conn.close()
 
@@ -295,10 +295,6 @@ def vehicle_inspection(vehicle_id):
         technician=technician_name,
         technician_id=technician_id
     )
-
-    conn.close()
-
-    return render_template('vehicle_inspection.html', vehicle_id=vehicle_id, technician=tech_name)
 
 @app.route('/vehicles/<int:vehicle_id>')
 def vehicle_profile(vehicle_id):
