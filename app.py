@@ -852,7 +852,6 @@ def upload_invoice():
         for page in doc:
             lines.extend(page.get_text().splitlines())
 
-        # Load products from DB
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("SELECT id, name, cost_per_unit FROM products")
@@ -867,7 +866,7 @@ def upload_invoice():
         skipped_count = 0
 
         i = 0
-        while i < len(lines) - 6:
+        while i < len(lines) - 3:
             current_line = lines[i].strip()
             debug_log.append(f"📄 Checking line {i}: {current_line}")
 
@@ -876,13 +875,13 @@ def upload_invoice():
                 sku = sku_match.group(1)
                 name_1 = lines[i + 1].strip()
                 name_2 = lines[i + 2].strip()
-                price_line = lines[i + 4].strip()
+                price_line = lines[i + 3].strip()  # ✅ THE RIGHT LINE
 
                 product_name = f"{name_1} {name_2}".replace("...", "").strip()
                 product_name = re.sub(r'\s+', ' ', product_name)
                 updates.append(f"🧪 Trying to match: '{product_name}'")
 
-                # Final regex: matches any price buried in noisy price_line
+                # FINAL REGEX — pulls price out of noisy line like "6 6 0 0 26.035 / EA 156.21"
                 matches = re.findall(r"(\d+\.\d+)\s*/\s*(EA|BG)\s+(\d+\.\d+)", price_line)
                 if matches:
                     unit_price_str, _, total_price_str = matches[-1]
@@ -893,13 +892,13 @@ def upload_invoice():
                         skipped_count += 1
                         debug_log.append(f"⚠️ Failed to parse price: {e}")
                         updates.append(f"🔴 Skipped: price parse error → {e}")
-                        i += 6
+                        i += 4
                         continue
                 else:
                     skipped_count += 1
                     debug_log.append(f"❌ PRICE LINE: '{price_line}' → regex failed")
                     updates.append(f"🔴 Skipped: no price match in → '{price_line}'")
-                    i += 6
+                    i += 4
                     continue
 
                 debug_log.append(f"✅ Row starting at line {i}:")
@@ -931,7 +930,7 @@ def upload_invoice():
                     skipped_count += 1
                     updates.append(f"🔴 No match for: '{product_name}' → Best: '{actual_name}' ({score}%)")
 
-                i += 6
+                i += 4
             else:
                 i += 1
 
