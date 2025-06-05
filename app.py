@@ -779,6 +779,11 @@ def print_report():
 
     return render_template("print_report.html", products=products, now=datetime.now())
 
+def normalize(text):
+    text = text.lower()
+    text = re.sub(r'[^a-z0-9]+', ' ', text)
+    return text.strip()
+
 @app.route('/upload-invoice', methods=['GET', 'POST'])
 def upload_invoice():
     if request.method == 'POST':
