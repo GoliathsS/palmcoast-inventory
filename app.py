@@ -11,7 +11,6 @@ from decimal import Decimal, ROUND_HALF_UP
 from rapidfuzz import process, fuzz
 import logging
 logging.basicConfig(level=logging.INFO)
-log = logging.getLogger("invoice")
 log = logging.getLogger("scan_action")
 log.setLevel(logging.INFO)
 
@@ -177,6 +176,7 @@ def scan_action():
         result = cur.fetchone()
 
         if not result:
+            log.info("❌ Product not found for barcode: %s", barcode)
             cur.close()
             conn.close()
             return jsonify({'status': 'not_found'})
@@ -188,6 +188,7 @@ def scan_action():
 
         if direction == 'out':
             if units_remaining <= 0:
+                log.info("⚠️ Not enough units for product %s", product_id)
                 cur.close()
                 conn.close()
                 return jsonify({'status': 'not_enough_units'})
@@ -216,48 +217,50 @@ def scan_action():
         vehicle_id = None
 
         if technician:
-            print("🔍 Technician passed in:", technician)
+            log.info("🔍 Technician passed in: %s", technician)
             cur.execute("SELECT id, vehicle_id FROM technicians WHERE name = %s", (technician,))
             tech_row = cur.fetchone()
-            print("👤 Technician row:", tech_row)
+            log.info("👤 Technician row: %s", tech_row)
             if tech_row:
                 technician_id = tech_row[0]
                 vehicle_id = tech_row[1]
-                print(f"✅ Found technician ID: {technician_id}, vehicle ID: {vehicle_id}")
+                log.info("✅ Found technician ID: %s, vehicle ID: %s", technician_id, vehicle_id)
             else:
-                print("❌ Technician not found in DB")
+                log.info("❌ Technician not found in DB")
 
         # 🚚 Update vehicle inventory only if scanning out and vehicle is assigned
         if direction == 'out' and vehicle_id:
-            print("🚚 Updating vehicle inventory...")
+            log.info("🚚 Updating vehicle inventory for vehicle %s and product %s", vehicle_id, product_id)
             cur.execute("""
                 SELECT quantity FROM vehicle_inventory
                 WHERE vehicle_id = %s AND product_id = %s
             """, (vehicle_id, product_id))
             existing = cur.fetchone()
-            print("📦 Existing inventory:", existing)
+            log.info("📦 Existing inventory row: %s", existing)
 
             if existing:
-                print("🔁 Updating quantity in vehicle_inventory")
                 cur.execute("""
                     UPDATE vehicle_inventory
                     SET quantity = quantity + 1
                     WHERE vehicle_id = %s AND product_id = %s
                 """, (vehicle_id, product_id))
+                log.info("🔁 Quantity updated in vehicle_inventory")
             else:
-                print("➕ Inserting new product into vehicle_inventory")
                 cur.execute("""
                     INSERT INTO vehicle_inventory (vehicle_id, product_id, quantity)
                     VALUES (%s, %s, %s)
                 """, (vehicle_id, product_id, 1))
+                log.info("➕ Inserted new inventory row")
+
         else:
-            print("⚠️ Vehicle inventory not updated: either direction != 'out' or vehicle_id is None")
+            log.info("⚠️ Vehicle inventory not updated: direction=%s, vehicle_id=%s", direction, vehicle_id)
 
         conn.commit()
+        log.info("✅ Scan and inventory update completed for product %s", product_id)
         return jsonify({'status': 'success'})
 
     except Exception as e:
-        print("❌ ERROR in /scan-action:", e)
+        log.error("❌ ERROR in /scan-action: %s", e)
         conn.rollback()
         return jsonify({'status': 'error', 'message': str(e)})
 
