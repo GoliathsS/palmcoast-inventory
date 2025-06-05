@@ -802,7 +802,6 @@ def upload_invoice():
         filepath = os.path.join('/tmp', filename)
         file.save(filepath)
 
-        # Read PDF lines
         doc = fitz.open(filepath)
         lines = []
         for page in doc:
@@ -827,20 +826,25 @@ def upload_invoice():
             if not price_match:
                 continue
 
-            unit_price = float(price_match.group(1).replace(",", ""))
+            try:
+                unit_price = float(price_match.group(1).replace(",", ""))
+            except:
+                continue
 
-            # Find SKU and product name above price
+            # Backtrack for SKU and Product Name
             sku = None
             product_name = None
             for j in range(i - 1, max(i - 6, -1), -1):
                 candidate = lines[j].strip()
                 if re.match(r'^[0-9A-Z\-]{6,}$', candidate):
                     sku = candidate
-                    # Look for product name above "In Stock at" line
+
+                    # Look for "In Stock at" line and go 2 lines above it
                     for k in range(i - 1, j, -1):
                         if "in stock at" in lines[k].lower():
-                            if k - 1 >= j:
-                                product_name = lines[k - 1].strip()
+                            name_above = lines[k - 1].strip() if k - 1 >= j else ''
+                            second_above = lines[k - 2].strip() if k - 2 >= j else ''
+                            product_name = f"{second_above} {name_above}".strip()
                             break
                     break
 
@@ -856,9 +860,9 @@ def upload_invoice():
 
             debug_log.append(f"✅ Block near line {i}:")
             debug_log.append(f"  SKU: {sku}")
-            debug_log.append(f"  Name: {product_name}")
+            debug_log.append(f"  Raw Name: {product_name}")
             debug_log.append(f"  Extracted Price: {unit_price}")
-            debug_log.append(f"  🤖 Matched: '{actual_name}' (Token Score: {best_score}%)")
+            debug_log.append(f"  🤖 Best Match: '{actual_name}' (Score: {best_score}%)")
 
             if best_score >= 60:
                 matched_count += 1
