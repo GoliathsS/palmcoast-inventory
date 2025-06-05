@@ -883,6 +883,12 @@ def upload_invoice():
 
                 updates.append(f"🧪 Trying to match: '{product_name}'")
 
+                # 🧾 Log nearby lines for debug clarity
+                debug_log.append("🧾 Nearby lines:")
+                for offset in range(6):
+                    if i + offset < len(lines):
+                        debug_log.append(f"  [i + {offset}] → '{lines[i + offset].strip()}'")
+
                 # Match last price pattern in messy line (e.g., 26.035 / EA 156.21)
                 matches = re.findall(r"(\d+\.\d+)\s*/\s*(EA|BG)\s+(\d+\.\d+)", price_line)
                 if matches:
