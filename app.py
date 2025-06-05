@@ -853,6 +853,11 @@ def upload_invoice():
         for page in doc:
             lines.extend(page.get_text().splitlines())
 
+        print("==== Raw PDF Lines ====")
+        for line in lines:
+            print(line)
+        print("=======================")
+
         # Load products from DB
         conn = get_db_connection()
         cur = conn.cursor()
@@ -872,7 +877,7 @@ def upload_invoice():
             current_line = lines[i].strip()
             debug_log.append(f"📄 Checking line {i}: {current_line}")
 
-            # Flexible SKU line detection (with or without line number)
+            # Flexible SKU line detection
             sku_match = re.match(r"^(?:\d+\s+)?([A-Z0-9\-]{6,})$", current_line)
             if sku_match:
                 sku = sku_match.group(1)
@@ -883,10 +888,13 @@ def upload_invoice():
                 product_name = f"{name_1} {name_2}".replace("...", "").strip()
                 product_name = re.sub(r'\s+', ' ', product_name)
 
+                updates.append(f"🧪 Trying to match: '{product_name}'")
+
                 price_match = re.search(r"([\d\.]+)\s*/\s*(EA|BG)\s+([\d\.]+)", price_line)
                 if not price_match:
                     skipped_count += 1
                     debug_log.append(f"⚠️ Price not found in line {i + 3}: {price_line}")
+                    updates.append(f"🔴 Skipped: price not found in → '{price_line}'")
                     i += 4
                     continue
 
@@ -896,6 +904,7 @@ def upload_invoice():
                 except Exception as e:
                     skipped_count += 1
                     debug_log.append(f"⚠️ Failed to parse price: {e}")
+                    updates.append(f"🔴 Skipped: price parse error → {e}")
                     i += 4
                     continue
 
