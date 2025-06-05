@@ -254,7 +254,7 @@ def assign_technician(vehicle_id):
     tech_id = request.form['technician_id']
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("UPDATE technicians SET vehicle_id = %s WHERE id = %s", (vehicle_id, tech_id))
+    cur.execute("UPDATE vehicles SET technician_id = %s WHERE vehicle_id = %s", (tech_id, vehicle_id))
     conn.commit()
     conn.close()
     return redirect(url_for('vehicle_profile', vehicle_id=vehicle_id))
