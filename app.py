@@ -779,10 +779,17 @@ def print_report():
 
     return render_template("print_report.html", products=products, now=datetime.now())
 
-def normalize(text):
+def tokenize(text):
     text = text.lower()
     text = re.sub(r'[^a-z0-9]+', ' ', text)
-    return text.strip()
+    return set(text.split())
+
+def token_overlap_score(tokens1, tokens2):
+    overlap = tokens1 & tokens2
+    union = tokens1 | tokens2
+    if not union:
+        return 0
+    return int(100 * len(overlap) / len(union))
 
 @app.route('/upload-invoice', methods=['GET', 'POST'])
 def upload_invoice():
@@ -807,7 +814,7 @@ def upload_invoice():
         cur.execute("SELECT id, name, cost_per_unit FROM products")
         db_products = cur.fetchall()
         name_list = [p[1] for p in db_products]
-        normalized_db_names = [normalize(n) for n in name_list]
+        tokenized_db_names = [tokenize(n) for n in name_list]
 
         updates = []
         debug_log = []
@@ -839,22 +846,25 @@ def upload_invoice():
 
             product_name = " ".join(name_lines).replace("...", "")
             product_name = re.sub(r'\s+', ' ', product_name.strip())
-            normalized_product_name = normalize(product_name)
+            tokens_pdf = tokenize(product_name)
+
+            # Token match scoring
+            scores = [token_overlap_score(tokens_pdf, db_tokens) for db_tokens in tokenized_db_names]
+            best_idx = max(range(len(scores)), key=lambda i: scores[i])
+            best_score = scores[best_idx]
+            actual_name = name_list[best_idx]
 
             debug_log.append(f"✅ Block near line {i}:")
             debug_log.append(f"  SKU: {sku}")
             debug_log.append(f"  Name: {product_name}")
             debug_log.append(f"  Price Line: {line}")
             debug_log.append(f"  Extracted Price: {unit_price}")
+            debug_log.append(f"  🤖 Matched: '{actual_name}' (Token Score: {best_score}%)")
 
-            match_name, score, idx = process.extractOne(normalized_product_name, normalized_db_names, scorer=fuzz.token_set_ratio)
-            actual_name = name_list[idx]
-            debug_log.append(f"  🤖 Matched: '{actual_name}' (Score: {score})")
-
-            if score >= 75:
+            if best_score >= 60:
                 matched_count += 1
-                product_id, _, old_price = db_products[idx]
-                if old_price != unit_price:
+                product_id, _, old_price = db_products[best_idx]
+                if round(old_price, 2) != round(unit_price, 2):
                     cur.execute("UPDATE products SET cost_per_unit = %s WHERE id = %s", (unit_price, product_id))
                     conn.commit()
                     updated_count += 1
@@ -863,7 +873,7 @@ def upload_invoice():
                     updates.append(f"⚪ [{actual_name}] no change (${unit_price:.2f})")
             else:
                 skipped_count += 1
-                updates.append(f"🔴 [Unmatched] '{product_name}'")
+                updates.append(f"🔴 [No Match] '{product_name}' → Best: '{actual_name}' ({best_score}%)")
 
         cur.close()
         conn.close()
@@ -871,7 +881,6 @@ def upload_invoice():
         if not updates:
             updates.append("⚠️ No products were matched or updated.")
 
-        # Summary
         updates.insert(0, f"📊 Summary: {matched_count} matched, {updated_count} updated, {skipped_count} skipped.")
 
         debug = request.args.get('debug') == 'true'
