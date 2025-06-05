@@ -934,6 +934,58 @@ def upload_invoice():
         return render_template("upload_result.html", updates=updates, debug_log=debug_log if debug else [])
 
     return render_template("upload_invoice.html")
+
+@app.route('/inventory-analytics')
+def inventory_analytics():
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # Get product list for dropdown
+    cur.execute("SELECT DISTINCT name FROM products ORDER BY name")
+    product_names = [row[0] for row in cur.fetchall()]
+
+    # Get price history for first product (default view)
+    default_product = product_names[0] if product_names else None
+    price_history = []
+    if default_product:
+        cur.execute("""
+            SELECT DATE(date_recorded), price
+            FROM price_history
+            WHERE product_name = %s
+            ORDER BY date_recorded
+        """, (default_product,))
+        price_history = cur.fetchall()
+
+    # Inventory value snapshot data
+    cur.execute("""
+        SELECT TO_CHAR(month, 'YYYY-MM') AS month,
+               starting_value,
+               ending_value
+        FROM inventory_snapshots
+        ORDER BY month
+    """)
+    inventory_usage = cur.fetchall()
+
+    # Pest vs Lawn monthly totals
+    cur.execute("""
+        SELECT TO_CHAR(month, 'YYYY-MM') AS month,
+               SUM(CASE WHEN category = 'Pest' THEN total ELSE 0 END) AS pest_total,
+               SUM(CASE WHEN category = 'Lawn' THEN total ELSE 0 END) AS lawn_total
+        FROM monthly_category_totals
+        GROUP BY month
+        ORDER BY month
+    """)
+    category_totals = cur.fetchall()
+
+    cur.close()
+    conn.close()
+
+    return render_template("inventory_analytics.html",
+                           product_names=product_names,
+                           selected_product=default_product,
+                           price_history=price_history,
+                           inventory_usage=inventory_usage,
+                           category_totals=category_totals)
     
 @app.route('/static/debug')
 def view_debug_output():
