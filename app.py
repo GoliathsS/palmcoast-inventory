@@ -853,11 +853,6 @@ def upload_invoice():
         for page in doc:
             lines.extend(page.get_text().splitlines())
 
-        print("==== Raw PDF Lines ====")
-        for line in lines:
-            print(line)
-        print("=======================")
-
         # Load products from DB
         conn = get_db_connection()
         cur = conn.cursor()
@@ -877,7 +872,7 @@ def upload_invoice():
             current_line = lines[i].strip()
             debug_log.append(f"📄 Checking line {i}: {current_line}")
 
-            # Flexible SKU line detection
+            # Detect SKU line (line 0 in block)
             sku_match = re.match(r"^(?:\d+\s+)?([A-Z0-9\-]{6,})$", current_line)
             if sku_match:
                 sku = sku_match.group(1)
@@ -887,25 +882,25 @@ def upload_invoice():
 
                 product_name = f"{name_1} {name_2}".replace("...", "").strip()
                 product_name = re.sub(r'\s+', ' ', product_name)
-
                 updates.append(f"🧪 Trying to match: '{product_name}'")
 
+                # Match last valid price pattern in the line
                 matches = re.findall(r"(\d+\.\d+)\s*/\s*(EA|BG)\s+(\d+\.\d+)", price_line)
                 if matches:
-                    unit_price, _, total_price = matches[-1]  # get last match in line
+                    unit_price_str, _, total_price_str = matches[-1]  # take last match
                     try:
-                        unit_price = float(unit_price)
-                        total_price = float(total_price)
+                        unit_price = float(unit_price_str)
+                        total_price = float(total_price_str)
                     except Exception as e:
                         skipped_count += 1
-                        debug_log.append(f"⚠️ Failed to parse price: {e}")
                         updates.append(f"🔴 Skipped: price parse error → {e}")
+                        debug_log.append(f"⚠️ Failed to parse price: {e}")
                         i += 5
                         continue
                 else:
                     skipped_count += 1
-                    debug_log.append(f"⚠️ Price not matched in line {i + 4}: {price_line}")
                     updates.append(f"🔴 Skipped: price not found in → '{price_line}'")
+                    debug_log.append(f"⚠️ Price not found in line {i + 4}: {price_line}")
                     i += 5
                     continue
 
@@ -938,7 +933,7 @@ def upload_invoice():
                     skipped_count += 1
                     updates.append(f"🔴 No match for: '{product_name}' → Best: '{actual_name}' ({score}%)")
 
-                i += 5
+                i += 5  # Move to next block
             else:
                 i += 1
 
