@@ -794,7 +794,10 @@ def upload_invoice():
         filepath = os.path.join('/tmp', filename)
         file.save(filepath)
 
-        # Load current product names from DB
+        import pdfplumber
+        from rapidfuzz import process, fuzz
+
+        # Load DB products
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("SELECT id, name, cost_per_unit FROM products")
@@ -807,8 +810,8 @@ def upload_invoice():
         updates = []
         debug_log = []
 
-        import pdfplumber
-        from rapidfuzz import process, fuzz
+        def is_valid_row(row):
+            return row and len(row) >= 6 and row[1] and "$" in (row[7] or row[6] or "")
 
         with pdfplumber.open(filepath) as pdf:
             for page in pdf.pages:
@@ -816,37 +819,50 @@ def upload_invoice():
                 if not table:
                     continue
 
+                skip_headers = True
+                last_product_name = None
+
                 for row in table:
-                    # Skip headers or broken rows or rows with None values
-                    if not row or len(row) < 6 or any(cell is None for cell in row):
+                    if skip_headers:
+                        skip_headers = False
                         continue
 
                     try:
-                        sku = row[0].strip()
+                        if not is_valid_row(row):
+                            continue
+
                         desc = row[1].strip()
-                        unit_price_text = row[5].strip()
+                        extra_line = row[2].strip() if row[2] else ""
+                        full_name = f"{desc} {extra_line}".strip()
+                        full_name = re.sub(r'\s+', ' ', full_name)
+                        normalized_name = normalize(full_name)
 
-                        unit_price = float(unit_price_text.replace("$", "").split("/")[0].strip())
-                        normalized_desc = normalize(desc)
+                        # Extract unit price from Net Price column
+                        price_text = row[7] or row[6]
+                        unit_price = float(price_text.replace("$", "").split("/")[0].strip())
 
-                        # Match with DB product name
-                        match_name, score, idx = process.extractOne(normalized_desc, normalized_db_names, scorer=fuzz.token_set_ratio)
+                        match_name, score, idx = process.extractOne(
+                            normalized_name, normalized_db_names, scorer=fuzz.token_set_ratio
+                        )
                         actual_name = name_list[idx]
+                        product_id, _, old_price = db_products[idx]
 
-                        debug_log.append(f"📦 {sku} → '{actual_name}' ({score}) → ${unit_price}")
+                        debug_log.append(f"📦 '{full_name}' → '{actual_name}' (Score: {score}) → ${unit_price:.2f}")
 
                         if score >= 75:
-                            product_id, _, old_price = db_products[idx]
                             if old_price != unit_price:
                                 cur = conn.cursor()
-                                cur.execute("UPDATE products SET cost_per_unit = %s WHERE id = %s", (unit_price, product_id))
+                                cur.execute(
+                                    "UPDATE products SET cost_per_unit = %s WHERE id = %s",
+                                    (unit_price, product_id)
+                                )
                                 conn.commit()
                                 cur.close()
                                 updates.append(f"🟢 {actual_name}: ${old_price:.2f} → ${unit_price:.2f}")
                             else:
                                 updates.append(f"⚪ {actual_name}: no change (${unit_price:.2f})")
                         else:
-                            updates.append(f"🔴 No good match for: {desc}")
+                            updates.append(f"🔴 No good match (score {score}) for: {full_name}")
                     except Exception as e:
                         debug_log.append(f"⚠️ Error parsing row: {row} → {e}")
 
