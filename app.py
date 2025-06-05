@@ -836,8 +836,6 @@ def print_report():
 
     return render_template("print_report.html", products=products, now=datetime.now())
 
-from rapidfuzz import fuzz, process  # Ensure this is at the top with other imports
-
 @app.route('/upload-invoice', methods=['GET', 'POST'])
 def upload_invoice():
     if request.method == 'POST':
