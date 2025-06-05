@@ -802,13 +802,13 @@ def upload_invoice():
         filepath = os.path.join('/tmp', filename)
         file.save(filepath)
 
-        # Extract PDF text
+        # Read PDF lines
         doc = fitz.open(filepath)
         lines = []
         for page in doc:
             lines.extend(page.get_text().splitlines())
 
-        # Load product list from DB
+        # Load DB products
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("SELECT id, name, cost_per_unit FROM products")
@@ -818,8 +818,6 @@ def upload_invoice():
 
         updates = []
         debug_log = []
-        debug_log.append(f"📄 PDF contains {len(lines)} lines")
-
         matched_count = 0
         updated_count = 0
         skipped_count = 0
@@ -831,24 +829,26 @@ def upload_invoice():
 
             unit_price = float(price_match.group(1).replace(",", ""))
 
-            # Backtrack to find SKU and name block
+            # Find SKU and product name above price
             sku = None
-            name_lines = []
+            product_name = None
             for j in range(i - 1, max(i - 6, -1), -1):
                 candidate = lines[j].strip()
                 if re.match(r'^[0-9A-Z\-]{6,}$', candidate):
                     sku = candidate
-                    name_lines = [lines[k].strip() for k in range(j+1, i)]
+                    # Look for product name above "In Stock at" line
+                    for k in range(i - 1, j, -1):
+                        if "in stock at" in lines[k].lower():
+                            if k - 1 >= j:
+                                product_name = lines[k - 1].strip()
+                            break
                     break
-            if not sku or not name_lines:
+
+            if not sku or not product_name:
                 skipped_count += 1
                 continue
 
-            product_name = " ".join(name_lines).replace("...", "")
-            product_name = re.sub(r'\s+', ' ', product_name.strip())
             tokens_pdf = tokenize(product_name)
-
-            # Token match scoring
             scores = [token_overlap_score(tokens_pdf, db_tokens) for db_tokens in tokenized_db_names]
             best_idx = max(range(len(scores)), key=lambda i: scores[i])
             best_score = scores[best_idx]
@@ -857,7 +857,6 @@ def upload_invoice():
             debug_log.append(f"✅ Block near line {i}:")
             debug_log.append(f"  SKU: {sku}")
             debug_log.append(f"  Name: {product_name}")
-            debug_log.append(f"  Price Line: {line}")
             debug_log.append(f"  Extracted Price: {unit_price}")
             debug_log.append(f"  🤖 Matched: '{actual_name}' (Token Score: {best_score}%)")
 
