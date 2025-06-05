@@ -182,7 +182,7 @@
               {% for label, path in photos %}
                 {% if path %}
                   <div>
-                    <img src="/{{ path }}" alt="{{ label }}">
+                    <img src="{{ url_for('static', filename=path) }}" alt="{{ label }}">
                     <div>{{ label }}</div>
                   </div>
                 {% endif %}
