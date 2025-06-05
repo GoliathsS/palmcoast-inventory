@@ -887,23 +887,24 @@ def upload_invoice():
 
                 product_name = f"{name_1} {name_2}".replace("...", "").strip()
                 product_name = re.sub(r'\s+', ' ', product_name)
+
                 updates.append(f"🧪 Trying to match: '{product_name}'")
 
                 matches = re.findall(r"(\d+\.\d+)\s*/\s*(EA|BG)\s+(\d+\.\d+)", price_line)
                 if matches:
-                    unit_price_str, _, total_price_str = matches[-1]  # take last match in line
+                    unit_price, _, total_price = matches[-1]  # get last match in line
                     try:
-                        unit_price = float(unit_price_str)
-                        total_price = float(total_price_str)
+                        unit_price = float(unit_price)
+                        total_price = float(total_price)
                     except Exception as e:
                         skipped_count += 1
-                        updates.append(f"🔴 Skipped: price parse error → {e}")
                         debug_log.append(f"⚠️ Failed to parse price: {e}")
+                        updates.append(f"🔴 Skipped: price parse error → {e}")
                         i += 5
                         continue
                 else:
                     skipped_count += 1
-                    debug_log.append(f"⚠️ Price not found in line {i + 4}: {price_line}")
+                    debug_log.append(f"⚠️ Price not matched in line {i + 4}: {price_line}")
                     updates.append(f"🔴 Skipped: price not found in → '{price_line}'")
                     i += 5
                     continue
