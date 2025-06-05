@@ -171,64 +171,64 @@ def scan_action():
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # Fetch product
-    cur.execute("SELECT id, stock, units_per_item, units_remaining, unit_cost FROM products WHERE barcode=%s", (barcode,))
-    result = cur.fetchone()
+    try:
+        # Fetch product
+        cur.execute("SELECT id, stock, units_per_item, units_remaining, unit_cost FROM products WHERE barcode=%s", (barcode,))
+        result = cur.fetchone()
 
-    if not result:
-        cur.close()
-        conn.close()
-        return jsonify({'status': 'not_found'})
-
-    product_id, stock, units_per_item, units_remaining, unit_cost = result
-    units_per_item = units_per_item or 1
-    units_remaining = units_remaining or (stock * units_per_item)
-    unit_cost = unit_cost or 0.0
-
-    if direction == 'out':
-        if units_remaining <= 0:
+        if not result:
             cur.close()
             conn.close()
-            return jsonify({'status': 'not_enough_units'})
-        units_remaining -= 1
-    else:
-        units_remaining += units_per_item
-        stock += 1
+            return jsonify({'status': 'not_found'})
 
-    new_stock = units_remaining // units_per_item
+        product_id, stock, units_per_item, units_remaining, unit_cost = result
+        units_per_item = units_per_item or 1
+        units_remaining = units_remaining or (stock * units_per_item)
+        unit_cost = unit_cost or 0.0
 
-    # Update main inventory
-    cur.execute("UPDATE products SET stock=%s, units_remaining=%s WHERE id=%s",
-                (new_stock, units_remaining, product_id))
-
-    # Log the scan
-    timestamp = datetime.now().isoformat()
-    logged_cost = unit_cost if direction == 'out' else round(unit_cost * units_per_item, 2)
-
-    cur.execute(
-        "INSERT INTO scan_logs (product_id, action, timestamp, technician, unit_cost) VALUES (%s, %s, %s, %s, %s)",
-        (product_id, direction, timestamp, technician, logged_cost)
-    )
-
-    # 🚚 Lookup technician ID and vehicle_id once, cleanly
-    technician_id = None
-    vehicle_id = None
-
-    if technician:
-        print("🔍 Technician passed in:", technician)
-        cur.execute("SELECT id, vehicle_id FROM technicians WHERE name = %s", (technician,))
-        tech_row = cur.fetchone()
-        print("👤 Technician row:", tech_row)
-        if tech_row:
-            technician_id = tech_row[0]
-            vehicle_id = tech_row[1]
-            print(f"✅ Found technician ID: {technician_id}, vehicle ID: {vehicle_id}")
+        if direction == 'out':
+            if units_remaining <= 0:
+                cur.close()
+                conn.close()
+                return jsonify({'status': 'not_enough_units'})
+            units_remaining -= 1
         else:
-            print("❌ Technician not found in DB")
+            units_remaining += units_per_item
+            stock += 1
 
-    # 🚚 Update vehicle inventory only if scanning out and vehicle is assigned
-    if direction == 'out' and vehicle_id:
-        try:
+        new_stock = units_remaining // units_per_item
+
+        # Update main inventory
+        cur.execute("UPDATE products SET stock=%s, units_remaining=%s WHERE id=%s",
+                    (new_stock, units_remaining, product_id))
+
+        # Log the scan
+        timestamp = datetime.now().isoformat()
+        logged_cost = unit_cost if direction == 'out' else round(unit_cost * units_per_item, 2)
+
+        cur.execute(
+            "INSERT INTO scan_logs (product_id, action, timestamp, technician, unit_cost) VALUES (%s, %s, %s, %s, %s)",
+            (product_id, direction, timestamp, technician, logged_cost)
+        )
+
+        # 🚚 Lookup technician ID and vehicle_id once, cleanly
+        technician_id = None
+        vehicle_id = None
+
+        if technician:
+            print("🔍 Technician passed in:", technician)
+            cur.execute("SELECT id, vehicle_id FROM technicians WHERE name = %s", (technician,))
+            tech_row = cur.fetchone()
+            print("👤 Technician row:", tech_row)
+            if tech_row:
+                technician_id = tech_row[0]
+                vehicle_id = tech_row[1]
+                print(f"✅ Found technician ID: {technician_id}, vehicle ID: {vehicle_id}")
+            else:
+                print("❌ Technician not found in DB")
+
+        # 🚚 Update vehicle inventory only if scanning out and vehicle is assigned
+        if direction == 'out' and vehicle_id:
             print("🚚 Updating vehicle inventory...")
             cur.execute("""
                 SELECT quantity FROM vehicle_inventory
@@ -250,10 +250,20 @@ def scan_action():
                     INSERT INTO vehicle_inventory (vehicle_id, product_id, quantity)
                     VALUES (%s, %s, %s)
                 """, (vehicle_id, product_id, 1))
-        except Exception as e:
-            print("❌ Vehicle inventory update failed:", e)
-    else:
-        print("⚠️ Vehicle inventory not updated: either direction != 'out' or vehicle_id is None")
+        else:
+            print("⚠️ Vehicle inventory not updated: either direction != 'out' or vehicle_id is None")
+
+        conn.commit()
+        return jsonify({'status': 'success'})
+
+    except Exception as e:
+        print("❌ ERROR in /scan-action:", e)
+        conn.rollback()
+        return jsonify({'status': 'error', 'message': str(e)})
+
+    finally:
+        cur.close()
+        conn.close()
 
 @app.route('/assign-technician/<int:vehicle_id>', methods=['POST'])
 def assign_technician(vehicle_id):
