@@ -244,14 +244,16 @@ def scan_action():
             if existing:
                 cur.execute("""
                     UPDATE vehicle_inventory
-                    SET quantity = quantity + 1
+                    SET quantity = quantity + 1,
+                        last_updated = CURRENT_TIMESTAMP,
+                        last_scanned = CURRENT_TIMESTAMP
                     WHERE vehicle_id = %s AND product_id = %s
                 """, (vehicle_id, product_id))
                 log.info("🔁 Quantity updated in vehicle_inventory")
             else:
                 cur.execute("""
-                    INSERT INTO vehicle_inventory (vehicle_id, product_id, quantity)
-                    VALUES (%s, %s, %s)
+                    INSERT INTO vehicle_inventory (vehicle_id, product_id, quantity, last_updated, last_scanned)
+                    VALUES (%s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """, (vehicle_id, product_id, 1))
                 log.info("➕ Inserted new inventory row")
 
