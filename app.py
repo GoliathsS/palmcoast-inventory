@@ -838,8 +838,6 @@ def print_report():
 
 from rapidfuzz import fuzz, process  # Ensure this is at the top with other imports
 
-from rapidfuzz import fuzz, process  # ensure this is at the top
-
 @app.route('/upload-invoice', methods=['GET', 'POST'])
 def upload_invoice():
     if request.method == 'POST':
@@ -873,12 +871,16 @@ def upload_invoice():
 
         i = 0
         while i < len(lines) - 3:
-            # Detect row like: "1 11008370"
-            if re.match(r"^\d+\s+[A-Z0-9\-]{6,}$", lines[i].strip()):
-                _, sku = lines[i].strip().split(maxsplit=1)
-                name_1 = lines[i + 1].strip()
-                name_2 = lines[i + 2].strip()
-                price_line = lines[i + 3].strip()
+            current_line = lines[i].strip()
+            debug_log.append(f"📄 Checking line {i}: {current_line}")
+
+            # Flexible SKU line detection (with or without line number)
+            sku_match = re.match(r"^(?:\d+\s+)?([A-Z0-9\-]{6,})$", current_line)
+            if sku_match:
+                sku = sku_match.group(1)
+                name_1 = lines[i + 1].strip() if i + 1 < len(lines) else ""
+                name_2 = lines[i + 2].strip() if i + 2 < len(lines) else ""
+                price_line = lines[i + 3].strip() if i + 3 < len(lines) else ""
 
                 product_name = f"{name_1} {name_2}".replace("...", "").strip()
                 product_name = re.sub(r'\s+', ' ', product_name)
@@ -886,22 +888,23 @@ def upload_invoice():
                 price_match = re.search(r"([\d\.]+)\s*/\s*(EA|BG)\s+([\d\.]+)", price_line)
                 if not price_match:
                     skipped_count += 1
+                    debug_log.append(f"⚠️ Price not found in line {i + 3}: {price_line}")
                     i += 4
                     continue
 
                 try:
                     unit_price = float(price_match.group(1))
                     total_price = float(price_match.group(3))
-                except:
+                except Exception as e:
                     skipped_count += 1
+                    debug_log.append(f"⚠️ Failed to parse price: {e}")
                     i += 4
                     continue
 
                 debug_log.append(f"✅ Row starting at line {i}:")
+                debug_log.append(f"  SKU: {sku}")
                 debug_log.append(f"  Name: {product_name}")
-                debug_log.append(f"  Price Line: {price_line}")
-                debug_log.append(f"  Extracted Unit Price: {unit_price}")
-                debug_log.append(f"  Extracted Total Price: {total_price}")
+                debug_log.append(f"  Unit Price: {unit_price}, Total Price: {total_price}")
 
                 match = process.extractOne(product_name, name_list, scorer=fuzz.token_set_ratio)
                 if match:
@@ -909,7 +912,7 @@ def upload_invoice():
                 else:
                     actual_name, score, idx = "N/A", 0, -1
 
-                debug_log.append(f"  🤖 Match: '{actual_name}' (Score: {score}%)")
+                debug_log.append(f"  🤖 Best match: {actual_name} ({score}%)")
 
                 if score >= 65:
                     matched_count += 1
