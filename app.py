@@ -4,7 +4,6 @@ import os
 import boto3
 import fitz  # PyMuPDF
 import re
-import pdfplumber
 from werkzeug.utils import secure_filename
 from datetime import datetime, date
 from technician_manager import add_technician, remove_technician, get_all_technicians
