@@ -215,40 +215,45 @@ def scan_action():
     vehicle_id = None
 
     if technician:
+        print("🔍 Technician passed in:", technician)
         cur.execute("SELECT id, vehicle_id FROM technicians WHERE name = %s", (technician,))
         tech_row = cur.fetchone()
+        print("👤 Technician row:", tech_row)
         if tech_row:
             technician_id = tech_row[0]
             vehicle_id = tech_row[1]
+            print(f"✅ Found technician ID: {technician_id}, vehicle ID: {vehicle_id}")
+        else:
+            print("❌ Technician not found in DB")
 
     # 🚚 Update vehicle inventory only if scanning out and vehicle is assigned
     if direction == 'out' and vehicle_id:
         try:
-            # Check if product already exists in vehicle inventory
+            print("🚚 Updating vehicle inventory...")
             cur.execute("""
                 SELECT quantity FROM vehicle_inventory
                 WHERE vehicle_id = %s AND product_id = %s
             """, (vehicle_id, product_id))
             existing = cur.fetchone()
+            print("📦 Existing inventory:", existing)
 
             if existing:
+                print("🔁 Updating quantity in vehicle_inventory")
                 cur.execute("""
                     UPDATE vehicle_inventory
                     SET quantity = quantity + 1
                     WHERE vehicle_id = %s AND product_id = %s
                 """, (vehicle_id, product_id))
             else:
+                print("➕ Inserting new product into vehicle_inventory")
                 cur.execute("""
                     INSERT INTO vehicle_inventory (vehicle_id, product_id, quantity)
                     VALUES (%s, %s, %s)
                 """, (vehicle_id, product_id, 1))
         except Exception as e:
             print("❌ Vehicle inventory update failed:", e)
-
-    conn.commit()
-    cur.close()
-    conn.close()
-    return jsonify({'status': 'success'})
+    else:
+        print("⚠️ Vehicle inventory not updated: either direction != 'out' or vehicle_id is None")
 
 @app.route('/assign-technician/<int:vehicle_id>', methods=['POST'])
 def assign_technician(vehicle_id):
