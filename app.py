@@ -780,9 +780,6 @@ def print_report():
 
     return render_template("print_report.html", products=products, now=datetime.now())
 
-def normalize(text):
-    return re.sub(r'[^a-z0-9]+', ' ', text.lower()).strip()
-
 @app.route('/upload-invoice', methods=['GET', 'POST'])
 def upload_invoice():
     if request.method == 'POST':
@@ -794,82 +791,87 @@ def upload_invoice():
         filepath = os.path.join('/tmp', filename)
         file.save(filepath)
 
-        import pdfplumber
-        from rapidfuzz import process, fuzz
+        # Extract PDF text
+        doc = fitz.open(filepath)
+        lines = []
+        for page in doc:
+            lines.extend(page.get_text().splitlines())
 
-        # Load DB products
+        # Load product list from DB
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("SELECT id, name, cost_per_unit FROM products")
         db_products = cur.fetchall()
-        cur.close()
-
         name_list = [p[1] for p in db_products]
         normalized_db_names = [normalize(n) for n in name_list]
 
         updates = []
         debug_log = []
+        debug_log.append(f"📄 PDF contains {len(lines)} lines")
 
-        def is_valid_row(row):
-            return row and len(row) >= 6 and row[1] and "$" in (row[7] or row[6] or "")
+        matched_count = 0
+        updated_count = 0
+        skipped_count = 0
 
-        with pdfplumber.open(filepath) as pdf:
-            for page in pdf.pages:
-                table = page.extract_table()
-                if not table:
-                    continue
+        for i, line in enumerate(lines):
+            price_match = re.search(r"\$([\d\.,]{1,10})\s*/", line)
+            if not price_match:
+                continue
 
-                skip_headers = True
-                last_product_name = None
+            unit_price = float(price_match.group(1).replace(",", ""))
 
-                for row in table:
-                    if skip_headers:
-                        skip_headers = False
-                        continue
+            # Backtrack to find SKU and name block
+            sku = None
+            name_lines = []
+            for j in range(i - 1, max(i - 6, -1), -1):
+                candidate = lines[j].strip()
+                if re.match(r'^[0-9A-Z\-]{6,}$', candidate):
+                    sku = candidate
+                    name_lines = [lines[k].strip() for k in range(j+1, i)]
+                    break
+            if not sku or not name_lines:
+                skipped_count += 1
+                continue
 
-                    try:
-                        if not is_valid_row(row):
-                            continue
+            product_name = " ".join(name_lines).replace("...", "")
+            product_name = re.sub(r'\s+', ' ', product_name.strip())
+            normalized_product_name = normalize(product_name)
 
-                        desc = row[1].strip()
-                        extra_line = row[2].strip() if row[2] else ""
-                        full_name = f"{desc} {extra_line}".strip()
-                        full_name = re.sub(r'\s+', ' ', full_name)
-                        normalized_name = normalize(full_name)
+            debug_log.append(f"✅ Block near line {i}:")
+            debug_log.append(f"  SKU: {sku}")
+            debug_log.append(f"  Name: {product_name}")
+            debug_log.append(f"  Price Line: {line}")
+            debug_log.append(f"  Extracted Price: {unit_price}")
 
-                        # Extract unit price from Net Price column
-                        price_text = row[7] or row[6]
-                        unit_price = float(price_text.replace("$", "").split("/")[0].strip())
+            match_name, score, idx = process.extractOne(normalized_product_name, normalized_db_names, scorer=fuzz.token_set_ratio)
+            actual_name = name_list[idx]
+            debug_log.append(f"  🤖 Matched: '{actual_name}' (Score: {score})")
 
-                        match_name, score, idx = process.extractOne(
-                            normalized_name, normalized_db_names, scorer=fuzz.token_set_ratio
-                        )
-                        actual_name = name_list[idx]
-                        product_id, _, old_price = db_products[idx]
+            if score >= 75:
+                matched_count += 1
+                product_id, _, old_price = db_products[idx]
+                if old_price != unit_price:
+                    cur.execute("UPDATE products SET cost_per_unit = %s WHERE id = %s", (unit_price, product_id))
+                    conn.commit()
+                    updated_count += 1
+                    updates.append(f"🟢 [{actual_name}] updated from ${old_price:.2f} → ${unit_price:.2f}")
+                else:
+                    updates.append(f"⚪ [{actual_name}] no change (${unit_price:.2f})")
+            else:
+                skipped_count += 1
+                updates.append(f"🔴 [Unmatched] '{product_name}'")
 
-                        debug_log.append(f"📦 '{full_name}' → '{actual_name}' (Score: {score}) → ${unit_price:.2f}")
-
-                        if score >= 75:
-                            if old_price != unit_price:
-                                cur = conn.cursor()
-                                cur.execute(
-                                    "UPDATE products SET cost_per_unit = %s WHERE id = %s",
-                                    (unit_price, product_id)
-                                )
-                                conn.commit()
-                                cur.close()
-                                updates.append(f"🟢 {actual_name}: ${old_price:.2f} → ${unit_price:.2f}")
-                            else:
-                                updates.append(f"⚪ {actual_name}: no change (${unit_price:.2f})")
-                        else:
-                            updates.append(f"🔴 No good match (score {score}) for: {full_name}")
-                    except Exception as e:
-                        debug_log.append(f"⚠️ Error parsing row: {row} → {e}")
+        cur.close()
+        conn.close()
 
         if not updates:
-            updates.append("⚠️ No matches or price changes found.")
+            updates.append("⚠️ No products were matched or updated.")
 
-        return render_template("upload_result.html", updates=updates, debug_log=debug_log)
+        # Summary
+        updates.insert(0, f"📊 Summary: {matched_count} matched, {updated_count} updated, {skipped_count} skipped.")
+
+        debug = request.args.get('debug') == 'true'
+        return render_template("upload_result.html", updates=updates, debug_log=debug_log if debug else [])
 
     return render_template("upload_invoice.html")
     
