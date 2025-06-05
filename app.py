@@ -779,15 +779,7 @@ def print_report():
 
     return render_template("print_report.html", products=products, now=datetime.now())
 
-def tokenize(text):
-    text = text.lower()
-    text = re.sub(r'[^a-z0-9]+', ' ', text)
-    return set(text.split())
-
-def token_overlap_score(tokens1, tokens2):
-    overlap = tokens1 & tokens2
-    union = tokens1 | tokens2
-    return int(100 * len(overlap) / len(union)) if union else 0
+from rapidfuzz import fuzz, process  # Ensure this is at the top with other imports
 
 @app.route('/upload-invoice', methods=['GET', 'POST'])
 def upload_invoice():
@@ -800,6 +792,7 @@ def upload_invoice():
         filepath = os.path.join('/tmp', filename)
         file.save(filepath)
 
+        # Read PDF lines
         doc = fitz.open(filepath)
         lines = []
         for page in doc:
@@ -813,11 +806,12 @@ def upload_invoice():
         cur.close()
 
         name_list = [p[1] for p in db_products]
-        tokenized_db_names = [tokenize(n) for n in name_list]
 
         updates = []
         debug_log = []
-        debug_log.append(f"📄 PDF contains {len(lines)} total lines")
+        matched_count = 0
+        updated_count = 0
+        skipped_count = 0
 
         i = 0
         while i < len(lines) - 8:
@@ -834,7 +828,6 @@ def upload_invoice():
             name_parts = [name_line_1, name_line_2, name_line_3]
             product_name = " ".join(name_parts).replace("...", "").strip()
             product_name = re.sub(r'\s+', ' ', product_name)
-            tokens_pdf = tokenize(product_name)
 
             price_match = re.search(r"\$([\d\.,]+)\s*/", price_line)
             if not price_match:
@@ -853,33 +846,40 @@ def upload_invoice():
             debug_log.append(f"  Price Line: {price_line}")
             debug_log.append(f"  Extracted Price: {unit_price}")
 
-            scores = [token_overlap_score(tokens_pdf, db_tokens) for db_tokens in tokenized_db_names]
-            best_idx = max(range(len(scores)), key=lambda x: scores[x])
-            best_score = scores[best_idx]
-            actual_name = name_list[best_idx]
+            match = process.extractOne(product_name, name_list, scorer=fuzz.token_set_ratio)
+            if match:
+                actual_name, score, idx = match
+            else:
+                actual_name, score, idx = "N/A", 0, -1
 
-            debug_log.append(f"  🤖 Best Match: '{actual_name}' (Score: {best_score}%)")
+            debug_log.append(f"  🤖 Match: '{actual_name}' (Score: {score}%)")
 
-            if best_score >= 60:
-                product_id, _, old_price = db_products[best_idx]
+            if score >= 75:
+                matched_count += 1
+                product_id, _, old_price = db_products[idx]
                 if round(old_price, 2) != round(unit_price, 2):
                     cur = conn.cursor()
                     cur.execute("UPDATE products SET cost_per_unit = %s WHERE id = %s", (unit_price, product_id))
                     conn.commit()
                     cur.close()
+                    updated_count += 1
                     updates.append(f"🟢 [{actual_name}] updated from ${old_price:.2f} → ${unit_price:.2f}")
                 else:
                     updates.append(f"⚪ [{actual_name}] no change (${unit_price:.2f})")
             else:
-                updates.append(f"🔴 No match for: '{product_name}' → Best: '{actual_name}' ({best_score}%)")
+                skipped_count += 1
+                updates.append(f"🔴 No match for: '{product_name}' → Best: '{actual_name}' ({score}%)")
 
             i += 9
 
         conn.close()
+
         if not updates:
             updates.append("⚠️ No matches or price changes found.")
 
-        updates.insert(0, f"📊 Summary: {len([u for u in updates if u.startswith('🟢') or u.startswith('⚪')])} matched, {len([u for u in updates if u.startswith('🟢')])} updated, {len([u for u in updates if u.startswith('🔴')])} skipped.")
+        summary = f"📊 Summary: {matched_count} matched, {updated_count} updated, {skipped_count} skipped."
+        updates.insert(0, summary)
+
         debug = request.args.get('debug') == 'true'
         return render_template("upload_result.html", updates=updates, debug_log=debug_log if debug else [])
 
