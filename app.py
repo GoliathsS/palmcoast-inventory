@@ -872,80 +872,64 @@ def upload_invoice():
         skipped_count = 0
 
         i = 0
-        while i < len(lines):
-            line = lines[i].strip()
-            if not re.match(r'^[0-9A-Z\-]{6,}$', line):
-                i += 1
-                continue
+        while i < len(lines) - 3:
+            # Detect row like: "1 11008370"
+            if re.match(r"^\d+\s+[A-Z0-9\-]{6,}$", lines[i].strip()):
+                _, sku = lines[i].strip().split(maxsplit=1)
+                name_1 = lines[i + 1].strip()
+                name_2 = lines[i + 2].strip()
+                price_line = lines[i + 3].strip()
 
-            sku = line
-            name_lines = []
-            price_line = None
+                product_name = f"{name_1} {name_2}".replace("...", "").strip()
+                product_name = re.sub(r'\s+', ' ', product_name)
 
-            # Look ahead up to 10 lines to find product name and price
-            for j in range(1, 11):
-                if i + j >= len(lines):
-                    break
-                next_line = lines[i + j].strip()
+                price_match = re.search(r"([\d\.]+)\s*/\s*(EA|BG)\s+([\d\.]+)", price_line)
+                if not price_match:
+                    skipped_count += 1
+                    i += 4
+                    continue
 
-                if re.search(r"\$([\d\.,]+)\s*/\s*(EA|BG)", next_line, re.IGNORECASE):
-                    price_line = next_line
-                    break
+                try:
+                    unit_price = float(price_match.group(1))
+                    total_price = float(price_match.group(3))
+                except:
+                    skipped_count += 1
+                    i += 4
+                    continue
 
-                name_lines.append(next_line)
+                debug_log.append(f"✅ Row starting at line {i}:")
+                debug_log.append(f"  Name: {product_name}")
+                debug_log.append(f"  Price Line: {price_line}")
+                debug_log.append(f"  Extracted Unit Price: {unit_price}")
+                debug_log.append(f"  Extracted Total Price: {total_price}")
 
-            if not price_line or not name_lines:
-                skipped_count += 1
-                i += j if j > 0 else 1
-                continue
-
-            product_name = " ".join(name_lines).replace("...", "").strip()
-            product_name = re.sub(r'\s+', ' ', product_name)
-
-            price_match = re.search(r"\$([\d\.,]+)\s*/", price_line)
-            if not price_match:
-                skipped_count += 1
-                i += j if j > 0 else 1
-                continue
-
-            try:
-                unit_price = float(price_match.group(1).replace(",", ""))
-            except:
-                skipped_count += 1
-                i += j if j > 0 else 1
-                continue
-
-            debug_log.append(f"✅ Block starting at line {i}:")
-            debug_log.append(f"  SKU: {sku}")
-            debug_log.append(f"  Name: {product_name}")
-            debug_log.append(f"  Price Line: {price_line}")
-            debug_log.append(f"  Extracted Price: {unit_price}")
-
-            match = process.extractOne(product_name, name_list, scorer=fuzz.token_set_ratio)
-            if match:
-                actual_name, score, idx = match
-            else:
-                actual_name, score, idx = "N/A", 0, -1
-
-            debug_log.append(f"  🤖 Match: '{actual_name}' (Score: {score}%)")
-
-            if score >= 65:
-                matched_count += 1
-                product_id, _, old_price = db_products[idx]
-                if round(old_price, 2) != round(unit_price, 2):
-                    cur = conn.cursor()
-                    cur.execute("UPDATE products SET cost_per_unit = %s WHERE id = %s", (unit_price, product_id))
-                    conn.commit()
-                    cur.close()
-                    updated_count += 1
-                    updates.append(f"🟢 [{actual_name}] updated from ${old_price:.2f} → ${unit_price:.2f}")
+                match = process.extractOne(product_name, name_list, scorer=fuzz.token_set_ratio)
+                if match:
+                    actual_name, score, idx = match
                 else:
-                    updates.append(f"⚪ [{actual_name}] no change (${unit_price:.2f})")
-            else:
-                skipped_count += 1
-                updates.append(f"🔴 No match for: '{product_name}' → Best: '{actual_name}' ({score}%)")
+                    actual_name, score, idx = "N/A", 0, -1
 
-            i += j if j > 0 else 1
+                debug_log.append(f"  🤖 Match: '{actual_name}' (Score: {score}%)")
+
+                if score >= 65:
+                    matched_count += 1
+                    product_id, _, old_price = db_products[idx]
+                    if round(old_price, 2) != round(unit_price, 2):
+                        cur = conn.cursor()
+                        cur.execute("UPDATE products SET cost_per_unit = %s WHERE id = %s", (unit_price, product_id))
+                        conn.commit()
+                        cur.close()
+                        updated_count += 1
+                        updates.append(f"🟢 [{actual_name}] updated from ${old_price:.2f} → ${unit_price:.2f}")
+                    else:
+                        updates.append(f"⚪ [{actual_name}] no change (${unit_price:.2f})")
+                else:
+                    skipped_count += 1
+                    updates.append(f"🔴 No match for: '{product_name}' → Best: '{actual_name}' ({score}%)")
+
+                i += 4
+            else:
+                i += 1
 
         conn.close()
 
