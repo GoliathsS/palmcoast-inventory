@@ -867,29 +867,22 @@ def upload_invoice():
         skipped_count = 0
 
         i = 0
-        while i < len(lines) - 5:
+        while i < len(lines) - 6:
             current_line = lines[i].strip()
             debug_log.append(f"📄 Checking line {i}: {current_line}")
 
             sku_match = re.match(r"^(?:\d+\s+)?([A-Z0-9\-]{6,})$", current_line)
             if sku_match:
                 sku = sku_match.group(1)
-                name_1 = lines[i + 1].strip() if i + 1 < len(lines) else ""
-                name_2 = lines[i + 2].strip() if i + 2 < len(lines) else ""
-                price_line = lines[i + 4].strip() if i + 4 < len(lines) else ""
+                name_1 = lines[i + 1].strip()
+                name_2 = lines[i + 2].strip()
+                price_line = lines[i + 4].strip()
 
                 product_name = f"{name_1} {name_2}".replace("...", "").strip()
                 product_name = re.sub(r'\s+', ' ', product_name)
-
                 updates.append(f"🧪 Trying to match: '{product_name}'")
 
-                # 🧾 Log nearby lines for debug clarity
-                debug_log.append("🧾 Nearby lines:")
-                for offset in range(6):
-                    if i + offset < len(lines):
-                        debug_log.append(f"  [i + {offset}] → '{lines[i + offset].strip()}'")
-
-                # Match last price pattern in messy line (e.g., 26.035 / EA 156.21)
+                # Final regex: matches any price buried in noisy price_line
                 matches = re.findall(r"(\d+\.\d+)\s*/\s*(EA|BG)\s+(\d+\.\d+)", price_line)
                 if matches:
                     unit_price_str, _, total_price_str = matches[-1]
@@ -900,13 +893,13 @@ def upload_invoice():
                         skipped_count += 1
                         debug_log.append(f"⚠️ Failed to parse price: {e}")
                         updates.append(f"🔴 Skipped: price parse error → {e}")
-                        i += 5
+                        i += 6
                         continue
                 else:
                     skipped_count += 1
-                    debug_log.append(f"⚠️ Price not found in line {i + 4}: {price_line}")
-                    updates.append(f"🔴 Skipped: price not found in → '{price_line}'")
-                    i += 5
+                    debug_log.append(f"❌ PRICE LINE: '{price_line}' → regex failed")
+                    updates.append(f"🔴 Skipped: no price match in → '{price_line}'")
+                    i += 6
                     continue
 
                 debug_log.append(f"✅ Row starting at line {i}:")
@@ -938,7 +931,7 @@ def upload_invoice():
                     skipped_count += 1
                     updates.append(f"🔴 No match for: '{product_name}' → Best: '{actual_name}' ({score}%)")
 
-                i += 5
+                i += 6
             else:
                 i += 1
 
