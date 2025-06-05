@@ -212,21 +212,24 @@ def scan_action():
             (product_id, direction, timestamp, technician, logged_cost)
         )
 
-        # 🚚 Lookup technician ID and vehicle_id once, cleanly
+        # 🚚 Lookup technician and vehicle by ID
         technician_id = None
         vehicle_id = None
 
         if technician:
-            log.info("🔍 Technician passed in: %s", technician)
-            cur.execute("SELECT id, vehicle_id FROM technicians WHERE name = %s", (technician,))
-            tech_row = cur.fetchone()
-            log.info("👤 Technician row: %s", tech_row)
-            if tech_row:
-                technician_id = tech_row[0]
-                vehicle_id = tech_row[1]
-                log.info("✅ Found technician ID: %s, vehicle ID: %s", technician_id, vehicle_id)
-            else:
-                log.info("❌ Technician not found in DB")
+            log.info("🔍 Technician passed in (ID): %s", technician)
+            try:
+                cur.execute("SELECT id, vehicle_id FROM technicians WHERE id = %s", (int(technician),))
+                tech_row = cur.fetchone()
+                log.info("👤 Technician row: %s", tech_row)
+                if tech_row:
+                    technician_id = tech_row[0]
+                    vehicle_id = tech_row[1]
+                    log.info("✅ Found technician ID: %s, vehicle ID: %s", technician_id, vehicle_id)
+                else:
+                    log.info("❌ Technician ID %s not found in DB", technician)
+            except Exception as e:
+                log.error("❌ Error fetching technician: %s", e)
 
         # 🚚 Update vehicle inventory only if scanning out and vehicle is assigned
         if direction == 'out' and vehicle_id:
