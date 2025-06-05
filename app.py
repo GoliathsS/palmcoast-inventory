@@ -787,9 +787,7 @@ def tokenize(text):
 def token_overlap_score(tokens1, tokens2):
     overlap = tokens1 & tokens2
     union = tokens1 | tokens2
-    if not union:
-        return 0
-    return int(100 * len(overlap) / len(union))
+    return int(100 * len(overlap) / len(union)) if union else 0
 
 @app.route('/upload-invoice', methods=['GET', 'POST'])
 def upload_invoice():
