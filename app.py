@@ -781,6 +781,8 @@ def print_report():
 
 from rapidfuzz import fuzz, process  # Ensure this is at the top with other imports
 
+from rapidfuzz import fuzz, process  # ensure this is at the top
+
 @app.route('/upload-invoice', methods=['GET', 'POST'])
 def upload_invoice():
     if request.method == 'POST':
@@ -792,7 +794,7 @@ def upload_invoice():
         filepath = os.path.join('/tmp', filename)
         file.save(filepath)
 
-        # Read PDF
+        # Extract lines from PDF
         doc = fitz.open(filepath)
         lines = []
         for page in doc:
@@ -823,13 +825,12 @@ def upload_invoice():
             name_lines = []
             price_line = None
 
-            # Look ahead to gather product name and price
-            for j in range(1, 7):
+            # Look ahead up to 10 lines to find product name and price
+            for j in range(1, 11):
                 if i + j >= len(lines):
                     break
                 next_line = lines[i + j].strip()
 
-                # Price match line
                 if re.search(r"\$([\d\.,]+)\s*/\s*(EA|BG)", next_line, re.IGNORECASE):
                     price_line = next_line
                     break
@@ -838,7 +839,7 @@ def upload_invoice():
 
             if not price_line or not name_lines:
                 skipped_count += 1
-                i += j + 1
+                i += j if j > 0 else 1
                 continue
 
             product_name = " ".join(name_lines).replace("...", "").strip()
@@ -847,14 +848,14 @@ def upload_invoice():
             price_match = re.search(r"\$([\d\.,]+)\s*/", price_line)
             if not price_match:
                 skipped_count += 1
-                i += j + 1
+                i += j if j > 0 else 1
                 continue
 
             try:
                 unit_price = float(price_match.group(1).replace(",", ""))
             except:
                 skipped_count += 1
-                i += j + 1
+                i += j if j > 0 else 1
                 continue
 
             debug_log.append(f"✅ Block starting at line {i}:")
@@ -887,7 +888,7 @@ def upload_invoice():
                 skipped_count += 1
                 updates.append(f"🔴 No match for: '{product_name}' → Best: '{actual_name}' ({score}%)")
 
-            i += j + 1
+            i += j if j > 0 else 1
 
         conn.close()
 
