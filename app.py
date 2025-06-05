@@ -852,6 +852,7 @@ def upload_invoice():
         for page in doc:
             lines.extend(page.get_text().splitlines())
 
+        # Load products from DB
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("SELECT id, name, cost_per_unit FROM products")
@@ -865,68 +866,81 @@ def upload_invoice():
         updated_count = 0
         skipped_count = 0
 
-        for idx, line in enumerate(lines):
-            line = line.strip()
-            if not re.search(r"/\s*(EA|BG)", line, re.IGNORECASE):
-                continue  # skip lines without pricing
+        i = 0
+        while i < len(lines) - 4:
+            try:
+                sku_line = lines[i].strip()
+                name_1 = lines[i + 1].strip()
+                name_2 = lines[i + 2].strip()
+                unit_price_line = lines[i + 3].strip()
+                total_price_line = lines[i + 4].strip()
 
-            # Match the unit price and total price
-            match = re.search(r"(\d+\.\d+)\s*/\s*(EA|BG)\s+(\d+\.\d+)", line)
-            if not match:
-                skipped_count += 1
-                updates.append(f"🔴 Skipped: no price match in → '{line}'")
-                continue
+                debug_log.append(f"📦 Processing block starting at line {i}")
+                debug_log.append(f"  SKU line: {sku_line}")
+                debug_log.append(f"  Name lines: {name_1} / {name_2}")
+                debug_log.append(f"  Price: {unit_price_line}")
+                debug_log.append(f"  Total: {total_price_line}")
 
-            unit_price = float(match.group(1))
-            total_price = float(match.group(3))
+                # Extract SKU
+                sku_match = re.match(r"^(?:\d+\s+)?([A-Z0-9\-]{6,})$", sku_line)
+                if not sku_match:
+                    updates.append(f"🔴 Skipped: invalid SKU → '{sku_line}'")
+                    skipped_count += 1
+                    i += 5
+                    continue
+                sku = sku_match.group(1)
 
-            # Try to split line into tokens and extract name
-            tokens = line.split()
-            if len(tokens) < 5:
-                skipped_count += 1
-                updates.append(f"🔴 Skipped: bad format → '{line}'")
-                continue
+                # Extract unit price
+                price_match = re.match(r"(\d+\.\d+)\s*/\s*(EA|BG)", unit_price_line)
+                if not price_match:
+                    updates.append(f"🔴 Skipped: bad price line → '{unit_price_line}'")
+                    skipped_count += 1
+                    i += 5
+                    continue
+                unit_price = float(price_match.group(1))
 
-            sku = tokens[0]
-            price_pos = next((i for i, t in enumerate(tokens) if "/" in t), None)
-            if not price_pos or price_pos <= 1:
-                skipped_count += 1
-                updates.append(f"🔴 Skipped: bad price position → '{line}'")
-                continue
+                # Extract product name
+                product_name = f"{name_1} {name_2}".replace("...", "").strip()
+                product_name = re.sub(r'\s+', ' ', product_name)
+                updates.append(f"🧪 Trying to match: '{product_name}'")
 
-            # Product name is everything between SKU and price
-            product_name = " ".join(tokens[1:price_pos - 1])
-            updates.append(f"🧪 Trying to match: '{product_name}'")
-
-            match_name = process.extractOne(product_name, name_list, scorer=fuzz.token_set_ratio)
-            if not match_name:
-                updates.append(f"🔴 Skipped: no match for → '{product_name}'")
-                skipped_count += 1
-                continue
-
-            actual_name, score, db_idx = match_name
-            debug_log.append(f"🤖 Best match: {actual_name} ({score}%)")
-
-            if score >= 65:
-                matched_count += 1
-                product_id, _, old_price = db_products[db_idx]
-                if round(old_price, 2) != round(unit_price, 2):
-                    cur = conn.cursor()
-                    cur.execute("UPDATE products SET cost_per_unit = %s WHERE id = %s", (unit_price, product_id))
-                    conn.commit()
-                    cur.close()
-                    updated_count += 1
-                    updates.append(f"🟢 [{actual_name}] updated from ${old_price:.2f} → ${unit_price:.2f}")
+                match = process.extractOne(product_name, name_list, scorer=fuzz.token_set_ratio)
+                if match:
+                    actual_name, score, db_idx = match
+                    debug_log.append(f"  🤖 Match: '{actual_name}' ({score}%)")
                 else:
-                    updates.append(f"⚪ [{actual_name}] no change (${unit_price:.2f})")
-            else:
+                    actual_name, score, db_idx = "N/A", 0, -1
+
+                if score >= 65:
+                    matched_count += 1
+                    product_id, _, old_price = db_products[db_idx]
+                    if round(old_price, 2) != round(unit_price, 2):
+                        cur = conn.cursor()
+                        cur.execute("UPDATE products SET cost_per_unit = %s WHERE id = %s", (unit_price, product_id))
+                        conn.commit()
+                        cur.close()
+                        updated_count += 1
+                        updates.append(f"🟢 [{actual_name}] updated from ${old_price:.2f} → ${unit_price:.2f}")
+                    else:
+                        updates.append(f"⚪ [{actual_name}] no change (${unit_price:.2f})")
+                else:
+                    skipped_count += 1
+                    updates.append(f"🔴 No match for: '{product_name}' → Best: '{actual_name}' ({score}%)")
+
+            except Exception as e:
                 skipped_count += 1
-                updates.append(f"🔴 No match for: '{product_name}' → Best: '{actual_name}' ({score}%)")
+                updates.append(f"❌ Skipped: parsing error on block {i} → {e}")
+
+            i += 5  # move to next product block
 
         conn.close()
 
+        if not updates:
+            updates.append("⚠️ No matches or price changes found.")
+
         summary = f"📊 Summary: {matched_count} matched, {updated_count} updated, {skipped_count} skipped."
         updates.insert(0, summary)
+
         debug = request.args.get('debug') == 'true'
         return render_template("upload_result.html", updates=updates, debug_log=debug_log if debug else [])
 
