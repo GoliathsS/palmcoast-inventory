@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Inventory Analytics | Palm Coast</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    canvas { margin-bottom: 40px; }
+    h2 { margin-top: 40px; }
+    .chart-container { max-width: 900px; margin: auto; }
+  </style>
+</head>
+<body>
+  <h1>📊 Inventory Analytics</h1>
+
+  <div class="chart-container">
+    <h2>1️⃣ Product Price History</h2>
+    <form method="GET">
+      <label for="product">Select Product:</label>
+      <select name="product_id" id="product" onchange="this.form.submit()">
+        {% for product in all_products %}
+          <option value="{{ product[0] }}" {% if selected_id == product[0] %}selected{% endif %}>
+            {{ product[1] }}
+          </option>
+        {% endfor %}
+      </select>
+    </form>
+    <canvas id="priceHistoryChart" height="100"></canvas>
+  </div>
+
+  <div class="chart-container">
+    <h2>2️⃣ Monthly Inventory Usage</h2>
+    <canvas id="usageChart" height="100"></canvas>
+  </div>
+
+  <div class="chart-container">
+    <h2>3️⃣ Pest vs Lawn Monthly Totals</h2>
+    <canvas id="categoryChart" height="100"></canvas>
+  </div>
+
+  <script>
+    const priceCtx = document.getElementById('priceHistoryChart').getContext('2d');
+    new Chart(priceCtx, {
+      type: 'line',
+      data: {
+        labels: {{ price_labels|tojson }},
+        datasets: [{
+          label: 'Unit Price ($)',
+          data: {{ price_values|tojson }},
+          borderColor: 'blue',
+          tension: 0.3,
+          fill: false
+        }]
+      }
+    });
+
+    const usageCtx = document.getElementById('usageChart').getContext('2d');
+    new Chart(usageCtx, {
+      type: 'bar',
+      data: {
+        labels: {{ usage_labels|tojson }},
+        datasets: [
+          {
+            label: 'Start Value ($)',
+            data: {{ start_values|tojson }},
+            backgroundColor: 'green'
+          },
+          {
+            label: 'End Value ($)',
+            data: {{ end_values|tojson }},
+            backgroundColor: 'orange'
+          },
+          {
+            label: '% Used',
+            data: {{ percent_used|tojson }},
+            type: 'line',
+            borderColor: 'red',
+            yAxisID: 'y1'
+          }
+        ]
+      },
+      options: {
+        scales: {
+          y: { beginAtZero: true },
+          y1: {
+            position: 'right',
+            beginAtZero: true,
+            grid: { drawOnChartArea: false },
+            title: { display: true, text: "% Used" }
+          }
+        }
+      }
+    });
+
+    const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+    new Chart(categoryCtx, {
+      type: 'bar',
+      data: {
+        labels: {{ category_labels|tojson }},
+        datasets: [
+          {
+            label: 'Pest ($)',
+            data: {{ pest_values|tojson }},
+            backgroundColor: 'purple'
+          },
+          {
+            label: 'Lawn ($)',
+            data: {{ lawn_values|tojson }},
+            backgroundColor: 'teal'
+          }
+        ]
+      },
+      options: {
+        scales: { y: { beginAtZero: true } }
+      }
+    });
+  </script>
+</body>
+</html>
