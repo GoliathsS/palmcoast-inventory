@@ -792,13 +792,13 @@ def upload_invoice():
         filepath = os.path.join('/tmp', filename)
         file.save(filepath)
 
-        # Read PDF lines
+        # Read PDF
         doc = fitz.open(filepath)
         lines = []
         for page in doc:
             lines.extend(page.get_text().splitlines())
 
-        # Load product list from DB
+        # Load DB products
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("SELECT id, name, cost_per_unit FROM products")
@@ -813,37 +813,37 @@ def upload_invoice():
         updated_count = 0
         skipped_count = 0
 
-        i = 0
-        while i < len(lines) - 8:
-            sku = lines[i].strip()
-            if not re.match(r'^[0-9A-Z\-]{6,}$', sku):
-                i += 1
-                continue
-
-            name_line_1 = lines[i + 1].strip()
-            name_line_2 = lines[i + 2].strip()
-            name_line_3 = lines[i + 3].strip()
-            price_line = lines[i + 6].strip()
-
-            name_parts = [name_line_1, name_line_2, name_line_3]
-            product_name = " ".join(name_parts).replace("...", "").strip()
-            product_name = re.sub(r'\s+', ' ', product_name)
-
-            price_match = re.search(r"\$([\d\.,]+)\s*/", price_line)
+        for i, line in enumerate(lines):
+            price_match = re.search(r"\$([\d\.,]+)\s*/", line)
             if not price_match:
-                i += 9
                 continue
 
             try:
                 unit_price = float(price_match.group(1).replace(",", ""))
             except:
-                i += 9
                 continue
 
-            debug_log.append(f"✅ Block from line {i}:")
+            # Search upward for SKU and name
+            sku = None
+            product_name_lines = []
+            for j in range(i - 1, max(i - 8, -1), -1):
+                candidate = lines[j].strip()
+                if re.match(r'^[0-9A-Z\-]{6,}$', candidate):
+                    sku = candidate
+                    product_name_lines = [lines[k].strip() for k in range(j + 1, i)]
+                    break
+
+            if not sku or not product_name_lines:
+                skipped_count += 1
+                continue
+
+            product_name = " ".join(product_name_lines).replace("...", "").strip()
+            product_name = re.sub(r'\s+', ' ', product_name)
+
+            debug_log.append(f"✅ Block near line {i}:")
             debug_log.append(f"  SKU: {sku}")
             debug_log.append(f"  Name: {product_name}")
-            debug_log.append(f"  Price Line: {price_line}")
+            debug_log.append(f"  Price Line: {line}")
             debug_log.append(f"  Extracted Price: {unit_price}")
 
             match = process.extractOne(product_name, name_list, scorer=fuzz.token_set_ratio)
@@ -854,7 +854,7 @@ def upload_invoice():
 
             debug_log.append(f"  🤖 Match: '{actual_name}' (Score: {score}%)")
 
-            if score >= 75:
+            if score >= 65:
                 matched_count += 1
                 product_id, _, old_price = db_products[idx]
                 if round(old_price, 2) != round(unit_price, 2):
@@ -869,8 +869,6 @@ def upload_invoice():
             else:
                 skipped_count += 1
                 updates.append(f"🔴 No match for: '{product_name}' → Best: '{actual_name}' ({score}%)")
-
-            i += 9
 
         conn.close()
 
