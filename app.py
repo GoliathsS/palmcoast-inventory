@@ -805,85 +805,81 @@ def upload_invoice():
         for page in doc:
             lines.extend(page.get_text().splitlines())
 
-        # Load DB products
+        # Load product list from DB
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("SELECT id, name, cost_per_unit FROM products")
         db_products = cur.fetchall()
+        cur.close()
+
         name_list = [p[1] for p in db_products]
         tokenized_db_names = [tokenize(n) for n in name_list]
 
         updates = []
         debug_log = []
-        matched_count = 0
-        updated_count = 0
-        skipped_count = 0
+        debug_log.append(f"📄 PDF contains {len(lines)} total lines")
 
-        for i, line in enumerate(lines):
-            price_match = re.search(r"\$([\d\.,]{1,10})\s*/", line)
+        i = 0
+        while i < len(lines) - 8:
+            sku = lines[i].strip()
+            if not re.match(r'^[0-9A-Z\-]{6,}$', sku):
+                i += 1
+                continue
+
+            name_line_1 = lines[i + 1].strip()
+            name_line_2 = lines[i + 2].strip()
+            name_line_3 = lines[i + 3].strip()
+            price_line = lines[i + 6].strip()
+
+            name_parts = [name_line_1, name_line_2, name_line_3]
+            product_name = " ".join(name_parts).replace("...", "").strip()
+            product_name = re.sub(r'\s+', ' ', product_name)
+            tokens_pdf = tokenize(product_name)
+
+            price_match = re.search(r"\$([\d\.,]+)\s*/", price_line)
             if not price_match:
+                i += 9
                 continue
 
             try:
                 unit_price = float(price_match.group(1).replace(",", ""))
             except:
+                i += 9
                 continue
 
-            # Backtrack for SKU and Product Name
-            sku = None
-            product_name = None
-            for j in range(i - 1, max(i - 6, -1), -1):
-                candidate = lines[j].strip()
-                if re.match(r'^[0-9A-Z\-]{6,}$', candidate):
-                    sku = candidate
+            debug_log.append(f"✅ Block from line {i}:")
+            debug_log.append(f"  SKU: {sku}")
+            debug_log.append(f"  Name: {product_name}")
+            debug_log.append(f"  Price Line: {price_line}")
+            debug_log.append(f"  Extracted Price: {unit_price}")
 
-                    # Look for "In Stock at" line and go 2 lines above it
-                    for k in range(i - 1, j, -1):
-                        if "in stock at" in lines[k].lower():
-                            name_above = lines[k - 1].strip() if k - 1 >= j else ''
-                            second_above = lines[k - 2].strip() if k - 2 >= j else ''
-                            product_name = f"{second_above} {name_above}".strip()
-                            break
-                    break
-
-            if not sku or not product_name:
-                skipped_count += 1
-                continue
-
-            tokens_pdf = tokenize(product_name)
             scores = [token_overlap_score(tokens_pdf, db_tokens) for db_tokens in tokenized_db_names]
-            best_idx = max(range(len(scores)), key=lambda i: scores[i])
+            best_idx = max(range(len(scores)), key=lambda x: scores[x])
             best_score = scores[best_idx]
             actual_name = name_list[best_idx]
 
-            debug_log.append(f"✅ Block near line {i}:")
-            debug_log.append(f"  SKU: {sku}")
-            debug_log.append(f"  Raw Name: {product_name}")
-            debug_log.append(f"  Extracted Price: {unit_price}")
             debug_log.append(f"  🤖 Best Match: '{actual_name}' (Score: {best_score}%)")
 
             if best_score >= 60:
-                matched_count += 1
                 product_id, _, old_price = db_products[best_idx]
                 if round(old_price, 2) != round(unit_price, 2):
+                    cur = conn.cursor()
                     cur.execute("UPDATE products SET cost_per_unit = %s WHERE id = %s", (unit_price, product_id))
                     conn.commit()
-                    updated_count += 1
+                    cur.close()
                     updates.append(f"🟢 [{actual_name}] updated from ${old_price:.2f} → ${unit_price:.2f}")
                 else:
                     updates.append(f"⚪ [{actual_name}] no change (${unit_price:.2f})")
             else:
-                skipped_count += 1
-                updates.append(f"🔴 [No Match] '{product_name}' → Best: '{actual_name}' ({best_score}%)")
+                updates.append(f"🔴 No match for: '{product_name}' → Best: '{actual_name}' ({best_score}%)")
 
-        cur.close()
+            i += 9
+
         conn.close()
-
         if not updates:
-            updates.append("⚠️ No products were matched or updated.")
+            updates.append("⚠️ No matches or price changes found.")
 
-        updates.insert(0, f"📊 Summary: {matched_count} matched, {updated_count} updated, {skipped_count} skipped.")
-
+        updates.insert(0, f"📊 Summary: {len([u for u in updates if u.startswith('🟢') or u.startswith('⚪')])} matched, {len([u for u in updates if u.startswith('🟢')])} updated, {len([u for u in updates if u.startswith('🔴')])} skipped.")
         debug = request.args.get('debug') == 'true'
         return render_template("upload_result.html", updates=updates, debug_log=debug_log if debug else [])
 
