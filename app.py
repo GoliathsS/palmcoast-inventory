@@ -210,39 +210,40 @@ def scan_action():
         (product_id, direction, timestamp, technician, logged_cost)
     )
 
-    # 🚚 Update vehicle inventory only if scan direction is 'out' and technician has vehicle
-    if direction == 'out' and technician:
+    # 🚚 Lookup technician ID and vehicle_id once, cleanly
+    technician_id = None
+    vehicle_id = None
+
+    if technician:
+        cur.execute("SELECT id, vehicle_id FROM technicians WHERE name = %s", (technician,))
+        tech_row = cur.fetchone()
+        if tech_row:
+            technician_id = tech_row[0]
+            vehicle_id = tech_row[1]
+
+    # 🚚 Update vehicle inventory only if scanning out and vehicle is assigned
+    if direction == 'out' and vehicle_id:
         try:
-            cur.execute("SELECT id FROM technicians WHERE name = %s", (technician,))
-            tech_row = cur.fetchone()
-            if tech_row:
-                technician_id = tech_row[0]
-                cur.execute("SELECT vehicle_id FROM technicians WHERE id = %s", (technician_id,))
-                vehicle_row = cur.fetchone()
+            # Check if product already exists in vehicle inventory
+            cur.execute("""
+                SELECT quantity FROM vehicle_inventory
+                WHERE vehicle_id = %s AND product_id = %s
+            """, (vehicle_id, product_id))
+            existing = cur.fetchone()
 
-                if vehicle_row and vehicle_row[0]:
-                    vehicle_id = vehicle_row[0]
-
-                    # Check if product already exists in vehicle inventory
-                    cur.execute("""
-                        SELECT quantity FROM vehicle_inventory
-                        WHERE vehicle_id = %s AND product_id = %s
-                    """, (vehicle_id, product_id))
-                    existing = cur.fetchone()
-
-                    if existing:
-                        cur.execute("""
-                            UPDATE vehicle_inventory
-                            SET quantity = quantity + 1
-                            WHERE vehicle_id = %s AND product_id = %s
-                        """, (vehicle_id, product_id))
-                    else:
-                        cur.execute("""
-                            INSERT INTO vehicle_inventory (vehicle_id, product_id, quantity)
-                            VALUES (%s, %s, %s)
-                        """, (vehicle_id, product_id, 1))
+            if existing:
+                cur.execute("""
+                    UPDATE vehicle_inventory
+                    SET quantity = quantity + 1
+                    WHERE vehicle_id = %s AND product_id = %s
+                """, (vehicle_id, product_id))
+            else:
+                cur.execute("""
+                    INSERT INTO vehicle_inventory (vehicle_id, product_id, quantity)
+                    VALUES (%s, %s, %s)
+                """, (vehicle_id, product_id, 1))
         except Exception as e:
-            print("Vehicle inventory update failed:", e)
+            print("❌ Vehicle inventory update failed:", e)
 
     conn.commit()
     cur.close()
