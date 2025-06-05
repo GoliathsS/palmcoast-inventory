@@ -798,13 +798,12 @@ def upload_invoice():
         for page in doc:
             lines.extend(page.get_text().splitlines())
 
-        # Load DB products
+        # Load products from DB
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("SELECT id, name, cost_per_unit FROM products")
         db_products = cur.fetchall()
         cur.close()
-
         name_list = [p[1] for p in db_products]
 
         updates = []
@@ -813,37 +812,55 @@ def upload_invoice():
         updated_count = 0
         skipped_count = 0
 
-        for i, line in enumerate(lines):
-            price_match = re.search(r"\$([\d\.,]+)\s*/", line)
+        i = 0
+        while i < len(lines):
+            line = lines[i].strip()
+            if not re.match(r'^[0-9A-Z\-]{6,}$', line):
+                i += 1
+                continue
+
+            sku = line
+            name_lines = []
+            price_line = None
+
+            # Look ahead to gather product name and price
+            for j in range(1, 7):
+                if i + j >= len(lines):
+                    break
+                next_line = lines[i + j].strip()
+
+                # Price match line
+                if re.search(r"\$([\d\.,]+)\s*/\s*(EA|BG)", next_line, re.IGNORECASE):
+                    price_line = next_line
+                    break
+
+                name_lines.append(next_line)
+
+            if not price_line or not name_lines:
+                skipped_count += 1
+                i += j + 1
+                continue
+
+            product_name = " ".join(name_lines).replace("...", "").strip()
+            product_name = re.sub(r'\s+', ' ', product_name)
+
+            price_match = re.search(r"\$([\d\.,]+)\s*/", price_line)
             if not price_match:
+                skipped_count += 1
+                i += j + 1
                 continue
 
             try:
                 unit_price = float(price_match.group(1).replace(",", ""))
             except:
-                continue
-
-            # Search upward for SKU and name
-            sku = None
-            product_name_lines = []
-            for j in range(i - 1, max(i - 8, -1), -1):
-                candidate = lines[j].strip()
-                if re.match(r'^[0-9A-Z\-]{6,}$', candidate):
-                    sku = candidate
-                    product_name_lines = [lines[k].strip() for k in range(j + 1, i)]
-                    break
-
-            if not sku or not product_name_lines:
                 skipped_count += 1
+                i += j + 1
                 continue
 
-            product_name = " ".join(product_name_lines).replace("...", "").strip()
-            product_name = re.sub(r'\s+', ' ', product_name)
-
-            debug_log.append(f"✅ Block near line {i}:")
+            debug_log.append(f"✅ Block starting at line {i}:")
             debug_log.append(f"  SKU: {sku}")
             debug_log.append(f"  Name: {product_name}")
-            debug_log.append(f"  Price Line: {line}")
+            debug_log.append(f"  Price Line: {price_line}")
             debug_log.append(f"  Extracted Price: {unit_price}")
 
             match = process.extractOne(product_name, name_list, scorer=fuzz.token_set_ratio)
@@ -869,6 +886,8 @@ def upload_invoice():
             else:
                 skipped_count += 1
                 updates.append(f"🔴 No match for: '{product_name}' → Best: '{actual_name}' ({score}%)")
+
+            i += j + 1
 
         conn.close()
 
