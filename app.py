@@ -4,6 +4,7 @@ import os
 import boto3
 import fitz  # PyMuPDF
 import re
+import pdfplumber
 from werkzeug.utils import secure_filename
 from datetime import datetime, date
 from technician_manager import add_technician, remove_technician, get_all_technicians
@@ -836,6 +837,7 @@ def print_report():
 
     return render_template("print_report.html", products=products, now=datetime.now())
 
+
 @app.route('/upload-invoice', methods=['GET', 'POST'])
 def upload_invoice():
     if request.method == 'POST':
@@ -847,12 +849,7 @@ def upload_invoice():
         filepath = os.path.join('/tmp', filename)
         file.save(filepath)
 
-        doc = fitz.open(filepath)
-        lines = []
-        for page in doc:
-            lines.extend(page.get_text().splitlines())
-
-        # Load products from DB
+        # Load product list from DB
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("SELECT id, name, cost_per_unit FROM products")
@@ -866,77 +863,64 @@ def upload_invoice():
         updated_count = 0
         skipped_count = 0
 
-        i = 0
-        while i < len(lines) - 4:
-            try:
-                sku_line = lines[i].strip()
-                name_1 = lines[i + 1].strip()
-                name_2 = lines[i + 2].strip()
-                unit_price_line = lines[i + 3].strip()
-                total_price_line = lines[i + 4].strip()
-
-                debug_log.append(f"📦 Processing block starting at line {i}")
-                debug_log.append(f"  SKU line: {sku_line}")
-                debug_log.append(f"  Name lines: {name_1} / {name_2}")
-                debug_log.append(f"  Price: {unit_price_line}")
-                debug_log.append(f"  Total: {total_price_line}")
-
-                # Extract SKU
-                sku_match = re.match(r"^(?:\d+\s+)?([A-Z0-9\-]{6,})$", sku_line)
-                if not sku_match:
-                    updates.append(f"🔴 Skipped: invalid SKU → '{sku_line}'")
-                    skipped_count += 1
-                    i += 5
+        # Parse PDF table with pdfplumber
+        with pdfplumber.open(filepath) as pdf:
+            for page in pdf.pages:
+                table = page.extract_table()
+                if not table:
                     continue
-                sku = sku_match.group(1)
+                for row in table[1:]:  # Skip header row
+                    if len(row) < 9:
+                        skipped_count += 1
+                        updates.append(f"🔴 Skipped: incomplete row → {row}")
+                        continue
 
-                # Extract unit price
-                price_match = re.match(r"(\d+\.\d+)\s*/\s*(EA|BG)", unit_price_line)
-                if not price_match:
-                    updates.append(f"🔴 Skipped: bad price line → '{unit_price_line}'")
-                    skipped_count += 1
-                    i += 5
-                    continue
-                unit_price = float(price_match.group(1))
+                    sku = row[1].strip()
+                    name = row[2].strip()
+                    unit_price_raw = row[7].strip()
+                    total_raw = row[8].strip()
 
-                # Extract product name
-                product_name = f"{name_1} {name_2}".replace("...", "").strip()
-                product_name = re.sub(r'\s+', ' ', product_name)
-                updates.append(f"🧪 Trying to match: '{product_name}'")
+                    # Extract unit price (e.g. '26.035 / EA')
+                    price_match = re.match(r"(\d+\.\d+)\s*/\s*(EA|BG)", unit_price_raw)
+                    if not price_match:
+                        skipped_count += 1
+                        updates.append(f"🔴 Skipped: price format error → {unit_price_raw}")
+                        continue
 
-                match = process.extractOne(product_name, name_list, scorer=fuzz.token_set_ratio)
-                if match:
-                    actual_name, score, db_idx = match
-                    debug_log.append(f"  🤖 Match: '{actual_name}' ({score}%)")
-                else:
-                    actual_name, score, db_idx = "N/A", 0, -1
+                    try:
+                        unit_price = float(price_match.group(1))
+                        total_price = float(total_raw)
+                    except Exception as e:
+                        skipped_count += 1
+                        updates.append(f"🔴 Skipped: parse error → {e}")
+                        continue
 
-                if score >= 65:
-                    matched_count += 1
-                    product_id, _, old_price = db_products[db_idx]
-                    if round(old_price, 2) != round(unit_price, 2):
-                        cur = conn.cursor()
-                        cur.execute("UPDATE products SET cost_per_unit = %s WHERE id = %s", (unit_price, product_id))
-                        conn.commit()
-                        cur.close()
-                        updated_count += 1
-                        updates.append(f"🟢 [{actual_name}] updated from ${old_price:.2f} → ${unit_price:.2f}")
+                    updates.append(f"🧪 Trying to match: '{name}'")
+
+                    match = process.extractOne(name, name_list, scorer=fuzz.token_set_ratio)
+                    if match:
+                        actual_name, score, idx = match
+                        debug_log.append(f"🤖 Match: '{actual_name}' ({score}%)")
                     else:
-                        updates.append(f"⚪ [{actual_name}] no change (${unit_price:.2f})")
-                else:
-                    skipped_count += 1
-                    updates.append(f"🔴 No match for: '{product_name}' → Best: '{actual_name}' ({score}%)")
+                        actual_name, score, idx = "N/A", 0, -1
 
-            except Exception as e:
-                skipped_count += 1
-                updates.append(f"❌ Skipped: parsing error on block {i} → {e}")
-
-            i += 5  # move to next product block
+                    if score >= 65:
+                        matched_count += 1
+                        product_id, _, old_price = db_products[idx]
+                        if round(old_price, 2) != round(unit_price, 2):
+                            cur = conn.cursor()
+                            cur.execute("UPDATE products SET cost_per_unit = %s WHERE id = %s", (unit_price, product_id))
+                            conn.commit()
+                            cur.close()
+                            updated_count += 1
+                            updates.append(f"🟢 [{actual_name}] updated from ${old_price:.2f} → ${unit_price:.2f}")
+                        else:
+                            updates.append(f"⚪ [{actual_name}] no change (${unit_price:.2f})")
+                    else:
+                        skipped_count += 1
+                        updates.append(f"🔴 No match for: '{name}' → Best: '{actual_name}' ({score}%)")
 
         conn.close()
-
-        if not updates:
-            updates.append("⚠️ No matches or price changes found.")
 
         summary = f"📊 Summary: {matched_count} matched, {updated_count} updated, {skipped_count} skipped."
         updates.insert(0, summary)
