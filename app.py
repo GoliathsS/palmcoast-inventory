@@ -873,7 +873,7 @@ def upload_invoice():
         skipped_count = 0
 
         i = 0
-        while i < len(lines) - 3:
+        while i < len(lines) - 4:
             current_line = lines[i].strip()
             debug_log.append(f"📄 Checking line {i}: {current_line}")
 
@@ -883,29 +883,29 @@ def upload_invoice():
                 sku = sku_match.group(1)
                 name_1 = lines[i + 1].strip() if i + 1 < len(lines) else ""
                 name_2 = lines[i + 2].strip() if i + 2 < len(lines) else ""
-                price_line = lines[i + 3].strip() if i + 3 < len(lines) else ""
+                price_line = lines[i + 4].strip() if i + 4 < len(lines) else ""
 
                 product_name = f"{name_1} {name_2}".replace("...", "").strip()
                 product_name = re.sub(r'\s+', ' ', product_name)
-
                 updates.append(f"🧪 Trying to match: '{product_name}'")
 
-                price_match = re.search(r"([\d\.]+)\s*/\s*(EA|BG)\s+([\d\.]+)", price_line)
-                if not price_match:
+                matches = re.findall(r"(\d+\.\d+)\s*/\s*(EA|BG)\s+(\d+\.\d+)", price_line)
+                if matches:
+                    unit_price_str, _, total_price_str = matches[-1]  # take last match in line
+                    try:
+                        unit_price = float(unit_price_str)
+                        total_price = float(total_price_str)
+                    except Exception as e:
+                        skipped_count += 1
+                        updates.append(f"🔴 Skipped: price parse error → {e}")
+                        debug_log.append(f"⚠️ Failed to parse price: {e}")
+                        i += 5
+                        continue
+                else:
                     skipped_count += 1
-                    debug_log.append(f"⚠️ Price not found in line {i + 3}: {price_line}")
+                    debug_log.append(f"⚠️ Price not found in line {i + 4}: {price_line}")
                     updates.append(f"🔴 Skipped: price not found in → '{price_line}'")
-                    i += 4
-                    continue
-
-                try:
-                    unit_price = float(price_match.group(1))
-                    total_price = float(price_match.group(3))
-                except Exception as e:
-                    skipped_count += 1
-                    debug_log.append(f"⚠️ Failed to parse price: {e}")
-                    updates.append(f"🔴 Skipped: price parse error → {e}")
-                    i += 4
+                    i += 5
                     continue
 
                 debug_log.append(f"✅ Row starting at line {i}:")
@@ -937,7 +937,7 @@ def upload_invoice():
                     skipped_count += 1
                     updates.append(f"🔴 No match for: '{product_name}' → Best: '{actual_name}' ({score}%)")
 
-                i += 4
+                i += 5
             else:
                 i += 1
 
