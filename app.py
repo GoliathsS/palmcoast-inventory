@@ -907,15 +907,20 @@ def upload_invoice():
                     if score >= 65:
                         matched_count += 1
                         product_id, _, old_price = db_products[idx]
+
+                        # Log current price to price_history
+                        cur = conn.cursor()
+                        cur.execute("INSERT INTO price_history (product_id, price) VALUES (%s, %s)", (product_id, unit_price))
+
+                        # Update if changed
                         if round(old_price, 2) != round(unit_price, 2):
-                            cur = conn.cursor()
                             cur.execute("UPDATE products SET cost_per_unit = %s WHERE id = %s", (unit_price, product_id))
                             conn.commit()
-                            cur.close()
                             updated_count += 1
                             updates.append(f"🟢 [{actual_name}] updated from ${old_price:.2f} → ${unit_price:.2f}")
                         else:
                             updates.append(f"⚪ [{actual_name}] no change (${unit_price:.2f})")
+                        cur.close()
                     else:
                         skipped_count += 1
                         updates.append(f"🔴 No match for: '{name}' → Best: '{actual_name}' ({score}%)")
