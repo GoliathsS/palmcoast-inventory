@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, send_from_directory, session
+from flask import Flask, render_template, request, jsonify, redirect, url_for, send_from_directory, session, abort
 import psycopg2
 import os
 import boto3
@@ -417,6 +417,28 @@ def vehicle_profile(vehicle_id):
                            vehicle=vehicle,
                            inventory=inventory,
                            inspections=inspections)
+
+@app.before_request
+def verify_verizon_auth():
+    if request.path.startswith("/api/verizon/"):
+        auth = request.authorization
+        if not auth or not (auth.username == "pcpc" and auth.password == "801Maplewood!"):
+            abort(401)
+
+@app.route('/api/verizon/maintenance', methods=['POST'])
+def verizon_webhook():
+    data = request.json
+    print("📡 Webhook data received:", data)
+
+    # Example expected data handling
+    vehicle_id = data.get("vehicleId")
+    service_type = data.get("serviceType")
+    odometer = data.get("odometer")
+    due_date = data.get("dueDate")
+
+    # TODO: Save to database or trigger alerts
+
+    return jsonify({"status": "received"}), 200
 
 @app.route('/inspections') 
 def inspections_list():
