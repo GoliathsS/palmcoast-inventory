@@ -5,6 +5,8 @@ import boto3
 import fitz  # PyMuPDF
 import re
 import pdfplumber
+import csv
+from io import TextIOWrapper
 from werkzeug.utils import secure_filename
 from datetime import datetime, date
 from technician_manager import add_technician, remove_technician, get_all_technicians
@@ -273,6 +275,60 @@ def scan_action():
     finally:
         cur.close()
         conn.close()
+
+@app.route('/import-verizon-csv', methods=['GET', 'POST'])
+def import_verizon_csv():
+    if request.method == 'POST':
+        file = request.files['file']
+        if not file:
+            return "No file uploaded", 400
+
+        inserted = 0
+        skipped = 0
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        reader = csv.DictReader(TextIOWrapper(file, encoding='utf-8'))
+        for row in reader:
+            try:
+                vehicle_id = row['Vehicle'].strip()  # now correctly your internal ID
+                service_type = row['Service Name'].strip()
+                odometer_str = row['Odometer'].replace(' mi', '').replace(',', '')
+                date_completed = datetime.strptime(row['Date Completed'], '%m/%d/%Y').date()
+
+                # Skip if already exists (prevent duplicates)
+                cur.execute("""
+                    SELECT 1 FROM maintenance_reminders
+                    WHERE vehicle_id = %s AND service_type = %s AND odometer_due = %s AND received_at::date = %s
+                """, (vehicle_id, service_type, int(odometer_str), date_completed))
+                if cur.fetchone():
+                    skipped += 1
+                    continue
+
+                # Insert record
+                cur.execute("""
+                    INSERT INTO maintenance_reminders (vehicle_id, service_type, odometer_due, received_at)
+                    VALUES (%s, %s, %s, %s)
+                """, (vehicle_id, service_type, int(odometer_str), date_completed))
+                inserted += 1
+
+            except Exception as e:
+                print(f"⛔ Skipped row due to error: {e}")
+                skipped += 1
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return f"✅ {inserted} records imported, 🚫 {skipped} skipped (duplicates/errors)"
+
+    return '''
+        <form method="POST" enctype="multipart/form-data">
+            <h3>Upload Verizon Service CSV</h3>
+            <input type="file" name="file" accept=".csv">
+            <input type="submit" value="Upload">
+        </form>
+    '''
 
 @app.route('/assign-technician/<int:vehicle_id>', methods=['POST'])
 def assign_technician(vehicle_id):
