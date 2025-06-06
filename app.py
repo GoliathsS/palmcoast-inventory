@@ -388,7 +388,7 @@ def vehicle_profile(vehicle_id):
     vehicle = cur.fetchone()
 
     cur.execute("""
-        SELECT p.name, vi.quantity, vi.last_scanned
+        SELECT p.name, vi.quantity, vi.last_scanned, vi.expires_on
         FROM vehicle_inventory vi
         JOIN products p ON vi.product_id = p.id
         WHERE vi.vehicle_id = %s
