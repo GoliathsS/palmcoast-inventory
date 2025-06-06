@@ -458,6 +458,33 @@ def vehicle_profile(vehicle_id):
         last_mileage=last_mileage
     )
 
+@app.route('/mark-maintenance-complete/<int:vehicle_id>', methods=['POST'])
+def mark_maintenance_complete(vehicle_id):
+    service_type = request.form.get('service_type')
+    current_odometer = request.form.get('odometer')
+
+    if not service_type or not current_odometer:
+        return "Missing data", 400
+
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        cur.execute("""
+            INSERT INTO maintenance_reminders (vehicle_id, service_type, odometer_due, received_at)
+            VALUES (%s, %s, %s, CURRENT_DATE)
+        """, (vehicle_id, service_type, int(current_odometer)))
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return redirect(url_for('vehicle_profile', vehicle_id=vehicle_id))
+
+    except Exception as e:
+        app.logger.error(f"⛔ Failed to mark maintenance complete for vehicle {vehicle_id}: {e}")
+        return f"Error: {e}", 500
+
 @app.before_request
 def check_verizon_auth():
     if request.path.startswith("/api/verizon/"):
