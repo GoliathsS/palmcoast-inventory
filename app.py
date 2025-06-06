@@ -416,9 +416,9 @@ def vehicle_profile(vehicle_id):
     """, (vehicle_id,))
     inspections = cur.fetchall()
 
-    # Get last known mileage from inspection
     last_mileage = inspections[0]['mileage'] if inspections else 0
-    # --- Smart Maintenance Reminder Logic ---
+
+    # --- Reminder Generation Logic ---
     def get_next_due(service_type_exact, interval_miles):
         cur.execute("""
             SELECT odometer_due, received_at
@@ -426,12 +426,13 @@ def vehicle_profile(vehicle_id):
             WHERE vehicle_id = %s AND service_type = %s AND received_at IS NOT NULL
             ORDER BY received_at DESC
             LIMIT 1
-        """, (str(vehicle_id), service_type_exact))
-    
+        """, (vehicle_id, service_type_exact))
+
         last = cur.fetchone()
         if not last:
             return None
 
+        # Last completed mileage (true service performed)
         last_odo = last['odometer_due']
         due_at = last_odo + interval_miles
         miles_remaining = due_at - last_mileage
@@ -452,28 +453,24 @@ def vehicle_profile(vehicle_id):
             "miles_remaining": miles_remaining
         }
 
-    # Only show reminders if mileage exists
     reminders = []
     if last_mileage:
-        oil = get_next_due('Oil Change', 5000)
-        tire = get_next_due('Tire Rotation', 5000)
-        for r in [oil, tire]:
-            if r:
-                reminders.append(r)
+        for service, interval in [('Oil Change', 5000), ('Tire Rotation', 5000)]:
+            result = get_next_due(service, interval)
+            if result:
+                reminders.append(result)
 
-    # Maintenance Reminders
+    # Full Maintenance Log (history + generated reminders)
     cur.execute("""
         SELECT id, service_type, odometer_due, received_at, invoice_url
         FROM maintenance_reminders
         WHERE vehicle_id = %s
-        ORDER BY received_at DESC
-    """, (str(vehicle_id),))  # ✅ fix type mismatch
+        ORDER BY received_at DESC NULLS LAST, odometer_due ASC
+    """, (vehicle_id,))
     raw_maintenance = cur.fetchall()
 
-    # Enhance maintenance with status logic
     maintenance_logs = []
     for m in raw_maintenance:
-        status = ""
         miles_remaining = m['odometer_due'] - last_mileage
         is_overdue = last_mileage >= m['odometer_due']
         is_approaching = 0 < miles_remaining <= 500
@@ -481,7 +478,9 @@ def vehicle_profile(vehicle_id):
         if is_overdue:
             status = "overdue"
         elif is_approaching:
-            status = f"due_soon ({miles_remaining} mi)"
+            status = "due_soon"
+        else:
+            status = "ok"
 
         maintenance_logs.append({
             **m,
@@ -498,7 +497,7 @@ def vehicle_profile(vehicle_id):
         inspections=inspections,
         maintenance_logs=maintenance_logs,
         last_mileage=last_mileage,
-        reminders=reminders  # ✅ <-- this was missing
+        reminders=reminders
     )
 
 @app.route('/mark-maintenance-complete/<int:vehicle_id>', methods=['POST'])
@@ -516,13 +515,19 @@ def mark_maintenance_complete(vehicle_id):
         conn = get_db_connection()
         cur = conn.cursor()
 
-        # 1. Insert completed service log
+        # ✅ 1. Insert actual completed maintenance record
         cur.execute("""
             INSERT INTO maintenance_reminders (vehicle_id, service_type, odometer_due, received_at)
             VALUES (%s, %s, %s, CURRENT_DATE)
         """, (vehicle_id, service_type, current_odometer))
 
-        # 2. Insert new reminder for 5000 miles later
+        # ✅ 2. Remove any existing future reminder of the same type to prevent duplicates
+        cur.execute("""
+            DELETE FROM maintenance_reminders
+            WHERE vehicle_id = %s AND service_type = %s AND received_at IS NULL
+        """, (vehicle_id, service_type))
+
+        # ✅ 3. Insert new upcoming reminder (placeholder with no received_at)
         cur.execute("""
             INSERT INTO maintenance_reminders (vehicle_id, service_type, odometer_due, received_at)
             VALUES (%s, %s, %s, NULL)
