@@ -425,7 +425,7 @@ def vehicle_profile(vehicle_id):
         FROM maintenance_reminders
         WHERE vehicle_id = %s
         ORDER BY received_at DESC
-    """, (vehicle_id,))
+    """, (str(vehicle_id),))  # ✅ fix type mismatch
     raw_maintenance = cur.fetchall()
 
     # Enhance maintenance with status logic
