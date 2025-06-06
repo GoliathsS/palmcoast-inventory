@@ -276,65 +276,6 @@ def scan_action():
         cur.close()
         conn.close()
 
-@app.route('/import-verizon-csv', methods=['GET', 'POST'])
-def import_verizon_csv():
-    if request.method == 'POST':
-        file = request.files['file']
-        if not file:
-            return "No file uploaded", 400
-
-        inserted = 0
-        skipped = 0
-        conn = get_db_connection()
-        cur = conn.cursor()
-
-        reader = csv.DictReader(TextIOWrapper(file, encoding='utf-8'))
-        for row in reader:
-            try:
-                vehicle_id = row['Vehicle'].strip()
-                service_type = row['Service Name'].strip()
-                odometer_str = row['Odometer'].replace(' mi', '').replace(',', '')
-                odometer_value = int(odometer_str)
-                date_completed = datetime.strptime(row['Date Completed'], '%m/%d/%Y').date()
-
-                app.logger.info(f"🔍 Checking for duplicates: vehicle_id={vehicle_id}, service_type={service_type}, odometer={odometer_value}, date={date_completed}")
-
-                cur.execute("""
-                    SELECT 1 FROM maintenance_reminders
-                    WHERE vehicle_id = %s AND service_type = %s AND odometer_due = %s AND received_at::date = %s
-                """, (vehicle_id, service_type, odometer_value, date_completed))
-
-                if cur.fetchone():
-                    app.logger.info(f"⚠️ Duplicate found — Skipping: {vehicle_id}, {service_type}, {odometer_value}, {date_completed}")
-                    skipped += 1
-                    continue  # <-- this must be inside the `if` block
-
-                # Insert new record
-                cur.execute("""
-                    INSERT INTO maintenance_reminders (vehicle_id, service_type, odometer_due, received_at)
-                    VALUES (%s, %s, %s, %s)
-                """, (vehicle_id, service_type, odometer_value, date_completed))
-                app.logger.info(f"✅ Inserted: {vehicle_id}, {service_type}, {odometer_value}, {date_completed}")
-                inserted += 1
-
-            except Exception as e:
-                app.logger.error(f"⛔ Skipped row → vehicle_id={row.get('Vehicle')}, service_type={row.get('Service Name')}, odometer={row.get('Odometer')}, date={row.get('Date Completed')} — reason: {e}")
-                skipped += 1
-
-        conn.commit()
-        cur.close()
-        conn.close()
-
-        return f"✅ {inserted} records imported, 🚫 {skipped} skipped (duplicates/errors)"
-
-    return '''
-        <form method="POST" enctype="multipart/form-data">
-            <h3>Upload Verizon Service CSV</h3>
-            <input type="file" name="file" accept=".csv">
-            <input type="submit" value="Upload">
-        </form>
-    '''
-
 @app.route('/assign-technician/<int:vehicle_id>', methods=['POST'])
 def assign_technician(vehicle_id):
     tech_id = request.form['technician_id']
