@@ -419,30 +419,32 @@ def vehicle_profile(vehicle_id):
     # Get last known mileage from inspection
     last_mileage = inspections[0]['mileage'] if inspections else 0
     # --- Smart Maintenance Reminder Logic ---
-    def get_next_due(service_type, interval_miles):
+    def get_next_due(service_type_exact, interval_miles):
         cur.execute("""
             SELECT odometer_due, received_at
             FROM maintenance_reminders
-            WHERE vehicle_id = %s AND service_type ILIKE %s
+            WHERE vehicle_id = %s AND service_type = %s AND received_at IS NOT NULL
             ORDER BY received_at DESC
             LIMIT 1
-        """, (str(vehicle_id), service_type))
+        """, (str(vehicle_id), service_type_exact))
+    
         last = cur.fetchone()
         if not last:
             return None
 
         last_odo = last['odometer_due']
         due_at = last_odo + interval_miles
-        status = "ok"
         miles_remaining = due_at - last_mileage
 
         if last_mileage >= due_at:
             status = "overdue"
         elif miles_remaining <= 500:
             status = "due_soon"
+        else:
+            status = "ok"
 
         return {
-            "service_type": service_type,
+            "service_type": service_type_exact,
             "last_done": last['received_at'],
             "last_odometer": last_odo,
             "due_at": due_at,
@@ -454,9 +456,10 @@ def vehicle_profile(vehicle_id):
     reminders = []
     if last_mileage:
         oil = get_next_due('Oil Change', 5000)
-        tire = get_next_due('Tire Rotation%', 7500)  # ILIKE supports suffix variations
+        tire = get_next_due('Tire Rotation', 7500)
         for r in [oil, tire]:
-            if r: reminders.append(r)
+            if r:
+                reminders.append(r)
 
     # Maintenance Reminders
     cur.execute("""
