@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, send_from_directory, session, abort, current_app as app
+from flask import Flask, render_template, request, jsonify, redirect, url_for, send_from_directory, session, abort
 import psycopg2
 import os
 import boto3
