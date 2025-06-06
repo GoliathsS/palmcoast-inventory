@@ -196,6 +196,37 @@
         <p>No inspections recorded yet.</p>
       {% endif %}
     </div>
+        <div class="profile-box">
+      <div class="subheading">🛠 Maintenance History</div>
+      {% if maintenance_logs %}
+        <div class="scroll-table">
+          <table>
+            <tr>
+              <th>Service Type</th>
+              <th>Due at Odometer</th>
+              <th>Logged On</th>
+              <th>Invoice</th>
+            </tr>
+            {% for m in maintenance_logs %}
+            <tr>
+              <td>{{ m.service_type }}</td>
+              <td>{{ m.odometer_due }} mi</td>
+              <td>{{ m.received_at.strftime('%Y-%m-%d') if m.received_at else '—' }}</td>
+              <td>
+                {% if m.invoice_url %}
+                  <a href="{{ m.invoice_url }}" target="_blank">📎 View</a>
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </table>
+        </div>
+      {% else %}
+        <p>No maintenance records available yet.</p>
+      {% endif %}
+    </div>
 
     <a href="/vehicle-inspection/{{ vehicle[0] }}" class="btn-inspect">📝 Start New Inspection</a>
 
