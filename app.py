@@ -944,7 +944,6 @@ def inventory_analytics():
     price_labels = []
     price_values = []
 
-    # Inventory & category charts (you can replace these with real values later)
     usage_labels = []
     start_values = []
     end_values = []
@@ -961,13 +960,13 @@ def inventory_analytics():
     cur.execute("SELECT id, name FROM products ORDER BY name ASC")
     all_products = cur.fetchall()
 
+    # Load price history for selected product
     if selected_id:
         cur.execute("SELECT name FROM products WHERE id = %s", (selected_id,))
         row = cur.fetchone()
         if row:
             selected_name = row[0]
 
-            # Load price history
             cur.execute("""
                 SELECT date_recorded, price
                 FROM price_history
@@ -982,10 +981,33 @@ def inventory_analytics():
                 latest_date = price_data[-1][0].strftime('%B %d, %Y')
                 latest_price = f"${price_data[-1][1]:.2f}"
 
+    # --- Pest vs Lawn Monthly Totals ---
+    cur.execute("""
+        SELECT 
+            DATE_TRUNC('month', scan_date) AS month,
+            category,
+            SUM(quantity * cost_per_unit) AS total_spent
+        FROM scan_history
+        JOIN products ON scan_history.product_id = products.id
+        GROUP BY month, category
+        ORDER BY month ASC;
+    """)
+    scan_rows = cur.fetchall()
+
+    month_map = defaultdict(lambda: {"Pest": 0, "Lawn": 0})
+    for row in scan_rows:
+        month_str = row[0].strftime("%Y-%m")
+        category = row[1]
+        total = float(row[2])
+        month_map[month_str][category] = total
+
+    category_labels = sorted(month_map.keys())
+    pest_values = [month_map[m]["Pest"] for m in category_labels]
+    lawn_values = [month_map[m]["Lawn"] for m in category_labels]
+
     cur.close()
     conn.close()
 
-    # Render safely with defaults
     return render_template("inventory_analytics.html",
         all_products=all_products,
         selected_id=selected_id,
