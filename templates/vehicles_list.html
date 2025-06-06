@@ -75,7 +75,6 @@
 
     .table-container {
       overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
       background: white;
       border-radius: 10px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.05);
@@ -91,6 +90,7 @@
       padding: 14px;
       border-bottom: 1px solid #eee;
       text-align: left;
+      vertical-align: top;
     }
 
     th {
@@ -101,22 +101,50 @@
     .actions {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: 6px;
     }
 
-    @media (max-width: 480px) {
-      th, td {
+    @media (max-width: 768px) {
+      table thead {
+        display: none;
+      }
+
+      table, table tbody, table tr, table td {
+        display: block;
+        width: 100%;
+      }
+
+      table tr {
+        margin-bottom: 15px;
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        background-color: white;
         padding: 10px;
+      }
+
+      table td {
+        padding: 8px 12px;
         font-size: 0.9rem;
+        border: none;
+        border-bottom: 1px solid #eee;
+      }
+
+      table td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        display: block;
+        color: #555;
+        margin-bottom: 3px;
+      }
+
+      .actions {
+        justify-content: flex-start;
+        gap: 8px;
       }
 
       .btn {
         font-size: 0.9rem;
-        padding: 8px 12px;
-      }
-
-      .btn-sm {
-        padding: 6px 10px;
+        padding: 8px 14px;
       }
     }
   </style>
@@ -143,10 +171,10 @@
         <tbody>
           {% for vehicle in vehicles %}
           <tr>
-            <td>{{ vehicle[1] }}</td>
-            <td>{{ vehicle[2] }}</td>
-            <td>{{ vehicle[3] }}</td>
-            <td>
+            <td data-label="License Plate">{{ vehicle[1] }}</td>
+            <td data-label="Type">{{ vehicle[2] }}</td>
+            <td data-label="Technician">{{ vehicle[3] }}</td>
+            <td data-label="Actions">
               <div class="actions">
                 <a href="/vehicles/{{ vehicle[0] }}" class="btn btn-outline-primary btn-sm">View</a>
                 <form action="/delete-vehicle/{{ vehicle[0] }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this vehicle?')" style="display:inline;">
