@@ -196,6 +196,47 @@
         <p>No inspections recorded yet.</p>
       {% endif %}
     </div>
+
+    <div class="profile-box">
+      <div class="subheading">⏱ Upcoming Maintenance</div>
+      {% if reminders %}
+        <div class="scroll-table">
+          <table>
+            <tr>
+              <th>Service</th>
+              <th>Due at</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+            {% for r in reminders %}
+            <tr>
+              <td>{{ r.service_type }}</td>
+              <td>{{ r.due_at }} mi</td>
+              <td>
+                {% if r.status == 'overdue' %}
+                  <span style="color:red;">🔴 Overdue</span>
+                {% elif r.status.startswith('due_soon') %}
+                  <span style="color:orange;">⚠ Due in {{ r.miles_remaining }} mi</span>
+                {% else %}
+                  <span style="color:green;">🟢 OK</span>
+                {% endif %}
+              </td>
+              <td>
+                <form action="/mark-maintenance-complete/{{ vehicle[0] }}" method="POST">
+                  <input type="hidden" name="service_type" value="{{ r.service_type }}">
+                  <input type="hidden" name="odometer" value="{{ last_mileage or '' }}">
+                  <button type="submit">✔ Mark as Complete</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </table>
+        </div>
+      {% else %}
+        <p>No active reminders yet. Once maintenance is logged, new reminders will appear here.</p>
+      {% endif %}
+    </div>
+
         <div class="profile-box">
           <div class="subheading">🛠 Maintenance History</div>
           {% if maintenance_logs %}
@@ -210,7 +251,7 @@
                   <th>Actions</th>
                 </tr>
                 {% for m in maintenance_logs %}
-                {% set miles_left = (last_mileage - m.odometer_due) if last_mileage and m.odometer_due else None %}
+                {% set miles_left = (m.odometer_due - last_mileage) if last_mileage and m.odometer_due else None %}
                 <tr>
                   <td>{{ m.service_type }}</td>
                   <td>
@@ -237,13 +278,6 @@
                     {% else %}
                       <span style="color: green;">🟢 OK</span>
                     {% endif %}
-                  </td>
-                  <td>
-                    <form action="/mark-maintenance-complete/{{ vehicle[0] }}" method="POST">
-                      <input type="hidden" name="service_type" value="{{ m.service_type }}">
-                      <input type="hidden" name="odometer" value="{{ last_mileage or '' }}">
-                      <button type="submit">✔ Mark as Complete</button>
-                    </form>
                   </td>
                 </tr>
                 {% endfor %}
