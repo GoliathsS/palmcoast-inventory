@@ -158,6 +158,14 @@
       <a href="/vehicles/new" class="btn btn-success">➕ Add New Vehicle</a>
     </div>
 
+    <!-- 🔔 Legend -->
+    <div style="margin-bottom: 12px; font-size: 0.9rem;">
+      <strong>Status Legend:</strong>
+      <span style="background:#fffbe6; padding:2px 6px; border-radius:4px;">Yellow = due in 2000 mi</span>,
+      <span style="background:#fff3cd; padding:2px 6px; border-radius:4px;">Orange = due in 1000 mi</span>,
+      <span style="background:#ffe5e5; padding:2px 6px; border-radius:4px;">Red = due in 500 mi</span>
+    </div>
+
     <div class="table-container">
       <table>
         <thead>
@@ -170,7 +178,16 @@
         </thead>
         <tbody>
           {% for vehicle in vehicles %}
-          <tr>
+          {% set status = statuses[vehicle[0]] %}
+          <tr
+            {% if status == 'red' %}
+              style="background-color: #ffe5e5;"
+            {% elif status == 'orange' %}
+              style="background-color: #fff3cd;"
+            {% elif status == 'yellow' %}
+              style="background-color: #fffbe6;"
+            {% endif %}
+          >
             <td data-label="License Plate">{{ vehicle[1] }}</td>
             <td data-label="Type">{{ vehicle[2] }}</td>
             <td data-label="Technician">{{ vehicle[3] }}</td>
