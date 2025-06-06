@@ -419,26 +419,42 @@ def vehicle_profile(vehicle_id):
                            inspections=inspections)
 
 @app.before_request
-def verify_verizon_auth():
+def check_verizon_auth():
     if request.path.startswith("/api/verizon/"):
         auth = request.authorization
         if not auth or not (auth.username == "pcpc" and auth.password == "801Maplewood!"):
             abort(401)
 
 @app.route('/api/verizon/maintenance', methods=['POST'])
-def verizon_webhook():
+def handle_maintenance_webhook():
     data = request.json
-    print("📡 Webhook data received:", data)
+    vehicle_id = data.get('vehicleId')
+    service_type = data.get('serviceType')
+    odometer_due = data.get('odometer')  # Might also be 'odometerDue' or similar from Verizon
 
-    # Example expected data handling
-    vehicle_id = data.get("vehicleId")
-    service_type = data.get("serviceType")
-    odometer = data.get("odometer")
-    due_date = data.get("dueDate")
+    # Log the incoming data (optional)
+    app.logger.info(f"📡 Verizon webhook received: {data}")
 
-    # TODO: Save to database or trigger alerts
+    if not all([vehicle_id, service_type, odometer_due]):
+        return jsonify({"error": "Missing fields"}), 400
 
-    return jsonify({"status": "received"}), 200
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            INSERT INTO maintenance_reminders (vehicle_id, service_type, odometer_due)
+            VALUES (%s, %s, %s)
+            """,
+            (vehicle_id, service_type, odometer_due)
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({"status": "inserted"}), 200
+    except Exception as e:
+        app.logger.error(f"Database insert error: {e}")
+        return jsonify({"error": "Failed to insert"}), 500
 
 @app.route('/inspections') 
 def inspections_list():
