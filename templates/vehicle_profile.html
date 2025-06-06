@@ -197,36 +197,62 @@
       {% endif %}
     </div>
         <div class="profile-box">
-      <div class="subheading">🛠 Maintenance History</div>
-      {% if maintenance_logs %}
-        <div class="scroll-table">
-          <table>
-            <tr>
-              <th>Service Type</th>
-              <th>Due at Odometer</th>
-              <th>Logged On</th>
-              <th>Invoice</th>
-            </tr>
-            {% for m in maintenance_logs %}
-            <tr>
-              <td>{{ m.service_type }}</td>
-              <td>{{ m.odometer_due }} mi</td>
-              <td>{{ m.received_at.strftime('%Y-%m-%d') if m.received_at else '—' }}</td>
-              <td>
-                {% if m.invoice_url %}
-                  <a href="{{ m.invoice_url }}" target="_blank">📎 View</a>
-                {% else %}
-                  —
-                {% endif %}
-              </td>
-            </tr>
-            {% endfor %}
-          </table>
+          <div class="subheading">🛠 Maintenance History</div>
+          {% if maintenance_logs %}
+            <div class="scroll-table">
+              <table>
+                <tr>
+                  <th>Service Type</th>
+                  <th>Due at Odometer</th>
+                  <th>Logged On</th>
+                  <th>Invoice</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+                {% for m in maintenance_logs %}
+                {% set miles_left = (last_mileage - m.odometer_due) if last_mileage and m.odometer_due else None %}
+                <tr>
+                  <td>{{ m.service_type }}</td>
+                  <td>
+                    {{ m.odometer_due }} mi
+                    {% if miles_left is not none and miles_left < 0 %}
+                      <span style="color: red; font-weight: bold;">⚠ Overdue</span>
+                    {% elif miles_left is not none and miles_left <= 500 %}
+                      <span style="color: orange;">(Next due in {{ -miles_left }} mi)</span>
+                    {% endif %}
+                  </td>
+                  <td>{{ m.received_at.strftime('%Y-%m-%d') if m.received_at else '—' }}</td>
+                  <td>
+                    {% if m.invoice_url %}
+                      <a href="{{ m.invoice_url }}" target="_blank">📎 View</a>
+                    {% else %}
+                      —
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if miles_left is not none and miles_left < 0 %}
+                      <span style="color: red;">🔴 Due</span>
+                    {% elif miles_left is not none and miles_left <= 500 %}
+                      <span style="color: orange;">🟠 Approaching</span>
+                    {% else %}
+                      <span style="color: green;">🟢 OK</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <form action="/mark-maintenance-complete/{{ vehicle[0] }}" method="POST">
+                      <input type="hidden" name="service_type" value="{{ m.service_type }}">
+                      <input type="hidden" name="odometer" value="{{ last_mileage or '' }}">
+                      <button type="submit">✔ Mark as Complete</button>
+                    </form>
+                  </td>
+                </tr>
+                {% endfor %}
+              </table>
+            </div>
+          {% else %}
+            <p>No maintenance records available yet.</p>
+          {% endif %}
         </div>
-      {% else %}
-        <p>No maintenance records available yet.</p>
-      {% endif %}
-    </div>
 
     <a href="/vehicle-inspection/{{ vehicle[0] }}" class="btn-inspect">📝 Start New Inspection</a>
 
