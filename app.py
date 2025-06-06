@@ -494,7 +494,8 @@ def vehicle_profile(vehicle_id):
         inventory=inventory,
         inspections=inspections,
         maintenance_logs=maintenance_logs,
-        last_mileage=last_mileage
+        last_mileage=last_mileage,
+        reminders=reminders  # ✅ <-- this was missing
     )
 
 @app.route('/mark-maintenance-complete/<int:vehicle_id>', methods=['POST'])
@@ -520,8 +521,8 @@ def mark_maintenance_complete(vehicle_id):
 
         # 2. Insert new reminder for 5000 miles later
         cur.execute("""
-            INSERT INTO maintenance_reminders (vehicle_id, service_type, odometer_due)
-            VALUES (%s, %s, %s)
+            INSERT INTO maintenance_reminders (vehicle_id, service_type, odometer_due, received_at)
+            VALUES (%s, %s, %s, NULL)
         """, (vehicle_id, service_type, next_due))
 
         conn.commit()
