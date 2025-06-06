@@ -390,7 +390,7 @@ def vehicle_profile(vehicle_id):
     """, (vehicle_id,))
     vehicle = cur.fetchone()
 
-    # Vehicle inventory
+    # Truck Inventory
     cur.execute("""
         SELECT p.name, vi.quantity, vi.last_scanned, vi.expires_on
         FROM vehicle_inventory vi
@@ -401,7 +401,7 @@ def vehicle_profile(vehicle_id):
     """, (vehicle_id,))
     inventory = cur.fetchall()
 
-    # Vehicle inspections
+    # Inspections (latest 5)
     cur.execute("""
         SELECT
             id, date, technician_id, vehicle_id, mileage,
@@ -416,16 +416,36 @@ def vehicle_profile(vehicle_id):
     """, (vehicle_id,))
     inspections = cur.fetchall()
 
-    # 🚨 NEW: Maintenance records
+    # Get last known mileage from inspection
+    last_mileage = inspections[0]['mileage'] if inspections else 0
+
+    # Maintenance Reminders
     cur.execute("""
-        SELECT service_type, odometer_due, received_at, invoice_url
+        SELECT id, service_type, odometer_due, received_at, invoice_url
         FROM maintenance_reminders
         WHERE vehicle_id = %s
         ORDER BY received_at DESC
-        LIMIT 5
-    """, (str(vehicle_id),))  # string cast in case reminder uses varchar
+    """, (vehicle_id,))
+    raw_maintenance = cur.fetchall()
 
-    maintenance_logs = cur.fetchall()
+    # Enhance maintenance with status logic
+    maintenance_logs = []
+    for m in raw_maintenance:
+        status = ""
+        miles_remaining = m['odometer_due'] - last_mileage
+        is_overdue = last_mileage >= m['odometer_due']
+        is_approaching = 0 < miles_remaining <= 500
+
+        if is_overdue:
+            status = "overdue"
+        elif is_approaching:
+            status = f"due_soon ({miles_remaining} mi)"
+
+        maintenance_logs.append({
+            **m,
+            "status": status,
+            "miles_remaining": miles_remaining
+        })
 
     conn.close()
 
@@ -434,7 +454,8 @@ def vehicle_profile(vehicle_id):
         vehicle=vehicle,
         inventory=inventory,
         inspections=inspections,
-        maintenance_logs=maintenance_logs  # <-- pass to template
+        maintenance_logs=maintenance_logs,
+        last_mileage=last_mileage
     )
 
 @app.before_request
