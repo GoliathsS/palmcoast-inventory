@@ -944,6 +944,7 @@ def inventory_analytics():
     price_labels = []
     price_values = []
 
+    # Inventory & category charts
     usage_labels = []
     start_values = []
     end_values = []
@@ -956,11 +957,11 @@ def inventory_analytics():
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # Get all product names for dropdown
+    # All products for dropdown
     cur.execute("SELECT id, name FROM products ORDER BY name ASC")
     all_products = cur.fetchall()
 
-    # Load price history for selected product
+    # 1️⃣ Product price history (from price_history table)
     if selected_id:
         cur.execute("SELECT name FROM products WHERE id = %s", (selected_id,))
         row = cur.fetchone()
@@ -981,32 +982,64 @@ def inventory_analytics():
                 latest_date = price_data[-1][0].strftime('%B %d, %Y')
                 latest_price = f"${price_data[-1][1]:.2f}"
 
-    # --- Pest vs Lawn Monthly Totals ---
+    # 2️⃣ Monthly Inventory Usage
     cur.execute("""
-        SELECT 
-            DATE_TRUNC('month', scan_date) AS month,
-            category,
-            SUM(quantity * cost_per_unit) AS total_spent
-        FROM scan_history
-        JOIN products ON scan_history.product_id = products.id
-        GROUP BY month, category
-        ORDER BY month ASC;
+        SELECT TO_CHAR(timestamp, 'YYYY-MM') AS month,
+               SUM(CASE WHEN action = 'in' THEN unit_cost ELSE 0 END) AS start_value,
+               SUM(CASE WHEN action = 'out' THEN unit_cost ELSE 0 END) AS end_value
+        FROM scan_logs
+        GROUP BY month
+        ORDER BY month
     """)
-    scan_rows = cur.fetchall()
+    rows = cur.fetchall()
+    for month, start, end in rows:
+        usage_labels.append(month)
+        start_values.append(float(start))
+        end_values.append(float(end))
+        percent = (float(end) / float(start)) * 100 if start else 0
+        percent_used.append(round(percent, 1))
 
-    month_map = defaultdict(lambda: {"Pest": 0, "Lawn": 0})
-    for row in scan_rows:
-        month_str = row[0].strftime("%Y-%m")
-        category = row[1]
-        total = float(row[2])
-        month_map[month_str][category] = total
+    # 3️⃣ Pest vs Lawn Category Breakdown
+    cur.execute("""
+        SELECT TO_CHAR(s.timestamp, 'YYYY-MM') AS month,
+               p.category,
+               SUM(s.unit_cost)
+        FROM scan_logs s
+        JOIN products p ON s.product_id = p.id
+        WHERE s.action = 'out'
+        GROUP BY month, p.category
+        ORDER BY month
+    """)
+    rows = cur.fetchall()
+    monthly_map = {}
+    for month, category, total in rows:
+        if month not in monthly_map:
+            monthly_map[month] = {'Pest': 0, 'Lawn': 0}
+        monthly_map[month][category] += float(total)
 
-    category_labels = sorted(month_map.keys())
-    pest_values = [month_map[m]["Pest"] for m in category_labels]
-    lawn_values = [month_map[m]["Lawn"] for m in category_labels]
+    category_labels = sorted(monthly_map.keys())
+    pest_values = [monthly_map[m]['Pest'] for m in category_labels]
+    lawn_values = [monthly_map[m]['Lawn'] for m in category_labels]
 
     cur.close()
     conn.close()
+
+    return render_template("inventory_analytics.html",
+        all_products=all_products,
+        selected_id=selected_id,
+        selected_name=selected_name,
+        price_labels=price_labels or [],
+        price_values=price_values or [],
+        latest_price=latest_price or "",
+        latest_date=latest_date or "",
+        usage_labels=usage_labels or [],
+        start_values=start_values or [],
+        end_values=end_values or [],
+        percent_used=percent_used or [],
+        category_labels=category_labels or [],
+        pest_values=pest_values or [],
+        lawn_values=lawn_values or []
+    )
 
     return render_template("inventory_analytics.html",
         all_products=all_products,
