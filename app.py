@@ -307,18 +307,19 @@ def import_verizon_csv():
                 if cur.fetchone():
                     app.logger.info(f"⚠️ Duplicate found — Skipping: {vehicle_id}, {service_type}, {odometer_value}, {date_completed}")
                     skipped += 1
-            continue
+                    continue  # <-- this must be inside the `if` block
 
-        cur.execute("""
-            INSERT INTO maintenance_reminders (vehicle_id, service_type, odometer_due, received_at)
-            VALUES (%s, %s, %s, %s)
-        """, (vehicle_id, service_type, odometer_value, date_completed))
-        app.logger.info(f"✅ Inserted: {vehicle_id}, {service_type}, {odometer_value}, {date_completed}")
-        inserted += 1
+                # Insert new record
+                cur.execute("""
+                    INSERT INTO maintenance_reminders (vehicle_id, service_type, odometer_due, received_at)
+                    VALUES (%s, %s, %s, %s)
+                """, (vehicle_id, service_type, odometer_value, date_completed))
+                app.logger.info(f"✅ Inserted: {vehicle_id}, {service_type}, {odometer_value}, {date_completed}")
+                inserted += 1
 
-    except Exception as e:
-        app.logger.error(f"⛔ Skipped row → vehicle_id={row.get('Vehicle')}, service_type={row.get('Service Name')}, odometer={row.get('Odometer')}, date={row.get('Date Completed')} — reason: {e}")
-        skipped += 1
+            except Exception as e:
+                app.logger.error(f"⛔ Skipped row → vehicle_id={row.get('Vehicle')}, service_type={row.get('Service Name')}, odometer={row.get('Odometer')}, date={row.get('Date Completed')} — reason: {e}")
+                skipped += 1
 
         conn.commit()
         cur.close()
