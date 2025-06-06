@@ -456,7 +456,7 @@ def vehicle_profile(vehicle_id):
     reminders = []
     if last_mileage:
         oil = get_next_due('Oil Change', 5000)
-        tire = get_next_due('Tire Rotation', 7500)
+        tire = get_next_due('Tire Rotation', 5000)
         for r in [oil, tire]:
             if r:
                 reminders.append(r)
