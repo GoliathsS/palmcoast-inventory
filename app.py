@@ -423,10 +423,10 @@ def vehicle_profile(vehicle_id):
         cur.execute("""
             SELECT odometer_due, received_at
             FROM maintenance_reminders
-            WHERE vehicle_id::int = %s AND service_type = %s AND received_at IS NOT NULL
+            WHERE vehicle_id = %s AND service_type = %s AND received_at IS NOT NULL
             ORDER BY received_at DESC
             LIMIT 1
-        """, (vehicle_id, service_type_exact))
+        """, (str(vehicle_id), service_type_exact))
 
         last = cur.fetchone()
         if not last:
