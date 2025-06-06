@@ -506,13 +506,23 @@ def mark_maintenance_complete(vehicle_id):
         return "Missing data", 400
 
     try:
+        current_odometer = int(current_odometer)
+        next_due = current_odometer + 5000
+
         conn = get_db_connection()
         cur = conn.cursor()
 
+        # 1. Insert completed service log
         cur.execute("""
             INSERT INTO maintenance_reminders (vehicle_id, service_type, odometer_due, received_at)
             VALUES (%s, %s, %s, CURRENT_DATE)
-        """, (vehicle_id, service_type, int(current_odometer)))
+        """, (vehicle_id, service_type, current_odometer))
+
+        # 2. Insert new reminder for 5000 miles later
+        cur.execute("""
+            INSERT INTO maintenance_reminders (vehicle_id, service_type, odometer_due)
+            VALUES (%s, %s, %s)
+        """, (vehicle_id, service_type, next_due))
 
         conn.commit()
         cur.close()
