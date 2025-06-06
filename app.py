@@ -937,40 +937,71 @@ def upload_invoice():
 
 @app.route('/inventory-analytics')
 def inventory_analytics():
+    selected_id = request.args.get("product_id", type=int)
+    selected_name = ""
+    latest_price = ""
+    latest_date = ""
+    price_labels = []
+    price_values = []
+
+    # Inventory & category charts (you can replace these with real values later)
+    usage_labels = []
+    start_values = []
+    end_values = []
+    percent_used = []
+
+    category_labels = []
+    pest_values = []
+    lawn_values = []
+
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # Get all product names and IDs
+    # Get all product names for dropdown
     cur.execute("SELECT id, name FROM products ORDER BY name ASC")
-    product_map = cur.fetchall()  # List of (id, name)
+    all_products = cur.fetchall()
 
-    product_graphs = []
+    if selected_id:
+        cur.execute("SELECT name FROM products WHERE id = %s", (selected_id,))
+        row = cur.fetchone()
+        if row:
+            selected_name = row[0]
 
-    for product_id, product_name in product_map:
-        cur.execute("""
-            SELECT DATE(date_recorded), price
-            FROM price_history
-            WHERE product_id = %s
-            ORDER BY date_recorded ASC
-        """, (product_id,))
-        rows = cur.fetchall()
+            # Load price history
+            cur.execute("""
+                SELECT date_recorded, price
+                FROM price_history
+                WHERE product_id = %s
+                ORDER BY date_recorded ASC
+            """, (selected_id,))
+            price_data = cur.fetchall()
+            price_labels = [r[0].strftime('%Y-%m-%d') for r in price_data]
+            price_values = [float(r[1]) for r in price_data]
 
-        if not rows:
-            continue
-
-        dates = [r[0].strftime('%Y-%m-%d') for r in rows]
-        prices = [float(r[1]) for r in rows]
-
-        product_graphs.append({
-            'name': product_name,
-            'dates': dates,
-            'prices': prices
-        })
+            if price_data:
+                latest_date = price_data[-1][0].strftime('%B %d, %Y')
+                latest_price = f"${price_data[-1][1]:.2f}"
 
     cur.close()
     conn.close()
 
-    return render_template("inventory_analytics.html", product_graphs=product_graphs)
+    # Render safely with defaults
+    return render_template("inventory_analytics.html",
+        all_products=all_products,
+        selected_id=selected_id,
+        selected_name=selected_name,
+        price_labels=price_labels or [],
+        price_values=price_values or [],
+        latest_price=latest_price or "",
+        latest_date=latest_date or "",
+        usage_labels=usage_labels or [],
+        start_values=start_values or [],
+        end_values=end_values or [],
+        percent_used=percent_used or [],
+        category_labels=category_labels or [],
+        pest_values=pest_values or [],
+        lawn_values=lawn_values or []
+    )
     
 @app.route('/static/debug')
 def view_debug_output():
