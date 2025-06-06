@@ -247,17 +247,17 @@ def scan_action():
                     UPDATE vehicle_inventory
                     SET quantity = %s,
                         last_updated = CURRENT_TIMESTAMP,
-                        last_scanned = CURRENT_TIMESTAMP
+                        last_scanned = CURRENT_TIMESTAMP,
+                        expires_on = CURRENT_DATE + INTERVAL '7 days'
                     WHERE vehicle_id = %s AND product_id = %s
                 """, (1, vehicle_id, product_id))
-                log.info("🔁 Quantity updated in vehicle_inventory")
+                log.info("🔁 Replaced quantity with 1 and set expires_on to +7 days")
             else:
                 cur.execute("""
-                    INSERT INTO vehicle_inventory (vehicle_id, product_id, quantity, last_updated, last_scanned)
-                    VALUES (%s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    INSERT INTO vehicle_inventory (vehicle_id, product_id, quantity, last_updated, last_scanned, expires_on)
+                    VALUES (%s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_DATE + INTERVAL '7 days')
                 """, (vehicle_id, product_id, 1))
-                log.info("➕ Inserted new inventory row")
-
+                log.info("➕ Inserted product with expires_on +7 days")
         else:
             log.info("⚠️ Vehicle inventory not updated: direction=%s, vehicle_id=%s", direction, vehicle_id)
 
@@ -392,6 +392,7 @@ def vehicle_profile(vehicle_id):
         FROM vehicle_inventory vi
         JOIN products p ON vi.product_id = p.id
         WHERE vi.vehicle_id = %s
+          AND (vi.expires_on IS NULL OR vi.expires_on >= CURRENT_DATE)
         ORDER BY p.name
     """, (vehicle_id,))
     inventory = cur.fetchall()
