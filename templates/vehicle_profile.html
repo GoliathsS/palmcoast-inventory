@@ -249,19 +249,11 @@
                   <th>Invoice</th>
                   <th>Status</th>
                 </tr>
-                {% for m in maintenance_logs %}
-                {% set miles_left = (m.odometer_due - last_mileage) if last_mileage and m.odometer_due else None %}
+                {% for m in maintenance_logs if m.received_at %}
                 <tr>
                   <td>{{ m.service_type }}</td>
-                  <td>
-                    {{ m.odometer_due }} mi
-                    {% if miles_left is not none and miles_left < 0 %}
-                      <span style="color: red; font-weight: bold;">⚠ Overdue</span>
-                    {% elif miles_left is not none and miles_left <= 500 %}
-                      <span style="color: orange;">(Next due in {{ -miles_left }} mi)</span>
-                    {% endif %}
-                  </td>
-                  <td>{{ m.received_at.strftime('%Y-%m-%d') if m.received_at else '—' }}</td>
+                  <td>{{ m.odometer_due }} mi</td>
+                  <td>{{ m.received_at.strftime('%Y-%m-%d') }}</td>
                   <td>
                     {% if m.invoice_url %}
                       <a href="{{ m.invoice_url }}" target="_blank">📎 View</a>
@@ -269,15 +261,7 @@
                       —
                     {% endif %}
                   </td>
-                  <td>
-                    {% if miles_left is not none and miles_left < 0 %}
-                      <span style="color: red;">🔴 Due</span>
-                    {% elif miles_left is not none and miles_left <= 500 %}
-                      <span style="color: orange;">🟠 Approaching</span>
-                    {% else %}
-                      <span style="color: green;">🟢 OK</span>
-                    {% endif %}
-                  </td>
+                  <td><span style="color: green;">✅ Completed</span></td>
                 </tr>
                 {% endfor %}
               </table>
