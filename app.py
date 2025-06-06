@@ -641,7 +641,7 @@ def delete_inspection(inspection_id):
 @app.route('/vehicles')
 def vehicles_list():
     conn = get_db_connection()
-    cur = conn.cursor()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
     cur.execute("""
         SELECT v.vehicle_id, v.license_plate, v.vehicle_type,
@@ -651,9 +651,48 @@ def vehicles_list():
         ORDER BY v.license_plate
     """)
     vehicles = cur.fetchall()
+
+    vehicle_statuses = {}
+
+    for v in vehicles:
+        vid = v['vehicle_id']
+
+        # Get last inspection mileage
+        cur.execute("""
+            SELECT mileage FROM vehicle_inspections
+            WHERE vehicle_id = %s
+            ORDER BY date DESC LIMIT 1
+        """, (vid,))
+        inspection = cur.fetchone()
+        last_mileage = inspection['mileage'] if inspection else 0
+
+        # Get last Oil Change
+        cur.execute("""
+            SELECT odometer_due FROM maintenance_reminders
+            WHERE vehicle_id = %s AND service_type = 'Oil Change' AND received_at IS NOT NULL
+            ORDER BY received_at DESC LIMIT 1
+        """, (vid,))
+        maint = cur.fetchone()
+        last_oil = maint['odometer_due'] if maint else 0
+        next_due = last_oil + 5000
+
+        miles_remaining = next_due - last_mileage
+
+        # Assign status based on miles remaining
+        if miles_remaining <= 500:
+            status = 'red'
+        elif miles_remaining <= 1000:
+            status = 'orange'
+        elif miles_remaining <= 2000:
+            status = 'yellow'
+        else:
+            status = 'ok'
+
+        vehicle_statuses[vid] = status
+
     conn.close()
 
-    return render_template('vehicles_list.html', vehicles=vehicles)
+    return render_template('vehicles_list.html', vehicles=vehicles, statuses=vehicle_statuses)
 
 @app.route('/vehicles/new', methods=['GET', 'POST'])
 def create_vehicle():
