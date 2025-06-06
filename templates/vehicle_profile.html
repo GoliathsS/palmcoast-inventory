@@ -248,7 +248,6 @@
                   <th>Logged On</th>
                   <th>Invoice</th>
                   <th>Status</th>
-                  <th>Actions</th>
                 </tr>
                 {% for m in maintenance_logs %}
                 {% set miles_left = (m.odometer_due - last_mileage) if last_mileage and m.odometer_due else None %}
