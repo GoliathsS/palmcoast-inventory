@@ -379,6 +379,7 @@ def vehicle_profile(vehicle_id):
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
+    # Vehicle basic info
     cur.execute("""
         SELECT v.vehicle_id, v.license_plate, v.vehicle_type, t.name AS technician
         FROM vehicles v
@@ -387,6 +388,7 @@ def vehicle_profile(vehicle_id):
     """, (vehicle_id,))
     vehicle = cur.fetchone()
 
+    # Vehicle inventory
     cur.execute("""
         SELECT p.name, vi.quantity, vi.last_scanned, vi.expires_on
         FROM vehicle_inventory vi
@@ -397,6 +399,7 @@ def vehicle_profile(vehicle_id):
     """, (vehicle_id,))
     inventory = cur.fetchall()
 
+    # Vehicle inspections
     cur.execute("""
         SELECT
             id, date, technician_id, vehicle_id, mileage,
@@ -411,12 +414,26 @@ def vehicle_profile(vehicle_id):
     """, (vehicle_id,))
     inspections = cur.fetchall()
 
+    # 🚨 NEW: Maintenance records
+    cur.execute("""
+        SELECT service_type, odometer_due, received_at, invoice_url
+        FROM maintenance_reminders
+        WHERE vehicle_id = %s
+        ORDER BY received_at DESC
+        LIMIT 5
+    """, (str(vehicle_id),))  # string cast in case reminder uses varchar
+
+    maintenance_logs = cur.fetchall()
+
     conn.close()
 
-    return render_template('vehicle_profile.html',
-                           vehicle=vehicle,
-                           inventory=inventory,
-                           inspections=inspections)
+    return render_template(
+        'vehicle_profile.html',
+        vehicle=vehicle,
+        inventory=inventory,
+        inspections=inspections,
+        maintenance_logs=maintenance_logs  # <-- pass to template
+    )
 
 @app.before_request
 def check_verizon_auth():
