@@ -291,17 +291,22 @@ def import_verizon_csv():
         reader = csv.DictReader(TextIOWrapper(file, encoding='utf-8'))
         for row in reader:
             try:
-                vehicle_id = row['Vehicle'].strip()  # now correctly your internal ID
+                vehicle_id = row['Vehicle'].strip()
                 service_type = row['Service Name'].strip()
                 odometer_str = row['Odometer'].replace(' mi', '').replace(',', '')
+                odometer_value = int(odometer_str)
                 date_completed = datetime.strptime(row['Date Completed'], '%m/%d/%Y').date()
 
-                # Skip if already exists (prevent duplicates)
+                # Debug log for checking duplicate logic
+                print(f"🔍 Checking for duplicates: vehicle_id={vehicle_id}, service_type={service_type}, odometer={odometer_value}, date={date_completed}")
+
                 cur.execute("""
                     SELECT 1 FROM maintenance_reminders
                     WHERE vehicle_id = %s AND service_type = %s AND odometer_due = %s AND received_at::date = %s
-                """, (vehicle_id, service_type, int(odometer_str), date_completed))
+                """, (vehicle_id, service_type, odometer_value, date_completed))
+                
                 if cur.fetchone():
+                    print(f"⚠️ Duplicate found — Skipping: {vehicle_id}, {service_type}, {odometer_value}, {date_completed}")
                     skipped += 1
                     continue
 
@@ -309,11 +314,12 @@ def import_verizon_csv():
                 cur.execute("""
                     INSERT INTO maintenance_reminders (vehicle_id, service_type, odometer_due, received_at)
                     VALUES (%s, %s, %s, %s)
-                """, (vehicle_id, service_type, int(odometer_str), date_completed))
+                """, (vehicle_id, service_type, odometer_value, date_completed))
+                print(f"✅ Inserted: {vehicle_id}, {service_type}, {odometer_value}, {date_completed}")
                 inserted += 1
 
             except Exception as e:
-                print(f"⛔ Skipped row due to error: {e}")
+                print(f"⛔ Skipped row → vehicle_id={row.get('Vehicle')}, service_type={row.get('Service Name')}, odometer={row.get('Odometer')}, date={row.get('Date Completed')} — reason: {e}")
                 skipped += 1
 
         conn.commit()
