@@ -940,52 +940,37 @@ def inventory_analytics():
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # Get product list for dropdown
-    cur.execute("SELECT DISTINCT name FROM products ORDER BY name")
-    product_names = [row[0] for row in cur.fetchall()]
+    # Get all product names and IDs
+    cur.execute("SELECT id, name FROM products ORDER BY name ASC")
+    product_map = cur.fetchall()  # List of (id, name)
 
-    # Get price history for first product (default view)
-    default_product = product_names[0] if product_names else None
-    price_history = []
-    if default_product:
+    product_graphs = []
+
+    for product_id, product_name in product_map:
         cur.execute("""
             SELECT DATE(date_recorded), price
             FROM price_history
-            WHERE product_name = %s
-            ORDER BY date_recorded
-        """, (default_product,))
-        price_history = cur.fetchall()
+            WHERE product_id = %s
+            ORDER BY date_recorded ASC
+        """, (product_id,))
+        rows = cur.fetchall()
 
-    # Inventory value snapshot data
-    cur.execute("""
-        SELECT TO_CHAR(month, 'YYYY-MM') AS month,
-               starting_value,
-               ending_value
-        FROM inventory_snapshots
-        ORDER BY month
-    """)
-    inventory_usage = cur.fetchall()
+        if not rows:
+            continue
 
-    # Pest vs Lawn monthly totals
-    cur.execute("""
-        SELECT TO_CHAR(month, 'YYYY-MM') AS month,
-               SUM(CASE WHEN category = 'Pest' THEN total ELSE 0 END) AS pest_total,
-               SUM(CASE WHEN category = 'Lawn' THEN total ELSE 0 END) AS lawn_total
-        FROM monthly_category_totals
-        GROUP BY month
-        ORDER BY month
-    """)
-    category_totals = cur.fetchall()
+        dates = [r[0].strftime('%Y-%m-%d') for r in rows]
+        prices = [float(r[1]) for r in rows]
+
+        product_graphs.append({
+            'name': product_name,
+            'dates': dates,
+            'prices': prices
+        })
 
     cur.close()
     conn.close()
 
-    return render_template("inventory_analytics.html",
-                           product_names=product_names,
-                           selected_product=default_product,
-                           price_history=price_history,
-                           inventory_usage=inventory_usage,
-                           category_totals=category_totals)
+    return render_template("inventory_analytics.html", product_graphs=product_graphs)
     
 @app.route('/static/debug')
 def view_debug_output():
