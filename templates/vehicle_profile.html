@@ -142,12 +142,14 @@
               <th>Product</th>
               <th>Quantity</th>
               <th>Last Scanned</th>
+              <th>Expires On</th>
             </tr>
             {% for item in inventory %}
             <tr>
               <td>{{ item[0] }}</td>
               <td>{{ item[1] }}</td>
               <td>{{ item[2].strftime('%Y-%m-%d') if item[2] else '—' }}</td>
+              <td>{{ item[3].strftime('%Y-%m-%d') if item[3] else '—' }}</td>
             </tr>
             {% endfor %}
           </table>
