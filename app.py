@@ -346,6 +346,18 @@ def vehicle_inspection(vehicle_id):
             WHERE vehicle_id = %s
         """, (mileage, vehicle_id))
 
+        cur.execute("SELECT COUNT(*) FROM maintenance_reminders WHERE vehicle_id = %s", (vehicle_id,))
+        existing_reminder_count = cur.fetchone()[0]
+
+        if existing_reminder_count == 0:
+            due_odo = int(mileage) + 5000
+            cur.execute("""
+                INSERT INTO maintenance_reminders (vehicle_id, service_type, odometer_due, received_at)
+                VALUES 
+                    (%s, 'Oil Change', %s, NULL),
+                    (%s, 'Tire Rotation', %s, NULL)
+            """, (vehicle_id, due_odo, vehicle_id, due_odo))
+
         conn.commit()
         cur.close()
         conn.close()
