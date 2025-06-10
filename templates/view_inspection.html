@@ -5,7 +5,39 @@
   <title>Inspection Details</title>
   <style>
     body { font-family: sans-serif; padding: 20px; }
-    img { height: 120px; border: 1px solid #ccc; border-radius: 6px; margin: 5px; }
+    img.thumbnail {
+      height: 120px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      margin: 5px;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+    img.thumbnail:hover {
+      transform: scale(1.05);
+    }
+    .photo-box { display: inline-block; text-align: center; }
+
+    /* Lightbox overlay */
+    #lightbox {
+      display: none;
+      position: fixed;
+      z-index: 9999;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.85);
+      justify-content: center;
+      align-items: center;
+    }
+
+    #lightbox img {
+      max-width: 90%;
+      max-height: 90%;
+      box-shadow: 0 0 25px rgba(255,255,255,0.3);
+      border-radius: 8px;
+      cursor: zoom-out;
+    }
   </style>
 </head>
 <body>
@@ -29,8 +61,8 @@
       ('Tire RR', inspection.photo_tire_rear_right)
     ] %}
       {% if img %}
-        <div style="display:inline-block; text-align:center;">
-          <img src="/{{ img }}" alt="{{ label }}">
+        <div class="photo-box">
+          <img src="/{{ img }}" alt="{{ label }}" class="thumbnail" onclick="openLightbox(this)">
           <div>{{ label }}</div>
         </div>
       {% endif %}
@@ -39,5 +71,23 @@
 
   <br>
   <a href="/inspections">← Back to Inspections</a>
+
+  <!-- Lightbox container -->
+  <div id="lightbox" onclick="closeLightbox()">
+    <img id="lightbox-img" src="" alt="Enlarged">
+  </div>
+
+  <script>
+    function openLightbox(img) {
+      const lightbox = document.getElementById('lightbox');
+      const lightboxImg = document.getElementById('lightbox-img');
+      lightboxImg.src = img.src;
+      lightbox.style.display = 'flex';
+    }
+
+    function closeLightbox() {
+      document.getElementById('lightbox').style.display = 'none';
+    }
+  </script>
 </body>
 </html>
