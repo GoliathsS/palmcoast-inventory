@@ -5,7 +5,7 @@
   <title>Inspection Details</title>
   <style>
     body { font-family: sans-serif; padding: 20px; }
-    img.thumbnail {
+    .thumbnail {
       height: 120px;
       border: 1px solid #ccc;
       border-radius: 6px;
@@ -13,31 +13,43 @@
       cursor: pointer;
       transition: transform 0.2s ease;
     }
-    img.thumbnail:hover {
-      transform: scale(1.05);
-    }
+    .thumbnail:hover { transform: scale(1.05); }
     .photo-box { display: inline-block; text-align: center; }
 
-    /* Lightbox overlay */
+    /* Lightbox */
     #lightbox {
       display: none;
       position: fixed;
       z-index: 9999;
       top: 0; left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0, 0, 0, 0.85);
+      width: 100vw; height: 100vh;
+      background: rgba(0, 0, 0, 0.9);
       justify-content: center;
       align-items: center;
+      flex-direction: column;
     }
-
-    #lightbox img {
+    #lightbox-img {
       max-width: 90%;
       max-height: 90%;
-      box-shadow: 0 0 25px rgba(255,255,255,0.3);
-      border-radius: 8px;
-      cursor: zoom-out;
+      border-radius: 10px;
+      box-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
     }
+    .nav-arrow {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 3rem;
+      color: white;
+      background: rgba(0,0,0,0.4);
+      border: none;
+      padding: 10px 20px;
+      cursor: pointer;
+      user-select: none;
+      z-index: 10000;
+    }
+    .nav-arrow:hover { background: rgba(0,0,0,0.7); }
+    #prevBtn { left: 20px; }
+    #nextBtn { right: 20px; }
   </style>
 </head>
 <body>
@@ -49,8 +61,8 @@
   <p><strong>Wrap Condition:</strong> {{ inspection.wrap_condition }}</p>
 
   <h3>📸 Photos</h3>
-  <div>
-    {% for label, img in [
+  <div id="gallery">
+    {% set photo_list = [
       ('Front', inspection.photo_front),
       ('Back', inspection.photo_back),
       ('Left Side', inspection.photo_side_left),
@@ -60,9 +72,10 @@
       ('Tire RL', inspection.photo_tire_rear_left),
       ('Tire RR', inspection.photo_tire_rear_right)
     ] %}
+    {% for idx, (label, img) in enumerate(photo_list) %}
       {% if img %}
         <div class="photo-box">
-          <img src="/{{ img }}" alt="{{ label }}" class="thumbnail" onclick="openLightbox(this)">
+          <img src="/{{ img }}" alt="{{ label }}" class="thumbnail" onclick="openLightbox({{ idx }})">
           <div>{{ label }}</div>
         </div>
       {% endif %}
@@ -73,21 +86,48 @@
   <a href="/inspections">← Back to Inspections</a>
 
   <!-- Lightbox container -->
-  <div id="lightbox" onclick="closeLightbox()">
+  <div id="lightbox" onclick="closeLightbox(event)">
+    <button class="nav-arrow" id="prevBtn" onclick="event.stopPropagation(); showPrev()">‹</button>
     <img id="lightbox-img" src="" alt="Enlarged">
+    <button class="nav-arrow" id="nextBtn" onclick="event.stopPropagation(); showNext()">›</button>
   </div>
 
   <script>
-    function openLightbox(img) {
+    const images = Array.from(document.querySelectorAll('.thumbnail')).map(img => img.src);
+    let currentIndex = 0;
+
+    function openLightbox(index) {
+      currentIndex = index;
       const lightbox = document.getElementById('lightbox');
-      const lightboxImg = document.getElementById('lightbox-img');
-      lightboxImg.src = img.src;
+      const img = document.getElementById('lightbox-img');
+      img.src = images[currentIndex];
       lightbox.style.display = 'flex';
     }
 
-    function closeLightbox() {
-      document.getElementById('lightbox').style.display = 'none';
+    function closeLightbox(e) {
+      if (e.target.id === 'lightbox' || e.key === 'Escape') {
+        document.getElementById('lightbox').style.display = 'none';
+      }
     }
+
+    function showPrev() {
+      currentIndex = (currentIndex - 1 + images.length) % images.length;
+      document.getElementById('lightbox-img').src = images[currentIndex];
+    }
+
+    function showNext() {
+      currentIndex = (currentIndex + 1) % images.length;
+      document.getElementById('lightbox-img').src = images[currentIndex];
+    }
+
+    // Allow keyboard nav
+    document.addEventListener('keydown', e => {
+      if (document.getElementById('lightbox').style.display === 'flex') {
+        if (e.key === 'ArrowLeft') showPrev();
+        if (e.key === 'ArrowRight') showNext();
+        if (e.key === 'Escape') closeLightbox(e);
+      }
+    });
   </script>
 </body>
 </html>
