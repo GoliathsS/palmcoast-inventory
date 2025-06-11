@@ -2,9 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Inspection Details</title>
   <style>
-    body { font-family: sans-serif; padding: 20px; }
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+
     .thumbnail {
       height: 120px;
       border: 1px solid #ccc;
@@ -13,15 +18,24 @@
       cursor: pointer;
       transition: transform 0.2s ease;
     }
-    .thumbnail:hover { transform: scale(1.05); }
-    .photo-box { display: inline-block; text-align: center; }
+
+    .thumbnail:hover {
+      transform: scale(1.05);
+    }
+
+    .photo-box {
+      display: inline-block;
+      text-align: center;
+    }
 
     #lightbox {
       display: none;
       position: fixed;
       z-index: 9999;
-      top: 0; left: 0;
-      width: 100vw; height: 100vh;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
       background: rgba(0, 0, 0, 0.9);
       justify-content: center;
       align-items: center;
@@ -32,7 +46,14 @@
       max-width: 90%;
       max-height: 90%;
       border-radius: 10px;
-      box-shadow: 0 0 30px rgba(255,255,255,0.2);
+      box-shadow: 0 0 30px rgba(255, 255, 255, 0.2);
+      transition: transform 0.3s ease;
+      cursor: zoom-in;
+    }
+
+    #lightbox-img.zoomed {
+      transform: scale(2.2);
+      cursor: zoom-out;
     }
 
     .nav-arrow {
@@ -41,7 +62,7 @@
       transform: translateY(-50%);
       font-size: 3rem;
       color: white;
-      background: rgba(0,0,0,0.4);
+      background: rgba(0, 0, 0, 0.4);
       border: none;
       padding: 10px 20px;
       cursor: pointer;
@@ -50,11 +71,16 @@
     }
 
     .nav-arrow:hover {
-      background: rgba(0,0,0,0.7);
+      background: rgba(0, 0, 0, 0.7);
     }
 
-    #prevBtn { left: 20px; }
-    #nextBtn { right: 20px; }
+    #prevBtn {
+      left: 20px;
+    }
+
+    #nextBtn {
+      right: 20px;
+    }
   </style>
 </head>
 <body>
@@ -91,51 +117,75 @@
   <a href="/inspections">← Back to Inspections</a>
 
   <!-- Lightbox -->
-  <div id="lightbox" onclick="closeLightbox(event)">
-    <button class="nav-arrow" id="prevBtn" onclick="event.stopPropagation(); showPrev()">‹</button>
+  <div id="lightbox">
+    <button class="nav-arrow" id="prevBtn">‹</button>
     <img id="lightbox-img" src="" alt="Enlarged">
-    <button class="nav-arrow" id="nextBtn" onclick="event.stopPropagation(); showNext()">›</button>
+    <button class="nav-arrow" id="nextBtn">›</button>
   </div>
 
   <script>
-    const thumbnails = document.querySelectorAll('.thumbnail');
-    const imageList = Array.from(thumbnails).map(img => img.src);
-    let currentIndex = 0;
+    document.addEventListener('DOMContentLoaded', () => {
+      const thumbnails = document.querySelectorAll('.thumbnail');
+      const lightbox = document.getElementById('lightbox');
+      const lightboxImg = document.getElementById('lightbox-img');
+      const imageList = Array.from(thumbnails).map(img => img.src);
+      let currentIndex = 0;
 
-    thumbnails.forEach(img => {
-      img.addEventListener('click', () => {
-        currentIndex = parseInt(img.getAttribute('data-index'));
-        openLightbox();
+      thumbnails.forEach((img, index) => {
+        img.addEventListener('click', () => {
+          currentIndex = index;
+          openLightbox();
+        });
       });
-    });
 
-    function openLightbox() {
-      document.getElementById('lightbox-img').src = imageList[currentIndex];
-      document.getElementById('lightbox').style.display = 'flex';
-    }
-
-    function closeLightbox(e) {
-      if (e.target.id === 'lightbox' || e.key === 'Escape') {
-        document.getElementById('lightbox').style.display = 'none';
+      function openLightbox() {
+        lightboxImg.src = imageList[currentIndex];
+        lightbox.style.display = 'flex';
       }
-    }
 
-    function showPrev() {
-      currentIndex = (currentIndex - 1 + imageList.length) % imageList.length;
-      document.getElementById('lightbox-img').src = imageList[currentIndex];
-    }
+      function closeLightbox(e) {
+        if (e.target.id === 'lightbox' || e.key === 'Escape') {
+          lightbox.style.display = 'none';
+          lightboxImg.classList.remove('zoomed');
+        }
+      }
 
-    function showNext() {
-      currentIndex = (currentIndex + 1) % imageList.length;
-      document.getElementById('lightbox-img').src = imageList[currentIndex];
-    }
+      function showPrev() {
+        currentIndex = (currentIndex - 1 + imageList.length) % imageList.length;
+        lightboxImg.src = imageList[currentIndex];
+        lightboxImg.classList.remove('zoomed');
+      }
 
-    document.addEventListener('keydown', e => {
-      const isOpen = document.getElementById('lightbox').style.display === 'flex';
-      if (!isOpen) return;
-      if (e.key === 'ArrowLeft') showPrev();
-      if (e.key === 'ArrowRight') showNext();
-      if (e.key === 'Escape') closeLightbox(e);
+      function showNext() {
+        currentIndex = (currentIndex + 1) % imageList.length;
+        lightboxImg.src = imageList[currentIndex];
+        lightboxImg.classList.remove('zoomed');
+      }
+
+      lightboxImg.addEventListener('click', e => {
+        e.stopPropagation();
+        lightboxImg.classList.toggle('zoomed');
+      });
+
+      document.getElementById('prevBtn').addEventListener('click', e => {
+        e.stopPropagation();
+        showPrev();
+      });
+
+      document.getElementById('nextBtn').addEventListener('click', e => {
+        e.stopPropagation();
+        showNext();
+      });
+
+      document.addEventListener('keydown', e => {
+        const isOpen = lightbox.style.display === 'flex';
+        if (!isOpen) return;
+        if (e.key === 'ArrowLeft') showPrev();
+        if (e.key === 'ArrowRight') showNext();
+        if (e.key === 'Escape') closeLightbox(e);
+      });
+
+      lightbox.addEventListener('click', closeLightbox);
     });
   </script>
 </body>
