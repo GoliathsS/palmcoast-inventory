@@ -16,7 +16,6 @@
     .thumbnail:hover { transform: scale(1.05); }
     .photo-box { display: inline-block; text-align: center; }
 
-    /* Lightbox */
     #lightbox {
       display: none;
       position: fixed;
@@ -28,12 +27,14 @@
       align-items: center;
       flex-direction: column;
     }
+
     #lightbox-img {
       max-width: 90%;
       max-height: 90%;
       border-radius: 10px;
-      box-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
+      box-shadow: 0 0 30px rgba(255,255,255,0.2);
     }
+
     .nav-arrow {
       position: absolute;
       top: 50%;
@@ -47,7 +48,11 @@
       user-select: none;
       z-index: 10000;
     }
-    .nav-arrow:hover { background: rgba(0,0,0,0.7); }
+
+    .nav-arrow:hover {
+      background: rgba(0,0,0,0.7);
+    }
+
     #prevBtn { left: 20px; }
     #nextBtn { right: 20px; }
   </style>
@@ -75,7 +80,7 @@
     {% for idx, (label, img) in enumerate(photo_list) %}
       {% if img %}
         <div class="photo-box">
-          <img src="/{{ img }}" alt="{{ label }}" class="thumbnail" onclick="openLightbox({{ idx }})">
+          <img src="/{{ img }}" alt="{{ label }}" class="thumbnail" data-index="{{ idx }}">
           <div>{{ label }}</div>
         </div>
       {% endif %}
@@ -85,7 +90,7 @@
   <br>
   <a href="/inspections">← Back to Inspections</a>
 
-  <!-- Lightbox container -->
+  <!-- Lightbox -->
   <div id="lightbox" onclick="closeLightbox(event)">
     <button class="nav-arrow" id="prevBtn" onclick="event.stopPropagation(); showPrev()">‹</button>
     <img id="lightbox-img" src="" alt="Enlarged">
@@ -93,15 +98,20 @@
   </div>
 
   <script>
-    const images = Array.from(document.querySelectorAll('.thumbnail')).map(img => img.src);
+    const thumbnails = document.querySelectorAll('.thumbnail');
+    const imageList = Array.from(thumbnails).map(img => img.src);
     let currentIndex = 0;
 
-    function openLightbox(index) {
-      currentIndex = index;
-      const lightbox = document.getElementById('lightbox');
-      const img = document.getElementById('lightbox-img');
-      img.src = images[currentIndex];
-      lightbox.style.display = 'flex';
+    thumbnails.forEach(img => {
+      img.addEventListener('click', () => {
+        currentIndex = parseInt(img.getAttribute('data-index'));
+        openLightbox();
+      });
+    });
+
+    function openLightbox() {
+      document.getElementById('lightbox-img').src = imageList[currentIndex];
+      document.getElementById('lightbox').style.display = 'flex';
     }
 
     function closeLightbox(e) {
@@ -111,22 +121,21 @@
     }
 
     function showPrev() {
-      currentIndex = (currentIndex - 1 + images.length) % images.length;
-      document.getElementById('lightbox-img').src = images[currentIndex];
+      currentIndex = (currentIndex - 1 + imageList.length) % imageList.length;
+      document.getElementById('lightbox-img').src = imageList[currentIndex];
     }
 
     function showNext() {
-      currentIndex = (currentIndex + 1) % images.length;
-      document.getElementById('lightbox-img').src = images[currentIndex];
+      currentIndex = (currentIndex + 1) % imageList.length;
+      document.getElementById('lightbox-img').src = imageList[currentIndex];
     }
 
-    // Allow keyboard nav
     document.addEventListener('keydown', e => {
-      if (document.getElementById('lightbox').style.display === 'flex') {
-        if (e.key === 'ArrowLeft') showPrev();
-        if (e.key === 'ArrowRight') showNext();
-        if (e.key === 'Escape') closeLightbox(e);
-      }
+      const isOpen = document.getElementById('lightbox').style.display === 'flex';
+      if (!isOpen) return;
+      if (e.key === 'ArrowLeft') showPrev();
+      if (e.key === 'ArrowRight') showNext();
+      if (e.key === 'Escape') closeLightbox(e);
     });
   </script>
 </body>
