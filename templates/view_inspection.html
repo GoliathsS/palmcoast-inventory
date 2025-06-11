@@ -106,7 +106,7 @@
     {% for idx, (label, img) in enumerate(photo_list) %}
       {% if img %}
         <div class="photo-box">
-          <img src="/{{ img }}" alt="{{ label }}" class="thumbnail" data-index="{{ idx }}">
+          <img src="/{{ img }}" alt="{{ label }}" class="thumbnail">
           <div>{{ label }}</div>
         </div>
       {% endif %}
@@ -128,10 +128,16 @@
       const thumbnails = document.querySelectorAll('.thumbnail');
       const lightbox = document.getElementById('lightbox');
       const lightboxImg = document.getElementById('lightbox-img');
-      const imageList = Array.from(thumbnails).map(img => img.src);
+      const imageList = [];
       let currentIndex = 0;
 
+      // Build imageList and assign click handlers
       thumbnails.forEach((img, index) => {
+        imageList.push({
+          src: img.src,
+          label: img.alt
+        });
+
         img.addEventListener('click', () => {
           currentIndex = index;
           openLightbox();
@@ -139,7 +145,8 @@
       });
 
       function openLightbox() {
-        lightboxImg.src = imageList[currentIndex];
+        lightboxImg.src = imageList[currentIndex].src;
+        lightboxImg.alt = imageList[currentIndex].label;
         lightbox.style.display = 'flex';
       }
 
@@ -152,13 +159,15 @@
 
       function showPrev() {
         currentIndex = (currentIndex - 1 + imageList.length) % imageList.length;
-        lightboxImg.src = imageList[currentIndex];
+        lightboxImg.src = imageList[currentIndex].src;
+        lightboxImg.alt = imageList[currentIndex].label;
         lightboxImg.classList.remove('zoomed');
       }
 
       function showNext() {
         currentIndex = (currentIndex + 1) % imageList.length;
-        lightboxImg.src = imageList[currentIndex];
+        lightboxImg.src = imageList[currentIndex].src;
+        lightboxImg.alt = imageList[currentIndex].label;
         lightboxImg.classList.remove('zoomed');
       }
 
@@ -178,11 +187,11 @@
       });
 
       document.addEventListener('keydown', e => {
-        const isOpen = lightbox.style.display === 'flex';
-        if (!isOpen) return;
-        if (e.key === 'ArrowLeft') showPrev();
-        if (e.key === 'ArrowRight') showNext();
-        if (e.key === 'Escape') closeLightbox(e);
+        if (lightbox.style.display === 'flex') {
+          if (e.key === 'ArrowLeft') showPrev();
+          if (e.key === 'ArrowRight') showNext();
+          if (e.key === 'Escape') closeLightbox(e);
+        }
       });
 
       lightbox.addEventListener('click', closeLightbox);
