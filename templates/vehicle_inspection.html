@@ -142,8 +142,7 @@
         ] %}
           <div>
             <label>{{ label }}</label>
-            <input type="file" class="s3-photo" data-field="{{ name }}" accept="image/*" />
-            <input type="hidden" name="{{ name }}" id="hidden_{{ name }}">
+            <input type="file" name="{{ name }}" class="resize-before-upload" accept="image/*" />
           </div>
         {% endfor %}
       </div>
@@ -153,8 +152,7 @@
         {% for i in range(1, 5) %}
           <div>
             <label>Misc {{ i }}</label>
-            <input type="file" class="s3-photo" data-field="photo_misc_{{ i }}" accept="image/*" />
-            <input type="hidden" name="photo_misc_{{ i }}" id="hidden_photo_misc_{{ i }}">
+            <input type="file" name="photo_misc_{{ i }}" class="resize-before-upload" accept="image/*" />
           </div>
         {% endfor %}
       </div>
@@ -165,69 +163,52 @@
   </div>
 
   <script>
-  async function uploadFileToS3(originalFile, fieldName) {
-    const resizedFile = await resizeImage(originalFile, 1600, 0.85);
+  document.querySelectorAll('.resize-before-upload').forEach(input => {
+    input.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file || !file.type.startsWith('image/')) return;
 
-    const res = await fetch('/generate-upload-url', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        file_name: resizedFile.name,
-        content_type: resizedFile.type
-      })
+      const resized = await resizeImage(file, 1600, 0.85);
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(resized);
+      input.files = dataTransfer.files;
     });
-
-    const data = await res.json();
-    const upload = await fetch(data.url, {
-      method: 'PUT',
-      headers: { 'Content-Type': resizedFile.type },
-      body: resizedFile
-    });
-
-    if (upload.ok) {
-      document.getElementById('hidden_' + fieldName).value = data.file_url;
-    } else {
-      alert('Failed to upload ' + fieldName);
-    }
-  }
+  });
 
   function resizeImage(file, maxWidth, quality) {
     return new Promise((resolve) => {
-      const img = new Image();
       const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const scale = maxWidth / img.width;
+          const width = maxWidth;
+          const height = img.height * scale;
 
-      reader.onload = function (e) {
-        img.src = e.target.result;
-      };
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
 
-      img.onload = function () {
-        const scale = maxWidth / img.width;
-        const width = maxWidth;
-        const height = img.height * scale;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
 
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-
-        canvas.toBlob(
-          (blob) => {
+          canvas.toBlob((blob) => {
             const resizedFile = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), {
               type: 'image/jpeg',
-              lastModified: Date.now(),
+              lastModified: Date.now()
             });
             resolve(resizedFile);
-          },
-          'image/jpeg',
-          quality
-        );
+          }, 'image/jpeg', quality);
+        };
+        img.src = e.target.result;
       };
-
       reader.readAsDataURL(file);
     });
   }
   </script>
+
+</body>
+</html>
 
 </body>
 </html>
