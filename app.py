@@ -322,7 +322,8 @@ def vehicle_inspection(vehicle_id):
         photo_fields = [
             'photo_front', 'photo_back', 'photo_side_left', 'photo_side_right',
             'photo_tire_front_left', 'photo_tire_front_right',
-            'photo_tire_rear_left', 'photo_tire_rear_right'
+            'photo_tire_rear_left', 'photo_tire_rear_right',
+            'photo_misc_1', 'photo_misc_2', 'photo_misc_3', 'photo_misc_4'
         ]
         photos = {field: save_photo(field) for field in photo_fields}
 
@@ -331,13 +332,18 @@ def vehicle_inspection(vehicle_id):
                 vehicle_id, technician_id, mileage, cleanliness, wrap_condition, comments,
                 photo_front, photo_back, photo_side_left, photo_side_right,
                 photo_tire_front_left, photo_tire_front_right,
-                photo_tire_rear_left, photo_tire_rear_right
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                photo_tire_rear_left, photo_tire_rear_right,
+                photo_misc_1, photo_misc_2, photo_misc_3, photo_misc_4
+            ) VALUES (%s, %s, %s, %s, %s, %s,
+                      %s, %s, %s, %s,
+                      %s, %s, %s, %s,
+                      %s, %s, %s, %s)
         """, (
             vehicle_id, technician_id, mileage, cleanliness, wrap_condition, comments,
             photos['photo_front'], photos['photo_back'], photos['photo_side_left'], photos['photo_side_right'],
             photos['photo_tire_front_left'], photos['photo_tire_front_right'],
-            photos['photo_tire_rear_left'], photos['photo_tire_rear_right']
+            photos['photo_tire_rear_left'], photos['photo_tire_rear_right'],
+            photos['photo_misc_1'], photos['photo_misc_2'], photos['photo_misc_3'], photos['photo_misc_4']
         ))
 
         cur.execute("""
