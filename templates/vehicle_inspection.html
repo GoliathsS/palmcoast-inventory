@@ -197,16 +197,20 @@
       submitBtn.disabled = true;
       submitBtn.innerText = 'Uploading... Please wait ⏳';
 
-      const uploadInputs = document.querySelectorAll('.s3-photo');
+      const uploadInputs = Array.from(document.querySelectorAll('.s3-photo'));
+      const uploadPromises = [];
+
       for (const input of uploadInputs) {
         const file = input.files[0];
         const field = input.dataset.field;
         if (file) {
-          await uploadFileToS3(file, field);
+          uploadPromises.push(uploadFileToS3(file, field));
         }
       }
 
-      form.submit(); // Proceed to Flask after uploads complete
+      await Promise.all(uploadPromises); // Upload all in parallel
+
+      form.submit(); // Only after all are done
     });
   </script>
 
