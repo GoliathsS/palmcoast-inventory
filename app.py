@@ -6,6 +6,7 @@ import fitz  # PyMuPDF
 import re
 import pdfplumber
 import csv
+import uuid
 from io import TextIOWrapper
 from werkzeug.utils import secure_filename
 from datetime import datetime, date
@@ -286,6 +287,31 @@ def assign_technician(vehicle_id):
     conn.close()
     return redirect(url_for('vehicle_profile', vehicle_id=vehicle_id))
 
+@app.route('/generate-upload-url', methods=['POST'])
+def generate_upload_url():
+    data = request.get_json()
+    file_name = data.get('file_name')
+    content_type = data.get('content_type')
+    if not file_name or not content_type:
+        return jsonify({'error': 'Missing required fields'}), 400
+
+    timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S')
+    unique_filename = f"{uuid.uuid4()}_{timestamp}_{secure_filename(file_name)}"
+    s3_key = f"inspections/{unique_filename}"
+    presigned_url = s3.generate_presigned_url(
+        ClientMethod='put_object',
+        Params={
+            'Bucket': 'palmcoast-inspections',
+            'Key': s3_key,
+            'ContentType': content_type
+        },
+        ExpiresIn=300
+    )
+    return jsonify({
+        'url': presigned_url,
+        'file_url': f"https://palmcoast-inspections.s3.amazonaws.com/{s3_key}"
+    })
+
 @app.route('/vehicle-inspection/<int:vehicle_id>', methods=['GET', 'POST'])
 def vehicle_inspection(vehicle_id):
     import boto3
@@ -319,13 +345,12 @@ def vehicle_inspection(vehicle_id):
                 return f"https://{S3_BUCKET}.s3.amazonaws.com/{s3_key}"
             return None
 
-        photo_fields = [
+        photos = {field: request.form.get(field) for field in [
             'photo_front', 'photo_back', 'photo_side_left', 'photo_side_right',
             'photo_tire_front_left', 'photo_tire_front_right',
             'photo_tire_rear_left', 'photo_tire_rear_right',
             'photo_misc_1', 'photo_misc_2', 'photo_misc_3', 'photo_misc_4'
-        ]
-        photos = {field: save_photo(field) for field in photo_fields}
+        ]}
 
         cur.execute("""
             INSERT INTO vehicle_inspections (
