@@ -147,6 +147,16 @@
         {% endfor %}
       </div>
 
+      <label style="margin-top: 25px;">📸 Miscellaneous Photos</label>
+      <div class="photo-section">
+        {% for i in range(1, 5) %}
+          <div>
+            <label>Misc {{ i }}</label>
+            <input type="file" name="photo_misc_{{ i }}" accept="image/*" capture="environment" />
+          </div>
+        {% endfor %}
+      </div>
+
       <button type="submit">✅ Submit Inspection</button>
 
     </form>
