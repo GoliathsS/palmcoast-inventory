@@ -165,53 +165,68 @@
   </div>
 
   <script>
-    const form = document.getElementById('inspection-form');
-    const submitBtn = document.getElementById('submitBtn');
+  async function uploadFileToS3(originalFile, fieldName) {
+    const resizedFile = await resizeImage(originalFile, 1600, 0.85);
 
-    async function uploadFileToS3(file, fieldName) {
-      const res = await fetch('/generate-upload-url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          file_name: file.name,
-          content_type: file.type
-        })
-      });
-
-      const data = await res.json();
-      const upload = await fetch(data.url, {
-        method: 'PUT',
-        headers: { 'Content-Type': file.type },
-        body: file
-      });
-
-      if (upload.ok) {
-        document.getElementById('hidden_' + fieldName).value = data.file_url;
-      } else {
-        alert('Failed to upload ' + fieldName);
-      }
-    }
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      submitBtn.disabled = true;
-      submitBtn.innerText = 'Uploading... Please wait ⏳';
-
-      const uploadInputs = Array.from(document.querySelectorAll('.s3-photo'));
-      const uploadPromises = [];
-
-      for (const input of uploadInputs) {
-        const file = input.files[0];
-        const field = input.dataset.field;
-        if (file) {
-          uploadPromises.push(uploadFileToS3(file, field));
-        }
-      }
-
-      await Promise.all(uploadPromises); // Upload all in parallel
-
-      form.submit(); // Only after all are done
+    const res = await fetch('/generate-upload-url', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        file_name: resizedFile.name,
+        content_type: resizedFile.type
+      })
     });
+
+    const data = await res.json();
+    const upload = await fetch(data.url, {
+      method: 'PUT',
+      headers: { 'Content-Type': resizedFile.type },
+      body: resizedFile
+    });
+
+    if (upload.ok) {
+      document.getElementById('hidden_' + fieldName).value = data.file_url;
+    } else {
+      alert('Failed to upload ' + fieldName);
+    }
+  }
+
+  function resizeImage(file, maxWidth, quality) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const reader = new FileReader();
+
+      reader.onload = function (e) {
+        img.src = e.target.result;
+      };
+
+      img.onload = function () {
+        const scale = maxWidth / img.width;
+        const width = maxWidth;
+        const height = img.height * scale;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            const resizedFile = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), {
+              type: 'image/jpeg',
+              lastModified: Date.now(),
+            });
+            resolve(resizedFile);
+          },
+          'image/jpeg',
+          quality
+        );
+      };
+
+      reader.readAsDataURL(file);
+    });
+  }
   </script>
 
 </body>
