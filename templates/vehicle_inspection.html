@@ -96,7 +96,7 @@
 
   <div class="form-box">
     <h2>🚛 Vehicle Inspection</h2>
-    <form method="POST" enctype="multipart/form-data">
+    <form method="POST" enctype="multipart/form-data" id="inspection-form">
 
       <label>Technician</label>
       <input type="text" value="{{ technician }}" readonly />
@@ -142,7 +142,8 @@
         ] %}
           <div>
             <label>{{ label }}</label>
-            <input type="file" name="{{ name }}" accept="image/*" capture="environment" />
+            <input type="file" class="s3-photo" data-field="{{ name }}" accept="image/*" />
+            <input type="hidden" name="{{ name }}" id="hidden_{{ name }}">
           </div>
         {% endfor %}
       </div>
@@ -152,15 +153,62 @@
         {% for i in range(1, 5) %}
           <div>
             <label>Misc {{ i }}</label>
-            <input type="file" name="photo_misc_{{ i }}" accept="image/*" capture="environment" />
+            <input type="file" class="s3-photo" data-field="photo_misc_{{ i }}" accept="image/*" />
+            <input type="hidden" name="photo_misc_{{ i }}" id="hidden_photo_misc_{{ i }}">
           </div>
         {% endfor %}
       </div>
 
-      <button type="submit">✅ Submit Inspection</button>
+      <button type="submit" id="submitBtn">✅ Submit Inspection</button>
 
     </form>
   </div>
+
+  <script>
+    const form = document.getElementById('inspection-form');
+    const submitBtn = document.getElementById('submitBtn');
+
+    async function uploadFileToS3(file, fieldName) {
+      const res = await fetch('/generate-upload-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          file_name: file.name,
+          content_type: file.type
+        })
+      });
+
+      const data = await res.json();
+      const upload = await fetch(data.url, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type },
+        body: file
+      });
+
+      if (upload.ok) {
+        document.getElementById('hidden_' + fieldName).value = data.file_url;
+      } else {
+        alert('Failed to upload ' + fieldName);
+      }
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      submitBtn.disabled = true;
+      submitBtn.innerText = 'Uploading... Please wait ⏳';
+
+      const uploadInputs = document.querySelectorAll('.s3-photo');
+      for (const input of uploadInputs) {
+        const file = input.files[0];
+        const field = input.dataset.field;
+        if (file) {
+          await uploadFileToS3(file, field);
+        }
+      }
+
+      form.submit(); // Proceed to Flask after uploads complete
+    });
+  </script>
 
 </body>
 </html>
