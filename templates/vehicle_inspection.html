@@ -67,6 +67,13 @@
       font-size: 0.95rem;
     }
 
+    .photo-preview {
+      margin-top: 8px;
+      max-width: 100%;
+      border-radius: 8px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    }
+
     button {
       position: sticky;
       bottom: 0;
@@ -142,7 +149,7 @@
         ] %}
           <div>
             <label>{{ label }}</label>
-            <input type="file" name="{{ name }}" class="resize-before-upload" accept="image/*" />
+            <input type="file" name="{{ name }}" class="resize-preview" accept="image/*" capture="environment" />
           </div>
         {% endfor %}
       </div>
@@ -152,26 +159,37 @@
         {% for i in range(1, 5) %}
           <div>
             <label>Misc {{ i }}</label>
-            <input type="file" name="photo_misc_{{ i }}" class="resize-before-upload" accept="image/*" />
+            <input type="file" name="photo_misc_{{ i }}" class="resize-preview" accept="image/*" capture="environment" />
           </div>
         {% endfor %}
       </div>
 
-      <button type="submit" id="submitBtn">✅ Submit Inspection</button>
+      <button type="submit">✅ Submit Inspection</button>
 
     </form>
   </div>
 
   <script>
-  document.querySelectorAll('.resize-before-upload').forEach(input => {
+  document.querySelectorAll('.resize-preview').forEach(input => {
     input.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file || !file.type.startsWith('image/')) return;
 
       const resized = await resizeImage(file, 1600, 0.85);
+
+      // Replace original file with resized version
       const dataTransfer = new DataTransfer();
       dataTransfer.items.add(resized);
       input.files = dataTransfer.files;
+
+      // Show preview
+      const preview = document.createElement('img');
+      preview.src = URL.createObjectURL(resized);
+      preview.className = 'photo-preview';
+
+      const existing = input.parentElement.querySelector('img');
+      if (existing) existing.remove();
+      input.parentElement.appendChild(preview);
     });
   });
 
@@ -206,9 +224,6 @@
     });
   }
   </script>
-
-</body>
-</html>
 
 </body>
 </html>
