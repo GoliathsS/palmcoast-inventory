@@ -438,7 +438,7 @@ def edit_inspection(inspection_id):
         conn.commit()
         cur.close()
         conn.close()
-        return redirect(url_for('inspection_details', inspection_id=inspection_id))
+        return redirect(url_for('inspection_detail', inspection_id=inspection_id))
 
     # GET request
     cur.execute("SELECT * FROM vehicle_inspections WHERE id = %s", (inspection_id,))
