@@ -119,24 +119,24 @@
 
     <div class="photo-gallery">
       {% for label, photo in [
-        ('Front', inspection[7]),
-        ('Back', inspection[8]),
-        ('Left Side', inspection[9]),
-        ('Right Side', inspection[10]),
-        ('Front Left Tire', inspection[11]),
-        ('Front Right Tire', inspection[12]),
-        ('Rear Left Tire', inspection[13]),
-        ('Rear Right Tire', inspection[14]),
-        ('Misc 1', inspection[15]),
-        ('Misc 2', inspection[16]),
-        ('Misc 3', inspection[17]),
-        ('Misc 4', inspection[18])
+        ('Front', inspection.photo_front),
+        ('Back', inspection.photo_back),
+        ('Left Side', inspection.photo_side_left),
+        ('Right Side', inspection.photo_side_right),
+        ('Front Left Tire', inspection.photo_tire_front_left),
+        ('Front Right Tire', inspection.photo_tire_front_right),
+        ('Rear Left Tire', inspection.photo_tire_rear_left),
+        ('Rear Right Tire', inspection.photo_tire_rear_right),
+        ('Misc 1', inspection.photo_misc_1),
+        ('Misc 2', inspection.photo_misc_2),
+        ('Misc 3', inspection.photo_misc_3),
+        ('Misc 4', inspection.photo_misc_4)
       ] %}
         {% if photo %}
-        <div class="photo-box">
-          <img src="{{ photo }}" alt="{{ label }}">
-          <span>{{ label }}</span>
-        </div>
+          <div class="photo-box">
+            <img src="{{ photo }}" alt="{{ label }}">
+            <span>{{ label }}</span>
+          </div>
         {% endif %}
       {% endfor %}
     </div>
