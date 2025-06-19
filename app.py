@@ -398,7 +398,7 @@ def vehicle_inspection(vehicle_id):
 @app.route('/edit-inspection/<int:inspection_id>', methods=['GET', 'POST'])
 def edit_inspection(inspection_id):
     conn = get_db_connection()
-    cur = conn.cursor()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
     if request.method == 'POST':
         from datetime import datetime
