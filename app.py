@@ -395,6 +395,46 @@ def vehicle_inspection(vehicle_id):
         technician_id=technician_id
     )
 
+@app.route('/edit-inspection/<int:inspection_id>', methods=['GET', 'POST'])
+def edit_inspection(inspection_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    if request.method == 'POST':
+        def save_photo(field):
+            file = request.files.get(field)
+            if file and file.filename:
+                filename = secure_filename(file.filename)
+                timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+                s3_key = f"inspections/{inspection_id}_{field}_{timestamp}_{filename}"
+                s3.upload_fileobj(file, S3_BUCKET, s3_key)
+                return f"https://{S3_BUCKET}.s3.amazonaws.com/{s3_key}"
+            return None
+
+        updated_photos = {}
+        for field in photo_fields:
+            new_photo = save_photo(field)
+            if new_photo:
+                updated_photos[field] = new_photo
+
+        # Generate dynamic SQL to only update fields with new uploads
+        for field, url in updated_photos.items():
+            cur.execute(f"""
+                UPDATE vehicle_inspections SET {field} = %s WHERE id = %s
+            """, (url, inspection_id))
+
+        conn.commit()
+        cur.close()
+        conn.close()
+        return redirect(url_for('inspection_details', inspection_id=inspection_id))
+
+    # GET request
+    cur.execute("SELECT * FROM vehicle_inspections WHERE id = %s", (inspection_id,))
+    inspection = cur.fetchone()
+    cur.close()
+    conn.close()
+    return render_template("edit_inspection.html", inspection=inspection)
+
 @app.route('/vehicles/<int:vehicle_id>')
 def vehicle_profile(vehicle_id):
     conn = get_db_connection()
