@@ -401,6 +401,18 @@ def edit_inspection(inspection_id):
     cur = conn.cursor()
 
     if request.method == 'POST':
+        from datetime import datetime
+        from werkzeug.utils import secure_filename
+
+        S3_BUCKET = 'palmcoast-inspections'
+
+        photo_fields = [
+            'photo_front', 'photo_back', 'photo_side_left', 'photo_side_right',
+            'photo_tire_front_left', 'photo_tire_front_right',
+            'photo_tire_rear_left', 'photo_tire_rear_right',
+            'photo_misc_1', 'photo_misc_2', 'photo_misc_3', 'photo_misc_4'
+        ]
+
         def save_photo(field):
             file = request.files.get(field)
             if file and file.filename:
@@ -417,7 +429,7 @@ def edit_inspection(inspection_id):
             if new_photo:
                 updated_photos[field] = new_photo
 
-        # Generate dynamic SQL to only update fields with new uploads
+        # Update only fields that had new photos uploaded
         for field, url in updated_photos.items():
             cur.execute(f"""
                 UPDATE vehicle_inspections SET {field} = %s WHERE id = %s
