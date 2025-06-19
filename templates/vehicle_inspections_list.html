@@ -94,7 +94,10 @@
           <td>{{ i[4] }}</td>
           <td>{{ i[5] }}</td>
           <td>{{ i[6] }}</td>
-          <td><a href="/inspection/{{ i[7] }}" class="view-link">View</a></td>
+          <td>
+            <a href="/inspection/{{ i[7] }}" class="view-link">View</a> |
+            <a href="/edit-inspection/{{ i[7] }}" class="view-link" style="color: #f39c12;">Edit</a>
+          </td>
         </tr>
         {% endfor %}
       </tbody>
