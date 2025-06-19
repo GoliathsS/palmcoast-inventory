@@ -680,14 +680,15 @@ def inspections_list():
 @app.route('/inspection/<int:inspection_id>')
 def inspection_detail(inspection_id):
     conn = get_db_connection()
-    cur = conn.cursor()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
     cur.execute("""
         SELECT vi.id, vi.date, t.name AS technician, vi.mileage, vi.cleanliness, vi.wrap_condition,
                vi.comments,
                vi.photo_front, vi.photo_back, vi.photo_side_left, vi.photo_side_right,
                vi.photo_tire_front_left, vi.photo_tire_front_right,
-               vi.photo_tire_rear_left, vi.photo_tire_rear_right
+               vi.photo_tire_rear_left, vi.photo_tire_rear_right,
+               vi.photo_misc_1, vi.photo_misc_2, vi.photo_misc_3, vi.photo_misc_4
         FROM vehicle_inspections vi
         LEFT JOIN technicians t ON vi.technician_id = t.id
         WHERE vi.id = %s
