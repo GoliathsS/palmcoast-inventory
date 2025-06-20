@@ -627,36 +627,39 @@ def check_verizon_auth():
         if not auth or not (auth.username == "pcpc" and auth.password == "801Maplewood!"):
             abort(401)
 
-@app.route('/api/verizon/maintenance', methods=['POST'])
-def handle_maintenance_webhook():
-    data = request.json
+@app.route('/api/verizon/odometer', methods=['POST'])
+def update_vehicle_mileage():
+    data = request.json or {}
     vehicle_id = data.get('vehicleId')
-    service_type = data.get('serviceType')
-    odometer_due = data.get('odometer')  # Might also be 'odometerDue' or similar from Verizon
+    current_mileage = (
+        data.get('odometer') or
+        data.get('currentMileage') or
+        data.get('mileage')  # support for different field names
+    )
 
-    # Log the incoming data (optional)
-    app.logger.info(f"📡 Verizon webhook received: {data}")
+    app.logger.info(f"📡 Verizon Odometer Update: {data}")
 
-    if not all([vehicle_id, service_type, odometer_due]):
-        return jsonify({"error": "Missing fields"}), 400
+    if not vehicle_id or current_mileage is None:
+        return jsonify({"error": "Missing vehicleId or mileage"}), 400
 
     try:
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute(
             """
-            INSERT INTO maintenance_reminders (vehicle_id, service_type, odometer_due)
-            VALUES (%s, %s, %s)
+            UPDATE vehicles
+            SET mileage = %s
+            WHERE vehicle_id = %s
             """,
-            (vehicle_id, service_type, odometer_due)
+            (current_mileage, vehicle_id)
         )
         conn.commit()
         cur.close()
         conn.close()
-        return jsonify({"status": "inserted"}), 200
+        return jsonify({"status": "mileage updated"}), 200
     except Exception as e:
-        app.logger.error(f"Database insert error: {e}")
-        return jsonify({"error": "Failed to insert"}), 500
+        app.logger.exception("❌ Mileage update failed")
+        return jsonify({"error": "Failed to update mileage"}), 500
 
 @app.route('/inspections') 
 def inspections_list():
