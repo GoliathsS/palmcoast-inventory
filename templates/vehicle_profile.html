@@ -218,9 +218,7 @@
                 </td>
                 <td>{{ r.due_at }} mi</td>
                 <td>
-                  <input type="number" name="odometer" class="form-control form-control-sm" 
-                         placeholder="Enter mileage" min="{{ r.due_at }}" required
-                         style="width: 110px;">
+                  <input type="number" name="odometer" required>
                 </td>
                 <td>
                   {% if r.status == 'overdue' %}
