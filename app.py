@@ -536,6 +536,16 @@ def vehicle_profile(vehicle_id):
             result = get_next_due(service, interval)
             if result:
                 reminders.append(result)
+            else:
+                # No history yet — create default reminder using current mileage
+                reminders.append({
+                    "service_type": service,
+                    "last_done": None,
+                    "last_odometer": 0,
+                    "due_at": last_mileage + interval,
+                    "status": "ok",
+                    "miles_remaining": interval
+                })
 
     # Full Maintenance Log (history + generated reminders)
     cur.execute("""
