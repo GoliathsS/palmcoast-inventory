@@ -163,6 +163,27 @@ def delete_product(product_id):
     conn.close()
     return redirect(url_for('index'))
 
+@app.route('/export-products')
+def export_products():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT name, category, cost_per_unit, units_remaining FROM products")
+    rows = cur.fetchall()
+    colnames = [desc[0] for desc in cur.description]
+    df = pd.DataFrame(rows, columns=colnames)
+
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False, sheet_name='Products')
+
+    output.seek(0)
+    return send_file(
+        output,
+        download_name='products_export.xlsx',
+        as_attachment=True,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+
 @app.route('/scan-action', methods=['POST'])
 def scan_action():
     from datetime import datetime
