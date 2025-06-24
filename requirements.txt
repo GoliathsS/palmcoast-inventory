@@ -7,3 +7,4 @@ rapidfuzz
 python-Levenshtein
 boto3
 pdfplumber
+pandas>=1.5.0
