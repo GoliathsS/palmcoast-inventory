@@ -8,6 +8,7 @@ import pdfplumber
 import csv
 import uuid
 import pandas as pd
+import io
 from io import TextIOWrapper
 from werkzeug.utils import secure_filename
 from datetime import datetime, date
