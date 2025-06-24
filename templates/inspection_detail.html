@@ -117,6 +117,43 @@
       <p><strong>Wrap Condition:</strong> {{ inspection[5] }}</p>
     </div>
 
+    <hr style="margin: 30px 0;" />
+    <h3 style="color:#0A4D68;">🛢 Maintenance Summary</h3>
+    <div class="details">
+      <p>
+        <strong>Last Oil Change:</strong>
+        {% if last_oil %}
+          {{ last_oil.received_at.strftime('%Y-%m-%d') }} at {{ last_oil.odometer_due }} mi
+        {% else %}
+          Not recorded
+        {% endif %}
+      </p>
+      <p>
+        <strong>Next Oil Change Due:</strong>
+        {% if oil_due %}
+          {{ oil_due }} mi
+        {% else %}
+          —
+        {% endif %}
+      </p>
+      <p>
+        <strong>Last Tire Rotation:</strong>
+        {% if last_rotation %}
+          {{ last_rotation.received_at.strftime('%Y-%m-%d') }} at {{ last_rotation.odometer_due }} mi
+        {% else %}
+          Not recorded
+        {% endif %}
+      </p>
+      <p>
+        <strong>Next Rotation Due:</strong>
+        {% if rotation_due %}
+          {{ rotation_due }} mi
+        {% else %}
+          —
+        {% endif %}
+      </p>
+    </div>
+
     <div class="photo-gallery">
       {% for label, photo in [
         ('Front', inspection.photo_front),
