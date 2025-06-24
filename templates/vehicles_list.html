@@ -73,78 +73,75 @@
       color: white;
     }
 
-    .table-container {
-      overflow-x: auto;
-      background: white;
-      border-radius: 10px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    /* CARD STYLES */
+    .vehicle-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+      gap: 16px;
     }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
+    .vehicle-card {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+      border-left: 6px solid transparent;
+      transition: transform 0.1s ease-in-out;
+    }
+
+    .vehicle-card:hover {
+      transform: scale(1.01);
+    }
+
+    .vehicle-red {
+      border-left-color: #dc3545;
+      background-color: #ffe5e5;
+    }
+
+    .vehicle-orange {
+      border-left-color: #fd7e14;
+      background-color: #fff3cd;
+    }
+
+    .vehicle-yellow {
+      border-left-color: #ffc107;
+      background-color: #fffbe6;
+    }
+
+    .vehicle-header {
+      font-size: 1.1rem;
+      font-weight: bold;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .vehicle-detail {
+      margin: 4px 0;
       font-size: 0.95rem;
     }
 
-    th, td {
-      padding: 14px;
-      border-bottom: 1px solid #eee;
-      text-align: left;
-      vertical-align: top;
-    }
-
-    th {
-      background-color: #f9f9f9;
-      font-weight: 600;
-    }
-
-    .actions {
+    .vehicle-actions {
+      margin-top: 12px;
       display: flex;
+      gap: 10px;
       flex-wrap: wrap;
-      gap: 6px;
     }
 
     @media (max-width: 768px) {
-      table thead {
-        display: none;
+      .vehicle-header {
+        flex-direction: column;
+        gap: 6px;
       }
 
-      table, table tbody, table tr, table td {
-        display: block;
-        width: 100%;
-      }
-
-      table tr {
-        margin-bottom: 15px;
-        border: 1px solid #ddd;
-        border-radius: 10px;
-        background-color: white;
-        padding: 10px;
-      }
-
-      table td {
-        padding: 8px 12px;
-        font-size: 0.9rem;
-        border: none;
-        border-bottom: 1px solid #eee;
-      }
-
-      table td::before {
-        content: attr(data-label);
-        font-weight: 600;
-        display: block;
-        color: #555;
-        margin-bottom: 3px;
-      }
-
-      .actions {
-        justify-content: flex-start;
-        gap: 8px;
+      .vehicle-actions {
+        flex-direction: column;
       }
 
       .btn {
-        font-size: 0.9rem;
-        padding: 8px 14px;
+        font-size: 0.95rem;
+        width: 100%;
+        padding: 10px 14px;
       }
     }
   </style>
@@ -159,50 +156,48 @@
     </div>
 
     <!-- 🔔 Legend -->
-    <div style="margin-bottom: 12px; font-size: 0.9rem;">
+    <div style="margin-bottom: 20px; font-size: 0.9rem;">
       <strong>Status Legend:</strong>
       <span style="background:#fffbe6; padding:2px 6px; border-radius:4px;">Yellow = due in 2000 mi</span>,
       <span style="background:#fff3cd; padding:2px 6px; border-radius:4px;">Orange = due in 1000 mi</span>,
       <span style="background:#ffe5e5; padding:2px 6px; border-radius:4px;">Red = due in 500 mi</span>
     </div>
 
-    <div class="table-container">
-      <table>
-        <thead>
-          <tr>
-            <th>License Plate</th>
-            <th>Type</th>
-            <th>Technician</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for vehicle in vehicles %}
-          {% set status = statuses[vehicle[0]] %}
-          <tr
-            {% if status == 'red' %}
-              style="background-color: #ffe5e5;"
-            {% elif status == 'orange' %}
-              style="background-color: #fff3cd;"
-            {% elif status == 'yellow' %}
-              style="background-color: #fffbe6;"
-            {% endif %}
-          >
-            <td data-label="License Plate">{{ vehicle[1] }}</td>
-            <td data-label="Type">{{ vehicle[2] }}</td>
-            <td data-label="Technician">{{ vehicle[3] }}</td>
-            <td data-label="Actions">
-              <div class="actions">
-                <a href="/vehicles/{{ vehicle[0] }}" class="btn btn-outline-primary btn-sm">View</a>
-                <form action="/delete-vehicle/{{ vehicle[0] }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this vehicle?')" style="display:inline;">
-                  <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
-                </form>
-              </div>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    <div class="vehicle-grid">
+      {% for vehicle in vehicles %}
+        {% set status = statuses[vehicle[0]] %}
+        {% set card_class = 'vehicle-card' %}
+        {% if status == 'red' %}
+          {% set card_class = card_class + ' vehicle-red' %}
+        {% elif status == 'orange' %}
+          {% set card_class = card_class + ' vehicle-orange' %}
+        {% elif status == 'yellow' %}
+          {% set card_class = card_class + ' vehicle-yellow' %}
+        {% endif %}
+
+        <div class="{{ card_class }}">
+          <div class="vehicle-header">
+            <span>🔖 {{ vehicle[1] }}</span>
+            <span>{{ vehicle[2] }}</span>
+          </div>
+          <div class="vehicle-detail">👨‍🔧 <strong>Technician:</strong> {{ vehicle[3] }}</div>
+          {% if status == 'red' %}
+            <div class="vehicle-detail">🛢️ <strong>Status:</strong> Due in &lt; 500 mi</div>
+          {% elif status == 'orange' %}
+            <div class="vehicle-detail">🛢️ <strong>Status:</strong> Due in &lt; 1000 mi</div>
+          {% elif status == 'yellow' %}
+            <div class="vehicle-detail">🛢️ <strong>Status:</strong> Due in &lt; 2000 mi</div>
+          {% else %}
+            <div class="vehicle-detail">🛢️ <strong>Status:</strong> Up to date</div>
+          {% endif %}
+          <div class="vehicle-actions">
+            <a href="/vehicles/{{ vehicle[0] }}" class="btn btn-outline-primary">View</a>
+            <form action="/delete-vehicle/{{ vehicle[0] }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this vehicle?')" style="display:inline;">
+              <button type="submit" class="btn btn-outline-danger">Delete</button>
+            </form>
+          </div>
+        </div>
+      {% endfor %}
     </div>
 
     <div style="text-align: center; margin-top: 30px;">
