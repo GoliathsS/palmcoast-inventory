@@ -695,9 +695,10 @@ def inspection_detail(inspection_id):
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
+    # Get inspection record
     cur.execute("""
         SELECT vi.id, vi.date, t.name AS technician, vi.mileage, vi.cleanliness, vi.wrap_condition,
-               vi.comments,
+               vi.comments, vi.vehicle_id,
                vi.photo_front, vi.photo_back, vi.photo_side_left, vi.photo_side_right,
                vi.photo_tire_front_left, vi.photo_tire_front_right,
                vi.photo_tire_rear_left, vi.photo_tire_rear_right,
@@ -706,16 +707,41 @@ def inspection_detail(inspection_id):
         LEFT JOIN technicians t ON vi.technician_id = t.id
         WHERE vi.id = %s
     """, (inspection_id,))
-
     inspection = cur.fetchone()
+
+    if not inspection:
+        cur.close()
+        conn.close()
+        return "Inspection not found", 404
+
+    # --- Fetch last oil change and tire rotation ---
+    def get_last(service_type):
+        cur.execute("""
+            SELECT odometer_due, received_at
+            FROM maintenance_reminders
+            WHERE vehicle_id = %s AND service_type = %s AND received_at IS NOT NULL
+            ORDER BY received_at DESC
+            LIMIT 1
+        """, (inspection['vehicle_id'], service_type))
+        return cur.fetchone()
+
+    last_oil = get_last("Oil Change")
+    last_rotation = get_last("Tire Rotation")
+
+    oil_due = last_oil['odometer_due'] + 5000 if last_oil else None
+    rotation_due = last_rotation['odometer_due'] + 5000 if last_rotation else None
+
     cur.close()
     conn.close()
 
-    if not inspection:
-        return "Inspection not found", 404
-
-    return render_template("inspection_detail.html", inspection=inspection)
-
+    return render_template(
+        "inspection_detail.html",
+        inspection=inspection,
+        last_oil=last_oil,
+        last_rotation=last_rotation,
+        oil_due=oil_due,
+        rotation_due=rotation_due
+    )
 
 @app.route('/delete-inspection/<int:inspection_id>', methods=['POST'])
 def delete_inspection(inspection_id):
