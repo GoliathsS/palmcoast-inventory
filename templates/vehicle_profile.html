@@ -278,6 +278,60 @@
             <p>No maintenance records available yet.</p>
           {% endif %}
         </div>
+    <div class="profile-box">
+      <div class="subheading">📋 General Service History</div>
+      {% if vehicle_services %}
+        <div class="scroll-table">
+          <table>
+            <tr>
+              <th>Date</th>
+              <th>Service</th>
+              <th>Odometer</th>
+              <th>Notes</th>
+              <th>Invoice</th>
+            </tr>
+            {% for svc in vehicle_services %}
+            <tr>
+              <td>{{ svc.logged_on.strftime('%Y-%m-%d') }}</td>
+              <td>{{ svc.service_type }}</td>
+              <td>{{ svc.odometer }} mi</td>
+              <td>{{ svc.notes or '' }}</td>
+              <td>
+                {% if svc.invoice_url %}
+                  <a href="{{ svc.invoice_url }}" target="_blank">📎 View</a>
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </table>
+        </div>
+      {% else %}
+        <p>No general services logged yet.</p>
+      {% endif %}
+    </div>
+    
+    <div class="profile-box">
+      <div class="subheading">🛠 Log General Service</div>
+      <form action="/add-vehicle-service" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="vehicle_id" value="{{ vehicle[0] }}">
+
+        <label>Service Type:</label><br>
+        <input type="text" name="service_type" required style="width: 100%; padding: 8px; margin-bottom: 10px;"><br>
+
+        <label>Odometer:</label><br>
+        <input type="number" name="odometer" required style="width: 100%; padding: 8px; margin-bottom: 10px;"><br>
+
+        <label>Notes:</label><br>
+        <textarea name="notes" rows="3" style="width: 100%; padding: 8px; margin-bottom: 10px;"></textarea><br>
+
+        <label>Invoice File (PDF or Image):</label><br>
+        <input type="file" name="invoice_file" accept="application/pdf,image/*" style="margin-bottom: 15px;"><br>
+
+        <button type="submit" class="btn-inspect" style="background-color: #2d862d;">➕ Add Service</button>
+      </form>
+    </div>
 
     <div style="text-align: center; margin-bottom: 10px;">
       <a href="/vehicles/{{ vehicle[0] }}" class="btn" style="background: #6c757d; padding: 12px 20px; border-radius: 10px; text-decoration: none; color: white; font-weight: bold;">
