@@ -611,7 +611,7 @@ def vehicle_profile(vehicle_id):
     )
 
 @app.route('/upload-invoice/<int:maintenance_id>', methods=['POST'])
-def upload_invoice(maintenance_id):
+def upload_vehicle_invoice(maintenance_id):
     import boto3
     from datetime import datetime
     from werkzeug.utils import secure_filename
