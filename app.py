@@ -617,7 +617,7 @@ def vehicle_profile(vehicle_id):
         maintenance_logs=maintenance_logs,
         last_mileage=last_mileage,
         reminders=reminders,
-        service_logs=service_logs  # ← Add this line
+        vehicle_services=service_logs  # ✅ Rename so it matches template
     )
 
 @app.route("/add-vehicle-service", methods=["POST"])
