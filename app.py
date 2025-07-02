@@ -616,7 +616,7 @@ def vehicle_profile(vehicle_id):
         inspections=inspections,
         maintenance_logs=maintenance_logs,
         last_mileage=last_mileage,
-        reminders=reminders
+        reminders=reminders,
         service_logs=service_logs  # ← Add this line
     )
 
