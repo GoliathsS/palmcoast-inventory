@@ -635,7 +635,7 @@ def upload_vehicle_invoice(maintenance_id):
     # Update the database
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("UPDATE maintenance_logs SET invoice_url = %s WHERE id = %s", (invoice_url, maintenance_id))
+    cur.execute("UPDATE maintenance_reminders SET invoice_url = %s WHERE id = %s", (invoice_url, maintenance_id))
     conn.commit()
     cur.close()
     conn.close()
