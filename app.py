@@ -610,6 +610,31 @@ def vehicle_profile(vehicle_id):
         reminders=reminders
     )
 
+@app.route("/add-vehicle-service", methods=["POST"])
+def add_vehicle_service():
+    vehicle_id = request.form["vehicle_id"]
+    service_type = request.form["service_type"]
+    odometer = request.form["odometer"]
+    notes = request.form.get("notes", "")
+    
+    file = request.files.get("invoice_file")
+    invoice_url = ""
+    
+    if file and file.filename:
+        filename = secure_filename(file.filename)
+        path = os.path.join("static/invoices", filename)
+        file.save(path)
+        invoice_url = f"/{path}"
+
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO vehicle_services (vehicle_id, service_type, odometer, notes, invoice_url)
+        VALUES (%s, %s, %s, %s, %s)
+    """, (vehicle_id, service_type, odometer, notes, invoice_url))
+    conn.commit()
+    
+    return redirect(f"/vehicles/{vehicle_id}")
+
 @app.route('/upload-invoice/<int:maintenance_id>', methods=['POST'])
 def upload_vehicle_invoice(maintenance_id):
     import boto3
