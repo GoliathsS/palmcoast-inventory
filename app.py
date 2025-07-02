@@ -598,6 +598,15 @@ def vehicle_profile(vehicle_id):
             "miles_remaining": miles_remaining
         })
 
+    # General Service Logs from vehicle_services
+    cur.execute("""
+        SELECT id, service_type, odometer, logged_on, invoice_url, notes
+        FROM vehicle_services
+        WHERE vehicle_id = %s
+        ORDER BY logged_on DESC
+    """, (vehicle_id,))
+    service_logs = cur.fetchall()
+
     conn.close()
 
     return render_template(
@@ -608,6 +617,7 @@ def vehicle_profile(vehicle_id):
         maintenance_logs=maintenance_logs,
         last_mileage=last_mileage,
         reminders=reminders
+        service_logs=service_logs  # ← Add this line
     )
 
 @app.route("/add-vehicle-service", methods=["POST"])
