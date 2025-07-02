@@ -629,20 +629,38 @@ def add_vehicle_service():
     
     file = request.files.get("invoice_file")
     invoice_url = ""
-    
+
     if file and file.filename:
         filename = secure_filename(file.filename)
-        path = os.path.join("static/invoices", filename)
-        file.save(path)
-        invoice_url = f"/{path}"
+        unique_filename = f"{uuid.uuid4()}_{filename}"
+        
+        # Upload to S3
+        s3 = boto3.client(
+            "s3",
+            aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
+            aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
+            region_name="us-east-2"
+        )
 
+        s3.upload_fileobj(
+            file,
+            "palmcoast-invoices",
+            unique_filename,
+            ExtraArgs={"ContentType": file.content_type, "ACL": "public-read"}
+        )
+
+        invoice_url = f"https://palmcoast-invoices.s3.us-east-2.amazonaws.com/{unique_filename}"
+
+    # Insert into database
+    conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("""
         INSERT INTO vehicle_services (vehicle_id, service_type, odometer, notes, invoice_url)
         VALUES (%s, %s, %s, %s, %s)
     """, (vehicle_id, service_type, odometer, notes, invoice_url))
     conn.commit()
-    
+    conn.close()
+
     return redirect(f"/vehicles/{vehicle_id}")
 
 @app.route('/upload-invoice/<int:maintenance_id>', methods=['POST'])
