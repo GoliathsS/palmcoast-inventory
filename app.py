@@ -610,6 +610,38 @@ def vehicle_profile(vehicle_id):
         reminders=reminders
     )
 
+@app.route('/upload-invoice/<int:maintenance_id>', methods=['POST'])
+def upload_invoice(maintenance_id):
+    import boto3
+    from datetime import datetime
+    from werkzeug.utils import secure_filename
+
+    S3_BUCKET = 'palmcoast-invoices'  # Make sure this matches your actual bucket name
+    s3 = boto3.client('s3')
+
+    file = request.files.get('invoice')
+    if not file or not file.filename.lower().endswith('.pdf'):
+        return "Invalid file", 400
+
+    timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S')
+    filename = f"invoice_{maintenance_id}_{timestamp}_{secure_filename(file.filename)}"
+    s3_key = f"invoices/{filename}"
+
+    # Upload to S3
+    s3.upload_fileobj(file, S3_BUCKET, s3_key)
+
+    invoice_url = f"https://{S3_BUCKET}.s3.amazonaws.com/{s3_key}"
+
+    # Update the database
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("UPDATE maintenance_logs SET invoice_url = %s WHERE id = %s", (invoice_url, maintenance_id))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return redirect(request.referrer or '/vehicles')
+
 @app.route('/mark-maintenance-complete/<int:vehicle_id>', methods=['POST'])
 def mark_maintenance_complete(vehicle_id):
     service_type = request.form.get('service_type')
