@@ -263,7 +263,10 @@
                     {% if m.invoice_url %}
                       <a href="{{ m.invoice_url }}" target="_blank">📎 View</a>
                     {% else %}
-                      —
+                      <form action="/upload-invoice/{{ m.id }}" method="POST" enctype="multipart/form-data">
+                        <input type="file" name="invoice" accept="application/pdf" required>
+                        <button type="submit" style="margin-top: 5px;">Upload</button>
+                      </form>
                     {% endif %}
                   </td>
                   <td><span style="color: green;">✅ Completed</span></td>
