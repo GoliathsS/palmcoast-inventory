@@ -61,6 +61,29 @@
       </table>
       <button type="submit" class="btn btn-sm btn-primary mt-2">💾 Save Equipment Changes</button>
     </form>
+    <hr>
+    <h6>Add Custom Equipment</h6>
+    <form action="{{ url_for('add_equipment', vehicle_id=vehicle.vehicle_id) }}" method="post" class="row g-2 align-items-end">
+      <div class="col-md-5">
+        <label class="form-label">Item Name</label>
+        <input type="text" name="item_name" class="form-control" required>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Status</label>
+        <select name="status" class="form-select">
+          <option value="Assigned">Assigned</option>
+          <option value="Missing">Missing</option>
+          <option value="Needs Repair">Needs Repair</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Notes (optional)</label>
+        <input type="text" name="notes" class="form-control">
+      </div>
+      <div class="col-md-1">
+        <button type="submit" class="btn btn-success w-100">➕</button>
+      </div>
+    </form>
   </div>
 </div>
   <div class="accordion-item" id="inventory">
