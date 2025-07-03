@@ -29,6 +29,40 @@
   </div>
 
   <!-- INVENTORY -->
+  <div class="accordion-item">
+  <h2 class="accordion-header">📦 Permanent Equipment</h2>
+  <div class="accordion-body">
+    <form action="{{ url_for('update_equipment', vehicle_id=vehicle.vehicle_id) }}" method="post">
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Status</th>
+            <th>Last Verified</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in equipment %}
+          <tr>
+            <td>{{ item.item_name }}</td>
+            <td>
+              <select name="status_{{ item.id }}" class="form-select">
+                <option value="Assigned" {% if item.status == 'Assigned' %}selected{% endif %}>Assigned</option>
+                <option value="Missing" {% if item.status == 'Missing' %}selected{% endif %}>Missing</option>
+                <option value="Needs Repair" {% if item.status == 'Needs Repair' %}selected{% endif %}>Needs Repair</option>
+              </select>
+            </td>
+            <td>{{ item.last_verified.strftime('%Y-%m-%d') if item.last_verified else '' }}</td>
+            <td><input type="text" name="notes_{{ item.id }}" value="{{ item.notes or '' }}" class="form-control"></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <button type="submit" class="btn btn-sm btn-primary mt-2">💾 Save Equipment Changes</button>
+    </form>
+  </div>
+</div>
   <div class="accordion-item" id="inventory">
     <h2 class="accordion-header" id="headingInventory">
       <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseInventory" aria-expanded="true">
