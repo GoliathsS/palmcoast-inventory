@@ -994,6 +994,32 @@ def update_equipment(vehicle_id):
     conn.close()
     return redirect(url_for('vehicle_profile', vehicle_id=vehicle_id))
 
+@app.route('/vehicles/<int:vehicle_id>/add-equipment', methods=['POST'])
+def add_equipment(vehicle_id):
+    item_name = request.form['item_name']
+    status = request.form.get('status', 'Assigned')
+    notes = request.form.get('notes', '')
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO vehicle_equipment (vehicle_id, item_name, status, notes, last_verified)
+        VALUES (%s, %s, %s, %s, CURRENT_DATE)
+    """, (vehicle_id, item_name, status, notes))
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for('vehicle_profile', vehicle_id=vehicle_id))
+
+@app.route('/vehicles/<int:vehicle_id>/delete-equipment/<int:equipment_id>', methods=['POST'])
+def delete_equipment(vehicle_id, equipment_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM vehicle_equipment WHERE id = %s AND vehicle_id = %s", (equipment_id, vehicle_id))
+    conn.commit()
+    conn.close()
+    return redirect(url_for('vehicle_profile', vehicle_id=vehicle_id))
+
 @app.route('/sds')
 def sds_portal():
     filter_type = request.args.get('filter', '')
