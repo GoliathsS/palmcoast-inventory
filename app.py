@@ -974,23 +974,26 @@ def delete_vehicle(vehicle_id):
 @app.route('/vehicles/<int:vehicle_id>/update-equipment', methods=['POST'])
 def update_equipment(vehicle_id):
     conn = get_db_connection()
+    cur = conn.cursor()
 
     # Fetch all equipment for this vehicle
-    equipment_items = conn.execute(
+    cur.execute(
         'SELECT id FROM vehicle_equipment WHERE vehicle_id = %s', (vehicle_id,)
-    ).fetchall()
+    )
+    equipment_items = cur.fetchall()
 
     for item in equipment_items:
-        item_id = item['id']
+        item_id = item[0]  # since fetchall() returns a list of tuples
         status = request.form.get(f'status_{item_id}')
         notes = request.form.get(f'notes_{item_id}')
 
-        conn.execute(
+        cur.execute(
             'UPDATE vehicle_equipment SET status = %s, notes = %s, last_verified = CURRENT_DATE WHERE id = %s',
             (status, notes, item_id)
         )
 
     conn.commit()
+    cur.close()
     conn.close()
     return redirect(url_for('vehicle_profile', vehicle_id=vehicle_id))
 
