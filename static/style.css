@@ -1,28 +1,11 @@
-:root {
+:root { 
   --primary: #146311;
-  --primary-dark: #14532d;
-  --primary-hover: #1c3fa0;
   --accent: #f1f5f9;
   --text: #111827;
   --success: #16a34a;
-  --success-bg: #e6fbe6;
-  --success-text: #15803d;
   --danger: #dc2626;
-  --warning: orange;
   --border: #e5e7eb;
   --bg: #f9fafb;
-
-  --blue: #1e40af;
-  --blue-hover: #1c3fa0;
-  --gray-light: #f3f4f6;
-  --gray-dark: #374151;
-  --sync-blue: #e0edff;
-  --sync-blue-text: #1d4ed8;
-  --photo-border: #ccc;
-
-  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.1);
-  --radius: 8px;
 }
 
 body {
@@ -38,67 +21,21 @@ h1, h2 {
   margin-top: 0;
 }
 
-/* ----------------- Buttons ------------------ */
-.button {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 10px 18px;
-  font-size: 0.95rem;
-  font-weight: 500;
-  border-radius: var(--radius);
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.button-primary {
-  background-color: var(--primary-dark);
-  color: #ffffff;
-}
-
-.button-settings {
-  background-color: var(--gray-light);
-  color: var(--gray-dark);
-}
-
-.button-sync {
-  background-color: var(--sync-blue);
-  color: var(--sync-blue-text);
-}
-
-.button-success {
-  background-color: var(--success-bg);
-  color: var(--success-text);
-}
-
-.button:hover {
-  box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
-}
-
-/* Legacy button style fallback */
 button {
   padding: 10px 16px;
-  font-size: 14px;
   border: none;
+  font-size: 14px;
   border-radius: 6px;
   cursor: pointer;
-  background-color: var(--blue);
-  color: white;
   transition: background 0.2s ease;
+  background-color: #1e40af;
+  color: white;
 }
 
 button:hover {
-  background-color: var(--blue-hover);
+  background-color: #1c3fa0;
 }
 
-/* ----------------- Inputs ------------------ */
 input, select {
   padding: 10px;
   border: 1px solid var(--border);
@@ -107,20 +44,13 @@ input, select {
   margin: 5px;
 }
 
-input:focus, select:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgba(20, 83, 45, 0.15);
-}
-
-/* ----------------- Table ------------------ */
 table {
   width: 100%;
   border-collapse: collapse;
   background: white;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
   margin-top: 20px;
-  border-radius: var(--radius);
+  border-radius: 8px;
   overflow: hidden;
 }
 
@@ -139,7 +69,6 @@ td:last-child {
   white-space: nowrap;
 }
 
-/* ----------------- Forms ------------------ */
 form {
   margin-top: 10px;
 }
@@ -154,13 +83,12 @@ form {
   font-weight: bold;
 }
 
-/* ----------------- Sections ------------------ */
 .settings-section {
   margin: 20px 0;
   padding: 15px;
   background: white;
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-sm);
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
 }
 
 .siteone-sync {
@@ -175,7 +103,40 @@ form {
   align-items: center;
 }
 
-/* ----------------- Photo Gallery ------------------ */
+.action-buttons button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 10px 18px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.settings-btn {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.sync-btn {
+  background-color: #e0edff;
+  color: #1d4ed8;
+}
+
+.manual-sync-btn {
+  background-color: #e6fbe6;
+  color: #15803d;
+}
+
+.primary-btn {
+  background-color: #14532d;
+  color: #ffffff;
+  font-weight: 600;
+}
+
 .photo-gallery {
   display: flex;
   flex-wrap: wrap;
@@ -189,15 +150,24 @@ form {
   object-fit: cover;
   border-radius: 6px;
   box-shadow: 0 0 4px rgba(0, 0, 0, 0.15);
-  border: 1px solid var(--photo-border);
+  border: 1px solid #ccc;
+}
+
+.settings-btn:hover,
+.sync-btn:hover,
+.manual-sync-btn:hover,
+.primary-btn:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
 }
 
 /* ----------------- Scanner Page Enhancements ------------------ */
+
 #scanner-container video {
   width: 100% !important;
   height: auto !important;
   border-radius: 12px;
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
   margin-top: 10px;
 }
 
@@ -223,7 +193,7 @@ form {
   border-radius: 12px;
   margin-top: 1rem;
   padding: 1rem;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
 }
 
 .collapsible-log ul {
@@ -231,12 +201,11 @@ form {
   list-style-type: disc;
 }
 
-/* ----------------- Status Indicators ------------------ */
 #status.success { color: var(--success); }
 #status.error { color: var(--danger); }
-#status.warning { color: var(--warning); }
+#status.warning { color: orange; }
 
-/* ----------------- Responsive ------------------ */
+/* Small screen optimization */
 @media screen and (max-width: 480px) {
   body {
     padding: 10px;
@@ -249,30 +218,5 @@ form {
   select {
     font-size: 1rem;
     padding: 10px;
-  }
-}
-
-/* ----------------- Dark Mode (Optional Prep) ------------------ */
-@media (prefers-color-scheme: dark) {
-  body {
-    background: #1e1e1e;
-    color: #f1f1f1;
-  }
-
-  .settings-section,
-  table,
-  .collapsible-log {
-    background: #2a2a2a;
-    border-color: #444;
-  }
-
-  input, select {
-    background: #2c2c2c;
-    color: #f1f1f1;
-    border-color: #444;
-  }
-
-  th {
-    background: #333;
   }
 }
