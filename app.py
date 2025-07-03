@@ -607,6 +607,14 @@ def vehicle_profile(vehicle_id):
     """, (vehicle_id,))
     service_logs = cur.fetchall()
 
+        # --- Fetch Permanent Equipment ---
+    cur.execute("""
+        SELECT * FROM vehicle_equipment
+        WHERE vehicle_id = %s
+        ORDER BY item_name
+    """, (vehicle_id,))
+    equipment = cur.fetchall()
+
     conn.close()
 
     return render_template(
@@ -617,7 +625,8 @@ def vehicle_profile(vehicle_id):
         maintenance_logs=maintenance_logs,
         last_mileage=last_mileage,
         reminders=reminders,
-        vehicle_services=service_logs  # ✅ Rename so it matches template
+        vehicle_services=service_logs,
+        equipment=equipment  # ✅ Include equipment in context
     )
 
 @app.route("/add-vehicle-service", methods=["POST"])
@@ -961,22 +970,6 @@ def delete_vehicle(vehicle_id):
     cur.close()
     conn.close()
     return redirect(url_for('vehicles_list'))
-
-@app.route('/vehicles/<int:vehicle_id>')
-def vehicle_profile(vehicle_id):
-    conn = get_db_connection()
-
-    # Existing logic...
-    vehicle = conn.execute('SELECT * FROM vehicles WHERE vehicle_id = %s', (vehicle_id,)).fetchone()
-
-    # Add equipment fetch
-    equipment = conn.execute(
-        'SELECT * FROM vehicle_equipment WHERE vehicle_id = %s ORDER BY item_name',
-        (vehicle_id,)
-    ).fetchall()
-
-    conn.close()
-    return render_template('vehicle_profile.html', vehicle=vehicle, equipment=equipment)
 
 @app.route('/vehicles/<int:vehicle_id>/update-equipment', methods=['POST'])
 def update_equipment(vehicle_id):
