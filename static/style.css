@@ -138,6 +138,14 @@ form {
   font-weight: 600;
 }
 
+.photo-gallery img {
+  max-width: 180px;
+  max-height: 140px;
+  object-fit: cover;
+  border-radius: 6px;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.2);
+}
+
 .settings-btn:hover,
 .sync-btn:hover,
 .manual-sync-btn:hover,
