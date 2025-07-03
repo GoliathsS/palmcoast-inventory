@@ -962,6 +962,45 @@ def delete_vehicle(vehicle_id):
     conn.close()
     return redirect(url_for('vehicles_list'))
 
+@app.route('/vehicles/<int:vehicle_id>')
+def vehicle_profile(vehicle_id):
+    conn = get_db_connection()
+
+    # Existing logic...
+    vehicle = conn.execute('SELECT * FROM vehicles WHERE vehicle_id = %s', (vehicle_id,)).fetchone()
+
+    # Add equipment fetch
+    equipment = conn.execute(
+        'SELECT * FROM vehicle_equipment WHERE vehicle_id = %s ORDER BY item_name',
+        (vehicle_id,)
+    ).fetchall()
+
+    conn.close()
+    return render_template('vehicle_profile.html', vehicle=vehicle, equipment=equipment)
+
+@app.route('/vehicles/<int:vehicle_id>/update-equipment', methods=['POST'])
+def update_equipment(vehicle_id):
+    conn = get_db_connection()
+
+    # Fetch all equipment for this vehicle
+    equipment_items = conn.execute(
+        'SELECT id FROM vehicle_equipment WHERE vehicle_id = %s', (vehicle_id,)
+    ).fetchall()
+
+    for item in equipment_items:
+        item_id = item['id']
+        status = request.form.get(f'status_{item_id}')
+        notes = request.form.get(f'notes_{item_id}')
+
+        conn.execute(
+            'UPDATE vehicle_equipment SET status = %s, notes = %s, last_verified = CURRENT_DATE WHERE id = %s',
+            (status, notes, item_id)
+        )
+
+    conn.commit()
+    conn.close()
+    return redirect(url_for('vehicle_profile', vehicle_id=vehicle_id))
+
 @app.route('/sds')
 def sds_portal():
     filter_type = request.args.get('filter', '')
