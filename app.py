@@ -646,9 +646,11 @@ def add_vehicle_service():
             file,
             "palmcoast-invoices",
             unique_filename,
-            ExtraArgs={"ContentType": file.content_type}  # ✅ no ACL
+            ExtraArgs={
+                "ContentType": file.content_type,
+                "ACL": "public-read"  # ✅ this makes the file publicly accessible
+            }
         )
-
         invoice_url = f"https://palmcoast-invoices.s3.us-east-2.amazonaws.com/{unique_filename}"
 
     # Insert into database
