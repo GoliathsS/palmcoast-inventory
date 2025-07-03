@@ -62,8 +62,8 @@
                 <td>{{ item.last_verified.strftime('%Y-%m-%d') if item.last_verified else '' }}</td>
                 <td><input type="text" name="notes_{{ item.id }}" value="{{ item.notes or '' }}" class="form-control"></td>
                 <td>
-                  <form method="POST" action="{{ url_for('delete_equipment', vehicle_id=vehicle.vehicle_id, equipment_id=item.id) }}" onsubmit="return confirm('Remove this tool?')">
-                    <button class="btn btn-danger btn-sm">🗑️</button>
+                  <button form="deleteForm{{ item.id }}" class="btn btn-danger btn-sm">🗑️</button>
+                  <form id="deleteForm{{ item.id }}" method="POST" action="{{ url_for('delete_equipment', vehicle_id=vehicle.vehicle_id, equipment_id=item.id) }}" onsubmit="return confirm('Remove this tool?')">
                   </form>
                 </td>
               </tr>
