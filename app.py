@@ -328,6 +328,27 @@ def vehicle_inspection(vehicle_id):
         wrap_condition = request.form['wrap_condition']
         comments = request.form['comments']
 
+        # Collect all checklist fields
+        checklist_fields = [
+            # Vehicle Items
+            "headlights_working", "turn_signals_working", "brake_lights_working", "windshield_wipers",
+            "brakes_ok_(per_driver)", "any_brake_noise", "tie_down_straps", "chemical_box_locked",
+            "windows/windshield_cracked", "horn_working_properly", "seat_belts_in_good_condition",
+            "chemical_labels_secured", "equipment_inventory_list", "vehicle_registration",
+            "vehicle_insurance_card", "dacs_id_card", "updated_phone/pp_app",
+
+            # Safety Items
+            "soak_up/spill_kit", "first_aid_kit", "respirator_clean", "flares/triangles",
+            "fire_extinguisher", "safety_glasses/goggles", "protective_gloves", "booties_present",
+            "long_sleeve_shirt", "poison_control_center_number", "chemical_sensitive_list",
+            "label/msds_binder"
+        ]
+
+        checklist_data = {
+            field.replace('/', '_').replace(' ', '_').lower(): request.form.get(field.replace('/', '_').replace(' ', '_').lower())
+            for field in checklist_fields
+        }
+
         def save_photo(field):
             file = request.files.get(field)
             if file and file.filename:
@@ -357,17 +378,20 @@ def vehicle_inspection(vehicle_id):
                 photo_front, photo_back, photo_side_left, photo_side_right,
                 photo_tire_front_left, photo_tire_front_right,
                 photo_tire_rear_left, photo_tire_rear_right,
-                photo_misc_1, photo_misc_2, photo_misc_3, photo_misc_4
+                photo_misc_1, photo_misc_2, photo_misc_3, photo_misc_4,
+                checklist_data
             ) VALUES (%s, %s, %s, %s, %s, %s,
                       %s, %s, %s, %s,
                       %s, %s, %s, %s,
-                      %s, %s, %s, %s)
+                      %s, %s, %s, %s,
+                      %s)
         """, (
             vehicle_id, technician_id, mileage, cleanliness, wrap_condition, comments,
             photos['photo_front'], photos['photo_back'], photos['photo_side_left'], photos['photo_side_right'],
             photos['photo_tire_front_left'], photos['photo_tire_front_right'],
             photos['photo_tire_rear_left'], photos['photo_tire_rear_right'],
-            photos['photo_misc_1'], photos['photo_misc_2'], photos['photo_misc_3'], photos['photo_misc_4']
+            photos['photo_misc_1'], photos['photo_misc_2'], photos['photo_misc_3'], photos['photo_misc_4'],
+            json.dumps(checklist_data)
         ))
 
         cur.execute("""
