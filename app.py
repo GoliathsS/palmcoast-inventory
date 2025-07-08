@@ -908,6 +908,7 @@ def vehicles_list():
                COALESCE(t.name, 'Unassigned') as technician
         FROM vehicles v
         LEFT JOIN technicians t ON v.technician_id = t.id
+        WHERE v.status = 'active'
         ORDER BY v.license_plate
     """)
     vehicles = cur.fetchall()
@@ -938,7 +939,6 @@ def vehicles_list():
 
         miles_remaining = next_due - last_mileage
 
-        # Assign status based on miles remaining
         if miles_remaining <= 500:
             status = 'red'
         elif miles_remaining <= 1000:
