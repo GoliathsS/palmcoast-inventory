@@ -164,6 +164,70 @@
         {% endfor %}
       </div>
 
+      <hr style="margin: 40px 0;">
+
+      <h2 style="font-size: 1.3rem; color: #146314;">🧾 Vehicle & Safety Checklist</h2>
+      <div style="display: flex; flex-wrap: wrap; gap: 30px;">
+
+        <!-- Vehicle Items -->
+        <div style="flex: 1; min-width: 300px;">
+          <h3 style="color:#007aff;">🚛 Vehicle Items</h3>
+          {% for label in [
+            "Headlights Working?",
+            "Turn Signals Working?",
+            "Brake Lights Working?",
+            "Windshield Wipers?",
+            "Brakes OK (Per Driver)?",
+            "Any Brake Noise?",
+            "Tie Down Straps?",
+            "Chemical Box Locked?",
+            "Windows/Windshield Cracked?",
+            "Horn Working Properly?",
+            "Seat Belts in Good Condition?",
+            "Chemical Labels Secured?",
+            "Equipment Inventory List?",
+            "Vehicle Registration?",
+            "Vehicle Insurance Card",
+            "DACS ID Card",
+            "Updated Phone/PP App?"
+          ] %}
+            <label>{{ label }}</label>
+            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+              <label><input type="radio" name="{{ label|replace(' ', '_') }}" value="Yes" required> Yes</label>
+              <label><input type="radio" name="{{ label|replace(' ', '_') }}" value="No"> No</label>
+              <label><input type="radio" name="{{ label|replace(' ', '_') }}" value="N/A"> N/A</label>
+            </div>
+          {% endfor %}
+        </div>
+
+        <!-- Safety Items -->
+        <div style="flex: 1; min-width: 300px;">
+          <h3 style="color:#007aff;">🦺 Safety Items</h3>
+          {% for label in [
+            "Soak Up/Spill Kit",
+            "First Aid Kit",
+            "Respirator Clean?",
+            "Flares/Triangles?",
+            "Fire Extinguisher?",
+            "Safety Glasses/Goggles?",
+            "Protective Gloves?",
+            "Booties Present?",
+            "Long Sleeve Shirt?",
+            "Poison Control Center Number",
+            "Chemical Sensitive List",
+            "Label/MSDS Binder?"
+          ] %}
+            <label>{{ label }}</label>
+            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+              <label><input type="radio" name="{{ label|replace(' ', '_') }}" value="Yes" required> Yes</label>
+              <label><input type="radio" name="{{ label|replace(' ', '_') }}" value="No"> No</label>
+              <label><input type="radio" name="{{ label|replace(' ', '_') }}" value="N/A"> N/A</label>
+            </div>
+          {% endfor %}
+        </div>
+
+      </div>
+
       <button type="submit">✅ Submit Inspection</button>
 
     </form>
