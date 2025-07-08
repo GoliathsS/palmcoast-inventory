@@ -97,6 +97,24 @@
     textarea {
       resize: vertical;
     }
+
+    /* ✅ Responsive checklist layout */
+    .checklist-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 30px;
+    }
+
+    .checklist-column {
+      flex: 1;
+      min-width: 300px;
+    }
+
+    @media (max-width: 600px) {
+      .checklist-container {
+        flex-direction: column;
+      }
+    }
   </style>
 </head>
 <body>
@@ -167,10 +185,10 @@
       <hr style="margin: 40px 0;">
 
       <h2 style="font-size: 1.3rem; color: #146314;">🧾 Vehicle & Safety Checklist</h2>
-      <div style="display: flex; flex-wrap: wrap; gap: 30px;">
+      <div class="checklist-container">
 
         <!-- Vehicle Items -->
-        <div style="flex: 1; min-width: 300px;">
+        <div class="checklist-column">
           <h3 style="color:#007aff;">🚛 Vehicle Items</h3>
           {% for label in [
             "Headlights Working?",
@@ -201,7 +219,7 @@
         </div>
 
         <!-- Safety Items -->
-        <div style="flex: 1; min-width: 300px;">
+        <div class="checklist-column">
           <h3 style="color:#007aff;">🦺 Safety Items</h3>
           {% for label in [
             "Soak Up/Spill Kit",
@@ -240,13 +258,10 @@
       if (!file || !file.type.startsWith('image/')) return;
 
       const resized = await resizeImage(file, 1600, 0.85);
-
-      // Replace original file with resized version
       const dataTransfer = new DataTransfer();
       dataTransfer.items.add(resized);
       input.files = dataTransfer.files;
 
-      // Show preview
       const preview = document.createElement('img');
       preview.src = URL.createObjectURL(resized);
       preview.className = 'photo-preview';
