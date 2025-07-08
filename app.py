@@ -988,8 +988,9 @@ def delete_vehicle(vehicle_id):
     # Clear inventory links
     cur.execute("DELETE FROM vehicle_inventory WHERE vehicle_id = %s", (vehicle_id,))
 
-    # Delete the vehicle
-    cur.execute("DELETE FROM vehicles WHERE vehicle_id = %s", (vehicle_id,))
+    # Soft delete instead of full delete
+    cur.execute("UPDATE vehicles SET status = 'inactive' WHERE vehicle_id = %s", (vehicle_id,))
+
     conn.commit()
     cur.close()
     conn.close()
