@@ -117,6 +117,56 @@
     {% endfor %}
   </div>
 
+  <h3>✅ Inspection Checklist</h3>
+
+{% if inspection.checklist_data %}
+  {% set checklist = inspection.checklist_data | tojson | loads %}
+
+  <h4>🚗 Vehicle Items</h4>
+  <ul>
+    {% for item in [
+      "Headlights Working?", "Turn Signals Working?", "Brake Lights Working?", "Windshield Wipers?",
+      "Brakes OK (Per Driver)?", "Any Brake Noise?", "Tie Down Straps?", "Chemical Box locked",
+      "Windows/Windshield Cracked?", "Horn working properly?", "Seat Belts in good condition?",
+      "Chemical Labels Secured?", "Equipment inventory list?", "Vehicle registration?",
+      "Vehicle Insurance card", "DACS ID card", "Updated Phone/PP App?"
+    ] %}
+      <li>
+        <strong>{{ item }}</strong> — 
+        {% if checklist[item] == "Yes" %}
+          ✅
+        {% elif checklist[item] == "No" %}
+          <span style="color:red;">❌</span>
+        {% else %}
+          <em>Not answered</em>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+
+  <h4>🦺 Safety Items</h4>
+  <ul>
+    {% for item in [
+      "Soak Up/Spill Kit", "First Aid Kit", "Resporator Clean?", "Flares/Triangles?", "Fire Extinguisher?",
+      "Safety Glasses/Goggles?", "Protective Gloves?", "Booties Present?", "Long Sleeve Shirt?",
+      "Poison Control Center Number", "Chemical Sensitive List", "Label/MSDS Binder?"
+    ] %}
+      <li>
+        <strong>{{ item }}</strong> — 
+        {% if checklist[item] == "Yes" %}
+          ✅
+        {% elif checklist[item] == "No" %}
+          <span style="color:red;">❌</span>
+        {% else %}
+          <em>Not answered</em>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>No checklist data available for this inspection.</p>
+{% endif %}
+
   <br>
   <a href="/inspections">← Back to Inspections</a>
 
