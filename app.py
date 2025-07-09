@@ -839,10 +839,10 @@ def inspection_detail(inspection_id):
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
-    # Get inspection record
+    # Updated: Include checklist_data in SELECT
     cur.execute("""
         SELECT vi.id, vi.date, t.name AS technician, vi.mileage, vi.cleanliness, vi.wrap_condition,
-               vi.comments, vi.vehicle_id,
+               vi.comments, vi.vehicle_id, vi.checklist_data,
                vi.photo_front, vi.photo_back, vi.photo_side_left, vi.photo_side_right,
                vi.photo_tire_front_left, vi.photo_tire_front_right,
                vi.photo_tire_rear_left, vi.photo_tire_rear_right,
