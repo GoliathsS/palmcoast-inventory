@@ -100,6 +100,12 @@ def index():
         wildlife_count=wildlife_count
     )
 
+@app.route("/test-email")
+def test_email():
+    from maintenance_email import send_maintenance_email  # or wherever the function lives
+    send_maintenance_email("Test Vehicle", 500)
+    return "Test email sent!"
+
 @app.route("/scan")
 def scan():
     technicians = get_all_technicians()
