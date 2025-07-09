@@ -9,3 +9,4 @@ boto3
 pdfplumber
 pandas>=1.5.0
 XlsxWriter>=3.0.0
+python-dotenv
