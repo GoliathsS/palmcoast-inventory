@@ -1265,8 +1265,14 @@ def history():
         params.append(selected_month)
 
     if selected_tech:
-        base_query += " AND COALESCE(t.name, s.technician) = %s"
-        params.append(selected_tech.strip())
+        base_query += """
+            AND (
+                (s.technician ~ '^\d+$' AND t.name = %s)
+                OR
+                (s.technician !~ '^\d+$' AND s.technician = %s)
+            )
+        """
+        params.extend([selected_tech.strip(), selected_tech.strip()])
 
     base_query += " ORDER BY s.timestamp DESC"
     cur.execute(base_query, tuple(params))
@@ -1296,8 +1302,14 @@ def history():
         summary_params.append(selected_month)
 
     if selected_tech:
-        summary_query += " AND COALESCE(t.name, s.technician) = %s"
-        summary_params.append(selected_tech.strip())
+        summary_query += """
+            AND (
+                (s.technician ~ '^\d+$' AND t.name = %s)
+                OR
+                (s.technician !~ '^\d+$' AND s.technician = %s)
+            )
+        """
+        summary_params.extend([selected_tech.strip(), selected_tech.strip()])
 
     summary_query += " GROUP BY technician_name, p.name ORDER BY technician_name, p.name"
     cur.execute(summary_query, tuple(summary_params))
