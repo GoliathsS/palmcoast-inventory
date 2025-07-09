@@ -102,9 +102,8 @@ def index():
 
 @app.route("/test-email")
 def test_email():
-    from maintenance_email import send_maintenance_email  # or wherever the function lives
     send_maintenance_email("Test Vehicle", 500)
-    return "Test email sent!"
+    return "✅ Test email sent!"
 
 @app.route("/scan")
 def scan():
