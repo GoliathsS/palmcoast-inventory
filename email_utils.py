@@ -3,8 +3,8 @@ from email.message import EmailMessage
 import os
 
 # Gmail credentials
-GMAIL_USER = "noreply.palmcoast@gmail.com"
-GMAIL_APP_PASSWORD = "ayoh luhi oojh fvlc"  # Replace with your actual 16-char app password
+GMAIL_USER = os.getenv("noreply.palmcoast@gmail.com")
+GMAIL_APP_PASSWORD = os.getenv("ayoh luhi oojh fvlc")
 
 def send_maintenance_email(vehicle_name, due_miles):
     message = EmailMessage()
