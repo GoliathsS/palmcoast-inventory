@@ -888,6 +888,28 @@ def inspection_detail(inspection_id):
     elif not inspection['checklist_data']:
         inspection['checklist_data'] = {}
 
+    # Split checklist into categories for display
+    vehicle_keys = [
+        "headlights_working", "turn_signals_working", "brake_lights_working", "windshield_wipers",
+        "brakes_ok_per_driver", "any_brake_noise", "tie_down_straps", "chemical_box_locked",
+        "windows_windshield_cracked", "horn_working_properly", "seat_belts_in_good_condition",
+        "chemical_labels_secured", "equipment_inventory_list", "vehicle_registration",
+        "vehicle_insurance_card", "dacs_id_card", "updated_phone_pp_app"
+    ]
+
+    safety_keys = [
+        "soak_up_spill_kit", "first_aid_kit", "respirator_clean", "flares_triangles",
+        "fire_extinguisher", "safety_glasses_goggles", "protective_gloves", "booties_present",
+        "long_sleeve_shirt", "poison_control_center_number", "chemical_sensitive_list",
+        "label_msds_binder"
+    ]
+
+    checklist_raw = inspection['checklist_data']
+    checklist_structured = {
+        "vehicle_items": {k: checklist_raw[k] for k in vehicle_keys if k in checklist_raw},
+        "safety_items": {k: checklist_raw[k] for k in safety_keys if k in checklist_raw}
+    }
+
     return render_template(
         "inspection_detail.html",
         inspection=inspection,
@@ -895,7 +917,7 @@ def inspection_detail(inspection_id):
         last_rotation=last_rotation,
         oil_due=oil_due,
         rotation_due=rotation_due,
-        checklist_data=inspection['checklist_data']  # ✅ this makes it available in the template
+        checklist_data=checklist_structured  # ✅ structured by category
     )
 
 @app.route('/delete-inspection/<int:inspection_id>', methods=['POST'])
