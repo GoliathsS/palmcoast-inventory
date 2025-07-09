@@ -1304,14 +1304,14 @@ def history():
 
     if selected_tech:
         selected_tech = selected_tech.strip()
-        base_query += """
+        summary_query += """
             AND (
                 (s.technician ~ '^\d+$' AND t.name = %s)
                 OR
                 (s.technician !~ '^\d+$' AND s.technician = %s)
             )
         """
-        params.extend([selected_tech, selected_tech])
+        summary_params.extend([selected_tech, selected_tech])
 
     summary_query += " GROUP BY technician_name, p.name ORDER BY technician_name, p.name"
     cur.execute(summary_query, tuple(summary_params))
