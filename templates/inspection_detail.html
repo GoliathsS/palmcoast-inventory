@@ -93,6 +93,60 @@
     .btn:hover {
       opacity: 0.9;
     }
+    .checklist-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 20px;
+    }
+
+    .checklist-section-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: #0A4D68;
+      margin: 20px 0 10px;
+    }
+
+    .checklist-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .checklist-row:last-child {
+      border-bottom: none;
+    }
+
+    .checklist-label {
+      color: #333;
+      font-weight: 500;
+      max-width: 70%;
+    }
+
+    .checklist-value {
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 999px;
+      text-align: center;
+    }
+
+    .checklist-value.yes {
+      background-color: #d1fae5;
+      color: #065f46;
+    }
+
+    .checklist-value.no {
+      background-color: #fee2e2;
+      color: #991b1b;
+    }
+
+    .checklist-value.na {
+      background-color: #fef9c3;
+      color: #92400e;
+    }
 
     @media (max-width: 480px) {
       .details p strong {
@@ -158,45 +212,37 @@
 
     {% if checklist_data %}
       {% if checklist_data.vehicle_items %}
-        <h4 style="margin-top:20px; color:#007aff;">🚗 Vehicle Items</h4>
-        <div class="details">
+        <div class="checklist-card">
+          <div class="checklist-section-title">Vehicle Items</div>
           {% for item, value in checklist_data.vehicle_items.items() %}
-            <p>
-              <strong>{{ item.replace('_', ' ').title() }}:</strong>
-              <span style="padding: 4px 8px; border-radius: 6px; font-weight: bold;
-                {% if (value or '')|lower in ['yes', 'present', 'ok', 'working', 'good'] %}
-                  background-color: #d4edda; color: #155724;
-                {% elif (value or '')|lower in ['no', 'missing', 'bad', 'broken', 'not working'] %}
-                  background-color: #f8d7da; color: #721c24;
-                {% else %}
-                  background-color: #fff3cd; color: #856404;
-                {% endif %}
-              ">
-                {{ value }}
-              </span>
-            </p>
+            <div class="checklist-row">
+              <div class="checklist-label">{{ item.replace('_', ' ').title() }}</div>
+              <div class="checklist-value
+                {% if (value or '')|lower in ['yes', 'present', 'ok', 'working', 'good'] %}yes
+                {% elif (value or '')|lower in ['no', 'missing', 'bad', 'broken', 'not working'] %}no
+                {% else %}na
+                {% endif %}">
+                {{ value or 'N/A' }}
+              </div>
+            </div>
           {% endfor %}
         </div>
       {% endif %}
 
       {% if checklist_data.safety_items %}
-        <h4 style="margin-top:20px; color:#007aff;">🦺 Safety Items</h4>
-        <div class="details">
+        <div class="checklist-card">
+          <div class="checklist-section-title">Safety Items</div>
           {% for item, value in checklist_data.safety_items.items() %}
-            <p>
-              <strong>{{ item.replace('_', ' ').title() }}:</strong>
-              <span style="padding: 4px 8px; border-radius: 6px; font-weight: bold;
-                {% if (value or '')|lower in ['yes', 'present', 'ok', 'working', 'good'] %}
-                  background-color: #d4edda; color: #155724;
-                {% elif (value or '')|lower in ['no', 'missing', 'bad', 'broken', 'not working'] %}
-                  background-color: #f8d7da; color: #721c24;
-                {% else %}
-                  background-color: #fff3cd; color: #856404;
-                {% endif %}
-              ">
-                {{ value }}
-              </span>
-            </p>
+            <div class="checklist-row">
+              <div class="checklist-label">{{ item.replace('_', ' ').title() }}</div>
+              <div class="checklist-value
+                {% if (value or '')|lower in ['yes', 'present', 'ok', 'working', 'good'] %}yes
+                {% elif (value or '')|lower in ['no', 'missing', 'bad', 'broken', 'not working'] %}no
+                {% else %}na
+                {% endif %}">
+                {{ value or 'N/A' }}
+              </div>
+            </div>
           {% endfor %}
         </div>
       {% endif %}
