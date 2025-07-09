@@ -164,9 +164,9 @@
             <p>
               <strong>{{ item.replace('_', ' ').title() }}:</strong>
               <span style="padding: 4px 8px; border-radius: 6px; font-weight: bold;
-                {% if value.lower() in ['yes', 'present', 'ok', 'working', 'good'] %}
+                {% if (value or '')|lower in ['yes', 'present', 'ok', 'working', 'good'] %}
                   background-color: #d4edda; color: #155724;
-                {% elif value.lower() in ['no', 'missing', 'bad', 'broken', 'not working'] %}
+                {% elif (value or '')|lower in ['no', 'missing', 'bad', 'broken', 'not working'] %}
                   background-color: #f8d7da; color: #721c24;
                 {% else %}
                   background-color: #fff3cd; color: #856404;
@@ -186,9 +186,9 @@
             <p>
               <strong>{{ item.replace('_', ' ').title() }}:</strong>
               <span style="padding: 4px 8px; border-radius: 6px; font-weight: bold;
-                {% if value.lower() in ['yes', 'present', 'ok', 'working', 'good'] %}
+                {% if (value or '')|lower in ['yes', 'present', 'ok', 'working', 'good'] %}
                   background-color: #d4edda; color: #155724;
-                {% elif value.lower() in ['no', 'missing', 'bad', 'broken', 'not working'] %}
+                {% elif (value or '')|lower in ['no', 'missing', 'bad', 'broken', 'not working'] %}
                   background-color: #f8d7da; color: #721c24;
                 {% else %}
                   background-color: #fff3cd; color: #856404;
