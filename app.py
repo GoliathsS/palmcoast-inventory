@@ -842,7 +842,7 @@ def inspection_detail(inspection_id):
     # Updated: Include checklist_data in SELECT
     cur.execute("""
         SELECT vi.id, vi.date, t.name AS technician, vi.mileage, vi.cleanliness, vi.wrap_condition,
-               vi.comments, vi.vehicle_id, vi.checklist_data,
+               vi.comments, vi.vehicle_id, vi.checklist_data,  -- ✅ this line gets the checklist JSON
                vi.photo_front, vi.photo_back, vi.photo_side_left, vi.photo_side_right,
                vi.photo_tire_front_left, vi.photo_tire_front_right,
                vi.photo_tire_rear_left, vi.photo_tire_rear_right,
@@ -884,7 +884,8 @@ def inspection_detail(inspection_id):
         last_oil=last_oil,
         last_rotation=last_rotation,
         oil_due=oil_due,
-        rotation_due=rotation_due
+        rotation_due=rotation_due,
+        checklist_data=inspection['checklist_data']  # ✅ this makes it available in the template
     )
 
 @app.route('/delete-inspection/<int:inspection_id>', methods=['POST'])
