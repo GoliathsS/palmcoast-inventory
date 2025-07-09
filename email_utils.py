@@ -1,6 +1,8 @@
 import smtplib
 from email.message import EmailMessage
 import os
+from dotenv import load_dotenv
+load_dotenv()
 
 # Load credentials from environment variables
 GMAIL_USER = os.getenv("GMAIL_USER")
