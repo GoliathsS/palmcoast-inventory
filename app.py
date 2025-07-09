@@ -313,6 +313,7 @@ def assign_technician(vehicle_id):
 
 @app.route('/vehicle-inspection/<int:vehicle_id>', methods=['GET', 'POST'])
 def vehicle_inspection(vehicle_id):
+    import json
     import boto3
     from werkzeug.utils import secure_filename
     from datetime import datetime
