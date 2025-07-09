@@ -2,9 +2,9 @@ import smtplib
 from email.message import EmailMessage
 import os
 
-# Gmail credentials
-GMAIL_USER = os.getenv("noreply.palmcoast@gmail.com")
-GMAIL_APP_PASSWORD = os.getenv("ayoh luhi oojh fvlc")
+# Load credentials from environment variables
+GMAIL_USER = os.getenv("GMAIL_USER")
+GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")
 
 def send_maintenance_email(vehicle_name, due_miles):
     message = EmailMessage()
