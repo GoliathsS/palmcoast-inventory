@@ -585,6 +585,13 @@ def vehicle_profile(vehicle_id):
             result = get_next_due(service, interval)
             if result:
                 reminders.append(result)
+
+                # --- Email alert logic ---
+                if service == 'Oil Change' and result['miles_remaining'] in [1000, 500]:
+                    from email_utils import send_maintenance_email
+                    vehicle_name = f"{vehicle['vehicle_type']} {vehicle['license_plate']}"
+                    send_maintenance_email(vehicle_name, result['miles_remaining'])
+
             else:
                 # No history yet — create default reminder using current mileage
                 reminders.append({
