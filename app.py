@@ -1252,7 +1252,10 @@ def history():
         FROM scan_logs s
         JOIN products p ON s.product_id = p.id
         LEFT JOIN technicians t 
-          ON s.technician ~ '^\d+$' AND CAST(s.technician AS INTEGER) = t.id
+          ON CASE 
+              WHEN s.technician ~ '^\d+$' THEN CAST(s.technician AS INTEGER) = t.id 
+              ELSE FALSE 
+             END
         WHERE 1=1
     """
     params = []
@@ -1262,6 +1265,7 @@ def history():
         params.append(selected_month)
 
     if selected_tech:
+        selected_tech = selected_tech.strip()
         base_query += """
             AND (
                 (s.technician ~ '^\d+$' AND t.name = %s)
@@ -1269,7 +1273,7 @@ def history():
                 (s.technician !~ '^\d+$' AND s.technician = %s)
             )
         """
-        params.extend([selected_tech.strip(), selected_tech.strip()])
+        params.extend([selected_tech, selected_tech])
 
     base_query += " ORDER BY s.timestamp DESC"
     cur.execute(base_query, tuple(params))
@@ -1286,7 +1290,10 @@ def history():
         FROM scan_logs s
         JOIN products p ON s.product_id = p.id
         LEFT JOIN technicians t 
-          ON s.technician ~ '^\d+$' AND CAST(s.technician AS INTEGER) = t.id
+          ON CASE 
+              WHEN s.technician ~ '^\d+$' THEN CAST(s.technician AS INTEGER) = t.id 
+              ELSE FALSE 
+             END
         WHERE s.action = 'out'
     """
     summary_params = []
@@ -1296,14 +1303,15 @@ def history():
         summary_params.append(selected_month)
 
     if selected_tech:
-        summary_query += """
+        selected_tech = selected_tech.strip()
+        base_query += """
             AND (
                 (s.technician ~ '^\d+$' AND t.name = %s)
                 OR
                 (s.technician !~ '^\d+$' AND s.technician = %s)
             )
         """
-        summary_params.extend([selected_tech.strip(), selected_tech.strip()])
+        params.extend([selected_tech, selected_tech])
 
     summary_query += " GROUP BY technician_name, p.name ORDER BY technician_name, p.name"
     cur.execute(summary_query, tuple(summary_params))
