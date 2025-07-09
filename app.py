@@ -880,12 +880,12 @@ def inspection_detail(inspection_id):
     conn.close()
 
     import json  # make sure this is at the top of the file
-    if inspection['checklist_data']:
+    if inspection['checklist_data'] and isinstance(inspection['checklist_data'], str):
         try:
             inspection['checklist_data'] = json.loads(inspection['checklist_data'])
         except json.JSONDecodeError:
             inspection['checklist_data'] = {}
-    else:
+    elif not inspection['checklist_data']:
         inspection['checklist_data'] = {}
 
     return render_template(
