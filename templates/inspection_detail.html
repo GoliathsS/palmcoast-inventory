@@ -153,6 +153,56 @@
         {% endif %}
       </p>
     </div>
+    <hr style="margin: 30px 0;" />
+    <h3 style="color:#0A4D68;">✅ Inspection Checklist</h3>
+
+    {% if checklist_data %}
+      {% if checklist_data.vehicle_items %}
+        <h4 style="margin-top:20px; color:#007aff;">🚗 Vehicle Items</h4>
+        <div class="details">
+          {% for item, value in checklist_data.vehicle_items.items() %}
+            <p>
+              <strong>{{ item.replace('_', ' ').title() }}:</strong>
+              <span style="padding: 4px 8px; border-radius: 6px; font-weight: bold;
+                {% if value.lower() in ['yes', 'present', 'ok', 'working', 'good'] %}
+                  background-color: #d4edda; color: #155724;
+                {% elif value.lower() in ['no', 'missing', 'bad', 'broken', 'not working'] %}
+                  background-color: #f8d7da; color: #721c24;
+                {% else %}
+                  background-color: #fff3cd; color: #856404;
+                {% endif %}
+              ">
+                {{ value }}
+              </span>
+            </p>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      {% if checklist_data.safety_items %}
+        <h4 style="margin-top:20px; color:#007aff;">🦺 Safety Items</h4>
+        <div class="details">
+          {% for item, value in checklist_data.safety_items.items() %}
+            <p>
+              <strong>{{ item.replace('_', ' ').title() }}:</strong>
+              <span style="padding: 4px 8px; border-radius: 6px; font-weight: bold;
+                {% if value.lower() in ['yes', 'present', 'ok', 'working', 'good'] %}
+                  background-color: #d4edda; color: #155724;
+                {% elif value.lower() in ['no', 'missing', 'bad', 'broken', 'not working'] %}
+                  background-color: #f8d7da; color: #721c24;
+                {% else %}
+                  background-color: #fff3cd; color: #856404;
+                {% endif %}
+              ">
+                {{ value }}
+              </span>
+            </p>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% else %}
+      <p class="details">No checklist data recorded.</p>
+    {% endif %}
 
     <div class="photo-gallery">
       {% for label, photo in [
