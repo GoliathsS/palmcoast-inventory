@@ -211,9 +211,9 @@
           ] %}
             <label>{{ label }}</label>
             <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-              <label><input type="radio" name="{{ label|replace(' ', '_') }}" value="Yes" required> Yes</label>
-              <label><input type="radio" name="{{ label|replace(' ', '_') }}" value="No"> No</label>
-              <label><input type="radio" name="{{ label|replace(' ', '_') }}" value="N/A"> N/A</label>
+              <label><input type="radio" name="{{ label|lower|replace(' ', '_')|replace('/', '_')|replace('?', '')|replace('(', '')|replace(')', '') }}" value="Yes" required> Yes</label>
+              <label><input type="radio" name="{{ label|lower|replace(' ', '_')|replace('/', '_')|replace('?', '')|replace('(', '')|replace(')', '') }}" value="No"> No</label>
+              <label><input type="radio" name="{{ label|lower|replace(' ', '_')|replace('/', '_')|replace('?', '')|replace('(', '')|replace(')', '') }}" value="N/A"> N/A</label>
             </div>
           {% endfor %}
         </div>
@@ -237,9 +237,9 @@
           ] %}
             <label>{{ label }}</label>
             <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-              <label><input type="radio" name="{{ label|replace(' ', '_') }}" value="Yes" required> Yes</label>
-              <label><input type="radio" name="{{ label|replace(' ', '_') }}" value="No"> No</label>
-              <label><input type="radio" name="{{ label|replace(' ', '_') }}" value="N/A"> N/A</label>
+              <label><input type="radio" name="{{ label|lower|replace(' ', '_')|replace('/', '_')|replace('?', '')|replace('(', '')|replace(')', '') }}" value="Yes" required> Yes</label>
+              <label><input type="radio" name="{{ label|lower|replace(' ', '_')|replace('/', '_')|replace('?', '')|replace('(', '')|replace(')', '') }}" value="No"> No</label>
+              <label><input type="radio" name="{{ label|lower|replace(' ', '_')|replace('/', '_')|replace('?', '')|replace('(', '')|replace(')', '') }}" value="N/A"> N/A</label>
             </div>
           {% endfor %}
         </div>
