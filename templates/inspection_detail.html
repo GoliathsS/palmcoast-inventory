@@ -249,6 +249,18 @@
     {% else %}
       <p class="details">No checklist data recorded.</p>
     {% endif %}
+    
+    {% if inspection.comments %}
+      <div class="checklist-card">
+        <div class="checklist-section-title">Technician Comments</div>
+        <div class="checklist-row">
+          <div class="checklist-label">Notes:</div>
+          <div class="checklist-value" style="background:none; color:#333; font-weight:normal;">
+            {{ inspection.comments }}
+          </div>
+        </div>
+      </div>
+    {% endif %}
 
     <div class="photo-gallery">
       {% for label, photo in [
