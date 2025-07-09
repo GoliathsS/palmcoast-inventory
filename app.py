@@ -879,6 +879,15 @@ def inspection_detail(inspection_id):
     cur.close()
     conn.close()
 
+    import json  # make sure this is at the top of the file
+    if inspection['checklist_data']:
+        try:
+            inspection['checklist_data'] = json.loads(inspection['checklist_data'])
+        except json.JSONDecodeError:
+            inspection['checklist_data'] = {}
+    else:
+        inspection['checklist_data'] = {}
+
     return render_template(
         "inspection_detail.html",
         inspection=inspection,
