@@ -626,7 +626,7 @@ def vehicle_profile(vehicle_id):
                             """, (vehicle_id, service, result['due_at']))
                             conn.commit()
 
-                       if result['miles_remaining'] <= 500 and not emailed_500:
+                        if result['miles_remaining'] <= 500 and not emailed_500:
                             from email_utils import send_maintenance_email
                             vehicle_name = f"{vehicle['vehicle_type']} {vehicle['license_plate']}"
                             send_maintenance_email(  # ⬅️ replace this call
