@@ -7,8 +7,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Load credentials from environment variables
-GMAIL_USER = os.getenv("noreply.palmcoast@gmail.com")
-GMAIL_APP_PASSWORD = os.getenv("ayoh luhi oojh fvlc")
+GMAIL_USER = os.getenv("GMAIL_USER")
+GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")
 
 # Load and encode the logo image
 with open("Logo.png", "rb") as f:
