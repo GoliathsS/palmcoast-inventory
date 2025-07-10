@@ -9,7 +9,7 @@ load_dotenv()
 GMAIL_USER = os.getenv("GMAIL_USER")
 GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")
 
-def send_maintenance_email(vehicle_name, due_miles, current_miles, license_plate=None):
+def send_maintenance_email(vehicle_id, vehicle_name, due_miles, current_miles, license_plate=None):
     message = EmailMessage()
     message["From"] = GMAIL_USER
     message["To"] = "Cole@palmcoastpestcontrol.com"
