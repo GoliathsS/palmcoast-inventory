@@ -55,7 +55,6 @@ Thanks,
 <html>
   <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
     <div style="max-width: 600px; margin: auto; background: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-      <img src="data:image/png;base64,{logo_base64}" alt="Palm Coast Logo" style="width: 180px; display: block; margin: 0 auto 20px;" />
 
       <h2 style="text-align: center; color: #2e6da4;">🚛 Oil Change Reminder</h2>
       <p>Hi Cole,</p>
