@@ -384,13 +384,13 @@ def vehicle_inspection(vehicle_id):
 
         cur.execute("""
             INSERT INTO vehicle_inspections (
-                vehicle_id, technician_id, mileage, cleanliness, wrap_condition, comments,
+                vehicle_id, technician_id, date, mileage, cleanliness, wrap_condition, comments,
                 photo_front, photo_back, photo_side_left, photo_side_right,
                 photo_tire_front_left, photo_tire_front_right,
                 photo_tire_rear_left, photo_tire_rear_right,
                 photo_misc_1, photo_misc_2, photo_misc_3, photo_misc_4,
                 checklist_data
-            ) VALUES (%s, %s, %s, %s, %s, %s,
+            ) VALUES (%s, %s, CURRENT_DATE, %s, %s, %s, %s,
                       %s, %s, %s, %s,
                       %s, %s, %s, %s,
                       %s, %s, %s, %s,
