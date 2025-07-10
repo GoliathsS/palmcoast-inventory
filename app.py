@@ -548,7 +548,7 @@ def vehicle_profile(vehicle_id):
 
     # --- Reminder Generation Logic ---
     def get_next_due(service_type_exact, interval_miles):
-        # Pull the most recent COMPLETED maintenance entry
+        # Always get most recent reminder by due mileage, not just received_at
         cur.execute("""
             SELECT odometer_due, received_at
             FROM maintenance_reminders
@@ -561,8 +561,9 @@ def vehicle_profile(vehicle_id):
         if not last or last['odometer_due'] is None:
             return None
 
-        last_completed_odometer = last['odometer_due']
-        due_at = last_completed_odometer + interval_miles
+        # Use odometer_due as anchor regardless of received_at status
+        last_due_odometer = last['odometer_due']
+        due_at = last_due_odometer
         miles_remaining = due_at - last_mileage
 
         if miles_remaining <= 0:
@@ -575,7 +576,7 @@ def vehicle_profile(vehicle_id):
         return {
             "service_type": service_type_exact,
             "last_done": last['received_at'],
-            "last_odometer": last_completed_odometer,
+            "last_odometer": last_due_odometer,
             "due_at": due_at,
             "status": status,
             "miles_remaining": miles_remaining
