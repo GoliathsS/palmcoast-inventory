@@ -612,7 +612,13 @@ def vehicle_profile(vehicle_id):
                         if result['miles_remaining'] <= 1000 and not emailed_1000:
                             from email_utils import send_maintenance_email
                             vehicle_name = f"{vehicle['vehicle_type']} {vehicle['license_plate']}"
-                            send_maintenance_email(vehicle_name, 1000)
+                                send_maintenance_email(  # ⬅️ replace this call
+                                vehicle_id=vehicle_id,
+                                vehicle_name=vehicle_name,
+                                due_miles=result['due_at'],
+                                current_miles=last_mileage,
+                                license_plate=vehicle['license_plate']
+                            )
                             cur.execute("""
                                 UPDATE maintenance_reminders
                                 SET emailed_1000 = TRUE
@@ -620,10 +626,16 @@ def vehicle_profile(vehicle_id):
                             """, (vehicle_id, service, result['due_at']))
                             conn.commit()
 
-                        if result['miles_remaining'] <= 500 and not emailed_500:
+                       if result['miles_remaining'] <= 500 and not emailed_500:
                             from email_utils import send_maintenance_email
                             vehicle_name = f"{vehicle['vehicle_type']} {vehicle['license_plate']}"
-                            send_maintenance_email(vehicle_name, 500)
+                            send_maintenance_email(  # ⬅️ replace this call
+                                vehicle_id=vehicle_id,
+                                vehicle_name=vehicle_name,
+                                due_miles=result['due_at'],
+                                current_miles=last_mileage,
+                                license_plate=vehicle['license_plate']
+                            )
                             cur.execute("""
                                 UPDATE maintenance_reminders
                                 SET emailed_500 = TRUE
