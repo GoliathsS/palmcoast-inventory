@@ -12,7 +12,10 @@ GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")
 def send_maintenance_email(vehicle_id, vehicle_name, due_miles, current_miles, license_plate=None):
     message = EmailMessage()
     message["From"] = GMAIL_USER
-    message["To"] = "Cole@palmcoastpestcontrol.com"
+    message["To"] = ", ".join([
+        "Cole@palmcoastpestcontrol.com",
+        "Scott@palmcoastpestcontrol.com"
+    ])
     message["Subject"] = f"🚛 Oil Change Reminder: {vehicle_name} ({due_miles} mi due)"
 
     # Optional license plate display
