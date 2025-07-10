@@ -612,7 +612,7 @@ def vehicle_profile(vehicle_id):
                         if result['miles_remaining'] <= 1000 and not emailed_1000:
                             from email_utils import send_maintenance_email
                             vehicle_name = f"{vehicle['vehicle_type']} {vehicle['license_plate']}"
-                                send_maintenance_email(  # ⬅️ replace this call
+                            send_maintenance_email(  # ⬅️ replace this call
                                 vehicle_id=vehicle_id,
                                 vehicle_name=vehicle_name,
                                 due_miles=result['due_at'],
