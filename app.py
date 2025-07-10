@@ -552,8 +552,8 @@ def vehicle_profile(vehicle_id):
         cur.execute("""
             SELECT odometer_due, received_at
             FROM maintenance_reminders
-            WHERE vehicle_id = %s AND service_type = %s AND received_at IS NOT NULL
-            ORDER BY received_at DESC
+            WHERE vehicle_id = %s AND service_type = %s
+            ORDER BY received_at DESC NULLS LAST, odometer_due DESC
             LIMIT 1
         """, (vehicle_id, service_type_exact))
 
@@ -585,6 +585,7 @@ def vehicle_profile(vehicle_id):
     if last_mileage:
         for service, interval in [('Oil Change', 5000), ('Tire Rotation', 5000)]:
             result = get_next_due(service, interval)
+            print(f"[{vehicle['license_plate']}] {service} result: {result}")
             if result:
                 reminders.append(result)
 
