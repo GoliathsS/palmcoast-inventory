@@ -556,7 +556,7 @@ def vehicle_profile(vehicle_id):
     last_mileage = inspections[0]['mileage'] if inspections else 0
 
     # --- Reminder Generation Logic ---
-    def get_next_due(service_type_exact, interval_miles):
+    def get_next_due(vehicle_id, service_type_exact, interval_miles):
         # 1. Try to get latest completed service (vehicle_services)
         cur.execute("""
             SELECT odometer
@@ -608,7 +608,7 @@ def vehicle_profile(vehicle_id):
     reminders = []
     if last_mileage:
         for service, interval in [('Oil Change', 5000), ('Tire Rotation', 5000)]:
-            result = get_next_due(service, interval)
+            result = get_next_due(vehicle_id, service, interval)
             print(f"[{vehicle['license_plate']}] {service} result: {result}")
             if result:
                 reminders.append(result)
