@@ -588,8 +588,8 @@ def vehicle_profile(vehicle_id):
 
         return {
             "service_type": service_type_exact,
-            "last_done": None,
-            "last_odometer": due_at - interval_miles,
+            "last_done": completed['odometer'] if completed else None,
+            "last_odometer": completed['odometer'] if completed else last_mileage,
             "due_at": due_at,
             "status": status,
             "miles_remaining": miles_remaining
