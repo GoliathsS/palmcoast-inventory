@@ -548,22 +548,35 @@ def vehicle_profile(vehicle_id):
 
     # --- Reminder Generation Logic ---
     def get_next_due(service_type_exact, interval_miles):
-        # Always get most recent reminder by due mileage, not just received_at
+        # 1. Try to get latest completed service (vehicle_services)
         cur.execute("""
-            SELECT odometer_due, received_at
-            FROM maintenance_reminders
+            SELECT odometer
+            FROM vehicle_services
             WHERE vehicle_id = %s AND service_type = %s
-            ORDER BY received_at DESC NULLS LAST, odometer_due DESC
+            ORDER BY logged_on DESC
             LIMIT 1
         """, (vehicle_id, service_type_exact))
+        completed = cur.fetchone()
 
-        last = cur.fetchone()
-        if not last or last['odometer_due'] is None:
-            return None
+        if completed:
+            last_completed_odometer = completed['odometer']
+            due_at = last_completed_odometer + interval_miles
+        else:
+            # 2. Fallback to any existing reminder (not ideal)
+            cur.execute("""
+                SELECT odometer_due
+                FROM maintenance_reminders
+                WHERE vehicle_id = %s AND service_type = %s
+                ORDER BY received_at DESC NULLS LAST, odometer_due DESC
+                LIMIT 1
+            """, (vehicle_id, service_type_exact))
+            reminder = cur.fetchone()
+            if reminder and reminder['odometer_due']:
+                due_at = reminder['odometer_due']
+            else:
+                # 3. No history at all — base off current mileage
+                due_at = last_mileage + interval_miles
 
-        # Use odometer_due as anchor regardless of received_at status
-        last_due_odometer = last['odometer_due']
-        due_at = last_due_odometer
         miles_remaining = due_at - last_mileage
 
         if miles_remaining <= 0:
@@ -575,8 +588,8 @@ def vehicle_profile(vehicle_id):
 
         return {
             "service_type": service_type_exact,
-            "last_done": last['received_at'],
-            "last_odometer": last_due_odometer,
+            "last_done": None,
+            "last_odometer": due_at - interval_miles,
             "due_at": due_at,
             "status": status,
             "miles_remaining": miles_remaining
