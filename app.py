@@ -592,7 +592,8 @@ def vehicle_profile(vehicle_id):
             "last_odometer": completed['odometer'] if completed else last_mileage,
             "due_at": due_at,
             "status": status,
-            "miles_remaining": miles_remaining
+            "miles_remaining": miles_remaining,
+            "received_at": None  # ✅ Fixes the issue!
         }
 
     reminders = []
