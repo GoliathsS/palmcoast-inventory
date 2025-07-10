@@ -561,7 +561,19 @@ def vehicle_profile(vehicle_id):
         if not last:
             return None
 
-        last_completed_odometer = last['odometer_due']
+        cur.execute("""
+            SELECT actual_odometer, received_at
+            FROM maintenance_reminders
+            WHERE vehicle_id = %s AND service_type = %s AND received_at IS NOT NULL
+            ORDER BY received_at DESC
+            LIMIT 1
+        """, (vehicle_id, service_type_exact))
+
+        last = cur.fetchone()
+        if not last or last['actual_odometer'] is None:
+            return None
+
+        last_completed_odometer = last['actual_odometer']
         due_at = last_completed_odometer + interval_miles
         miles_remaining = due_at - last_mileage
 
@@ -800,7 +812,7 @@ def mark_maintenance_complete(vehicle_id):
 
         # ✅ 1. Insert actual completed maintenance record
         cur.execute("""
-            INSERT INTO maintenance_reminders (vehicle_id, service_type, odometer_due, received_at)
+            INSERT INTO maintenance_reminders (vehicle_id, service_type, actual_odometer, received_at)
             VALUES (%s, %s, %s, CURRENT_DATE)
         """, (vehicle_id, service_type, current_odometer))
 
