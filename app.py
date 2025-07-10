@@ -573,10 +573,11 @@ def vehicle_profile(vehicle_id):
         else:
             # 2. Fallback to any existing reminder (not ideal)
             cur.execute("""
-                SELECT odometer_due
+                SELECT odometer_due, received_at
                 FROM maintenance_reminders
                 WHERE vehicle_id = %s AND service_type = %s
-                ORDER BY received_at DESC NULLS LAST, odometer_due DESC
+                  AND received_at IS NOT NULL
+                ORDER BY received_at DESC
                 LIMIT 1
             """, (vehicle_id, service_type_exact))
             reminder = cur.fetchone()
