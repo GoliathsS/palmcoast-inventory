@@ -614,11 +614,6 @@ def vehicle_profile(vehicle_id):
                             vehicle_name = f"{vehicle['vehicle_type']} {vehicle['license_plate']}"
                             send_maintenance_email(vehicle_name, 1000)
 
-
-
-
-
-
                             cur.execute("""
                                 UPDATE maintenance_reminders
                                 SET emailed_1000 = TRUE
@@ -630,12 +625,6 @@ def vehicle_profile(vehicle_id):
                             from email_utils import send_maintenance_email
                             vehicle_name = f"{vehicle['vehicle_type']} {vehicle['license_plate']}"
                             send_maintenance_email(vehicle_name, 500)
-
-
-
-
-
-
                             cur.execute("""
                                 UPDATE maintenance_reminders
                                 SET emailed_500 = TRUE
