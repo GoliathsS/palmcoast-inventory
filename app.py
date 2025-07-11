@@ -698,6 +698,15 @@ def vehicle_profile(vehicle_id):
     """, (vehicle_id,))
     equipment = cur.fetchall()
 
+        # --- Upcoming Maintenance Reminders (Future Only) ---
+    cur.execute("""
+        SELECT *
+        FROM maintenance_reminders
+        WHERE vehicle_id = %s AND received_at IS NULL
+        ORDER BY odometer_due
+    """, (vehicle_id,))
+    upcoming_reminders = cur.fetchall()
+
     conn.close()
 
     return render_template(
@@ -708,8 +717,9 @@ def vehicle_profile(vehicle_id):
         maintenance_logs=maintenance_logs,
         last_mileage=last_mileage,
         reminders=reminders,
+        upcoming_reminders=upcoming_reminders,  # ✅ ADD THIS
         vehicle_services=service_logs,
-        equipment=equipment  # ✅ Include equipment in context
+        equipment=equipment
     )
 
 @app.route("/add-vehicle-service", methods=["POST"])
