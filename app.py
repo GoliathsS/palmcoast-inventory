@@ -804,20 +804,19 @@ def mark_maintenance_complete(vehicle_id):
         conn = get_db_connection()
         cur = conn.cursor()
 
-        # ✅ 1. Only delete *future* unreceived reminders
-        cur.execute("""
-            DELETE FROM maintenance_reminders
-            WHERE vehicle_id = %s AND service_type = %s
-            AND odometer_due > %s AND received_at IS NULL
-        """, (vehicle_id, service_type, current_odometer))
-
-        # ✅ 2. Insert completed maintenance
+        # ✅ 1. Insert actual completed maintenance record
         cur.execute("""
             INSERT INTO maintenance_reminders (vehicle_id, service_type, odometer_due, received_at)
             VALUES (%s, %s, %s, CURRENT_DATE)
         """, (vehicle_id, service_type, current_odometer))
 
-        # ✅ 3. Insert new reminder
+        # ✅ 2. Remove any existing future reminder of the same type to prevent duplicates
+        cur.execute("""
+            DELETE FROM maintenance_reminders
+            WHERE vehicle_id = %s AND service_type = %s AND received_at IS NULL
+        """, (vehicle_id, service_type))
+
+        # ✅ 3. Insert new upcoming reminder (placeholder with no received_at)
         cur.execute("""
             INSERT INTO maintenance_reminders (vehicle_id, service_type, odometer_due, received_at)
             VALUES (%s, %s, %s, NULL)
