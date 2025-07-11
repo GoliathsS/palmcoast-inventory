@@ -814,8 +814,8 @@ def mark_maintenance_complete(vehicle_id):
         # ✅ 2. Delete any future placeholder reminders (if they weren’t completed yet)
         cur.execute("""
             DELETE FROM maintenance_reminders
-            WHERE vehicle_id = %s AND service_type = %s AND received_at IS NULL AND odometer_completed IS NULL
-        """, (vehicle_id, service_type))
+            WHERE vehicle_id = %s AND service_type = %s AND odometer_due > %s
+        """, (vehicle_id, service_type, current_odometer))
 
         # ✅ 3. Insert a new reminder for the next one due
         cur.execute("""
