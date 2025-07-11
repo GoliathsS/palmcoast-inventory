@@ -806,10 +806,10 @@ def mark_maintenance_complete(vehicle_id):
 
         # ✅ 1. Insert actual completed maintenance record
         cur.execute("""
-            INSERT INTO maintenance_reminders (vehicle_id, service_type, odometer_completed, received_at)
+            INSERT INTO maintenance_reminders (vehicle_id, service_type, odometer_due, received_at)
             VALUES (%s, %s, %s, CURRENT_DATE)
         """, (vehicle_id, service_type, current_odometer))
-
+        
         # ✅ 2. Remove any existing future reminder of the same type to prevent duplicates
         cur.execute("""
             DELETE FROM maintenance_reminders
