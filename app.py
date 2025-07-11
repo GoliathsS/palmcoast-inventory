@@ -664,27 +664,27 @@ def vehicle_profile(vehicle_id):
 
     maintenance_logs = []
     for m in raw_maintenance:
-    odo_due = m['odometer_due']
-    if odo_due is not None:
-        miles_remaining = odo_due - last_mileage
-        is_overdue = last_mileage >= odo_due
-        is_approaching = 0 < miles_remaining <= 500
+        odo_due = m['odometer_due']
+        if odo_due is not None:
+            miles_remaining = odo_due - last_mileage
+            is_overdue = last_mileage >= odo_due
+            is_approaching = 0 < miles_remaining <= 500
 
-        if is_overdue:
-            status = "overdue"
-        elif is_approaching:
-            status = "due_soon"
+            if is_overdue:
+                status = "overdue"
+            elif is_approaching:
+                status = "due_soon"
+            else:
+                status = "ok"
         else:
-            status = "ok"
-    else:
-        miles_remaining = None
-        status = "completed"
+            miles_remaining = None
+            status = "completed"
 
-    maintenance_logs.append({
-        **m,
-        "status": status,
-        "miles_remaining": miles_remaining
-    })
+        maintenance_logs.append({
+            **m,
+            "status": status,
+            "miles_remaining": miles_remaining
+        })
 
     # General Service Logs from vehicle_services
     cur.execute("""
