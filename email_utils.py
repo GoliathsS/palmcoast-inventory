@@ -1,5 +1,6 @@
 import smtplib
 from email.message import EmailMessage
+from email.utils import make_msgid
 import os
 from dotenv import load_dotenv
 
@@ -17,7 +18,9 @@ def send_maintenance_email(vehicle_id, vehicle_name, due_miles, current_miles, l
     ])
     message["Subject"] = f"🚛 Oil Change Reminder: {vehicle_name} ({due_miles} mi due)"
 
-    # Optional license plate display
+    # Content ID for the embedded logo image
+    logo_cid = make_msgid(domain="palmcoastpestcontrol.com")[1:-1]  # strip <> from cid
+
     plate_line_text = f"• Plate: {license_plate}" if license_plate else ""
     plate_line_html = f"<strong>Plate:</strong> {license_plate}<br>" if license_plate else ""
 
@@ -44,11 +47,14 @@ Thanks,
 – Palm Coast Maintenance Tracker
 """)
 
-    # HTML version (safe, no image)
+    # HTML version with logo
     message.add_alternative(f"""
 <html>
   <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
     <div style="max-width: 600px; margin: auto; background: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+      <div style="text-align: center;">
+        <img src="cid:{logo_cid}" alt="Palm Coast Logo" style="max-width: 180px; margin-bottom: 20px;">
+      </div>
       <h2 style="text-align: center; color: #2e6da4;">🚛 Oil Change Reminder</h2>
       <p>Hi Cole,</p>
       <p>This is your automated reminder from the <strong>Palm Coast Vehicle System</strong> 🔧</p>
@@ -70,6 +76,15 @@ Thanks,
   </body>
 </html>
 """, subtype='html')
+
+    # Embed the logo image
+    with open("Logo.png", "rb") as img:
+        message.get_payload()[1].add_related(
+            img.read(),
+            maintype='image',
+            subtype='png',
+            cid=f"<{logo_cid}>"
+        )
 
     # Send the email
     try:
