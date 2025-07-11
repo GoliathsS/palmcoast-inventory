@@ -556,37 +556,28 @@ def vehicle_profile(vehicle_id):
     last_mileage = inspections[0]['mileage'] if inspections else 0
 
     # --- Reminder Generation Logic ---
-    def get_next_due(vehicle_id, service_type_exact, interval_miles):
-        # 1. Try to get latest completed service (vehicle_services)
+    def get_next_due(service_type_exact, interval_miles):
         cur.execute("""
-            SELECT odometer
-            FROM vehicle_services
+            SELECT odometer_due, received_at
+            FROM maintenance_reminders
             WHERE vehicle_id = %s AND service_type = %s
-            ORDER BY logged_on DESC
+            ORDER BY 
+                CASE WHEN received_at IS NULL THEN 1 ELSE 0 END,  -- completed first
+                received_at DESC NULLS LAST
             LIMIT 1
         """, (vehicle_id, service_type_exact))
-        completed = cur.fetchone()
 
-        if completed:
-            last_completed_odometer = completed['odometer']
-            due_at = last_completed_odometer + interval_miles
-        else:
-            # 2. Fallback to any existing reminder (not ideal)
-            cur.execute("""
-                SELECT odometer_due, received_at
-                FROM maintenance_reminders
-                WHERE vehicle_id = %s AND service_type = %s
-                ORDER BY received_at DESC NULLS LAST, odometer_due DESC
-                LIMIT 1
-            """, (vehicle_id, service_type_exact))
-            reminder = cur.fetchone()
-            if reminder and reminder['odometer_due']:
-                due_at = reminder['odometer_due']
-            else:
-                # 3. No history at all — base off current mileage
-                due_at = last_mileage + interval_miles
+        last = cur.fetchone()
+        if not last:
+            return None
 
+        last_odo = last['odometer_due']
+        due_at = last_odo
         miles_remaining = due_at - last_mileage
+
+        if last['received_at'] is not None:
+            due_at = last_odo + interval_miles
+            miles_remaining = due_at - last_mileage
 
         if miles_remaining <= 0:
             status = "overdue"
@@ -597,12 +588,11 @@ def vehicle_profile(vehicle_id):
 
         return {
             "service_type": service_type_exact,
-            "last_done": completed['odometer'] if completed else None,
-            "last_odometer": completed['odometer'] if completed else last_mileage,
+            "last_done": last['received_at'],
+            "last_odometer": last_odo,
             "due_at": due_at,
             "status": status,
-            "miles_remaining": miles_remaining,
-            "received_at": None  # ✅ Fixes the issue!
+            "miles_remaining": miles_remaining
         }
 
     reminders = []
