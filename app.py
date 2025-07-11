@@ -428,7 +428,7 @@ def vehicle_inspection(vehicle_id):
                 cur.execute("""
                     INSERT INTO maintenance_reminders (
                         vehicle_id, service_type, odometer_due, received_at, emailed_1000, emailed_500
-                    ) VALUES (%s, %s, %s, CURRENT_DATE, FALSE, FALSE)
+                    ) VALUES (%s, %s, %s, NULL, FALSE, FALSE)
                 """, (vehicle_id, service_type, new_due))
 
         conn.commit()
