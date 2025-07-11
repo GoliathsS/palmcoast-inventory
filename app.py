@@ -598,7 +598,7 @@ def vehicle_profile(vehicle_id):
     reminders = []
     if last_mileage:
         for service, interval in [('Oil Change', 5000), ('Tire Rotation', 5000)]:
-            result = get_next_due(vehicle_id, service, interval)
+            result = get_next_due(service, interval)
             print(f"[{vehicle['license_plate']}] {service} result: {result}")
             if result:
                 reminders.append(result)
