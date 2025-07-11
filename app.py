@@ -554,7 +554,7 @@ def vehicle_profile(vehicle_id):
             FROM maintenance_reminders
             WHERE vehicle_id = %s AND service_type = %s
             ORDER BY 
-                CASE WHEN received_at IS NULL THEN 1 ELSE 0 END,  -- completed first
+                CASE WHEN received_at IS NULL THEN 0 ELSE 1 END,  -- completed first
                 received_at DESC NULLS LAST
             LIMIT 1
         """, (vehicle_id, service_type_exact))
