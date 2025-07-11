@@ -605,11 +605,11 @@ def vehicle_profile(vehicle_id):
             "miles_remaining": miles_remaining
         }
 
-    reminders = []
-    if last_mileage:
-        for service, interval in [('Oil Change', 5000), ('Tire Rotation', 5000)]:
-            result = get_next_due(service, interval)
-            reminders.append(result)
+        reminders = []
+        if last_mileage:
+            for service, interval in [('Oil Change', 5000), ('Tire Rotation', 5000)]:
+                result = get_next_due(service, interval)
+                reminders.append(result)
 
                 # --- Email alert logic ---
                 if service == 'Oil Change':
