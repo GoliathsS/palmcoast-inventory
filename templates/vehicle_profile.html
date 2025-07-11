@@ -186,7 +186,8 @@
     </h2>
     <div id="collapseUpcoming" class="accordion-collapse collapse" data-bs-parent="#vehicleAccordion">
       <div class="accordion-body">
-        {% if reminders %}
+
+        {% if reminders or upcoming_reminders %}
           <div class="scroll-table">
             <table class="table table-bordered">
               <thead class="table-light">
@@ -199,7 +200,8 @@
                 </tr>
               </thead>
               <tbody>
-              {% for r in reminders %}
+                <!-- Auto-Generated Reminders -->
+                {% for r in reminders %}
                 <tr>
                   <form action="/mark-maintenance-complete/{{ vehicle[0] }}" method="POST">
                     <td>{{ r.service_type }}<input type="hidden" name="service_type" value="{{ r.service_type }}"></td>
@@ -217,13 +219,27 @@
                     <td><button type="submit" class="btn btn-sm btn-outline-primary">✔ Complete</button></td>
                   </form>
                 </tr>
-              {% endfor %}
+                {% endfor %}
+
+                <!-- Upcoming Scheduled Reminders from DB -->
+                {% for r in upcoming_reminders %}
+                <tr>
+                  <form action="/mark-maintenance-complete/{{ vehicle[0] }}" method="POST">
+                    <td>{{ r.service_type }}<input type="hidden" name="service_type" value="{{ r.service_type }}"></td>
+                    <td>{{ r.odometer_due }} mi</td>
+                    <td><input type="number" name="odometer" class="form-control form-control-sm" required></td>
+                    <td><span class="badge bg-info text-dark">📅 Scheduled</span></td>
+                    <td><button type="submit" class="btn btn-sm btn-outline-primary">✔ Complete</button></td>
+                  </form>
+                </tr>
+                {% endfor %}
               </tbody>
             </table>
           </div>
         {% else %}
           <p>No active reminders yet.</p>
         {% endif %}
+
       </div>
     </div>
   </div>
