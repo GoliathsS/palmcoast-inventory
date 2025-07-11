@@ -819,22 +819,25 @@ def mark_maintenance_complete(vehicle_id):
         conn = get_db_connection()
         cur = conn.cursor()
 
-        # ✅ 1. Insert actual completed maintenance record
+        # ✅ 1. Mark the most recent open reminder as completed
         cur.execute("""
-            INSERT INTO maintenance_reminders (vehicle_id, service_type, odometer_due, received_at)
-            VALUES (%s, %s, %s, CURRENT_DATE)
-        """, (vehicle_id, service_type, current_odometer))
-        
-        # ✅ 2. Remove any existing future reminder of the same type to prevent duplicates
+            UPDATE maintenance_reminders
+            SET odometer_completed = %s, received_at = CURRENT_DATE
+            WHERE vehicle_id = %s AND service_type = %s AND odometer_completed IS NULL
+            ORDER BY odometer_due ASC
+            LIMIT 1
+        """, (current_odometer, vehicle_id, service_type))
+
+        # ✅ 2. Delete any future placeholder reminders (if they weren’t completed yet)
         cur.execute("""
             DELETE FROM maintenance_reminders
-            WHERE vehicle_id = %s AND service_type = %s AND received_at IS NULL
+            WHERE vehicle_id = %s AND service_type = %s AND received_at IS NULL AND odometer_completed IS NULL
         """, (vehicle_id, service_type))
 
-        # ✅ 3. Insert new upcoming reminder (placeholder with no received_at)
+        # ✅ 3. Insert a new reminder for the next one due
         cur.execute("""
-            INSERT INTO maintenance_reminders (vehicle_id, service_type, odometer_due, received_at)
-            VALUES (%s, %s, %s, NULL)
+            INSERT INTO maintenance_reminders (vehicle_id, service_type, odometer_due)
+            VALUES (%s, %s, %s)
         """, (vehicle_id, service_type, next_due))
 
         conn.commit()
