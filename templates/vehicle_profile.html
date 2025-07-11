@@ -98,10 +98,10 @@
       </div>
     </div>
   </div>
-</div>
+
   <div class="accordion-item" id="inventory">
     <h2 class="accordion-header" id="headingInventory">
-      <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseInventory" aria-expanded="true">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseInventory" aria-expanded="false" aria-controls="collapseInventory">
         📦 Truck Inventory
       </button>
     </h2>
@@ -187,6 +187,7 @@
     <div id="collapseUpcoming" class="accordion-collapse collapse" data-bs-parent="#vehicleAccordion">
       <div class="accordion-body">
         {% if reminders %}
+
           <div class="scroll-table">
             <table class="table table-bordered">
               <thead class="table-light">
@@ -200,6 +201,7 @@
               </thead>
               <tbody>
               {% for r in reminders %}
+
                 <tr>
                   <form action="/mark-maintenance-complete/{{ vehicle[0] }}" method="POST">
                     <td>{{ r.service_type }}<input type="hidden" name="service_type" value="{{ r.service_type }}"></td>
@@ -218,12 +220,26 @@
                   </form>
                 </tr>
               {% endfor %}
+
+
+
+
+
+
+
+
+
+
+
+
+
               </tbody>
             </table>
           </div>
         {% else %}
           <p>No active reminders yet.</p>
         {% endif %}
+
       </div>
     </div>
   </div>
