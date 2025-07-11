@@ -598,54 +598,53 @@ def vehicle_profile(vehicle_id):
             if result:
                 reminders.append(result)
 
-            # --- Email alert logic ---
-            if service == 'Oil Change':
-                # Fetch current emailed status
-                cur.execute("""
-                    SELECT emailed_1000, emailed_500
-                    FROM maintenance_reminders
-                    WHERE vehicle_id = %s AND service_type = %s AND odometer_due = %s
-                    ORDER BY received_at DESC NULLS LAST
-                    LIMIT 1
-                """, (vehicle_id, service, result['due_at']))
-                email_flags = cur.fetchone()
+                if service == 'Oil Change':
+                    # Fetch current emailed status
+                    cur.execute("""
+                        SELECT emailed_1000, emailed_500
+                        FROM maintenance_reminders
+                        WHERE vehicle_id = %s AND service_type = %s AND odometer_due = %s
+                        ORDER BY received_at DESC NULLS LAST
+                        LIMIT 1
+                    """, (vehicle_id, service, result['due_at']))
+                    email_flags = cur.fetchone()
 
-                if email_flags:
-                    emailed_1000, emailed_500 = email_flags['emailed_1000'], email_flags['emailed_500']
+                    if email_flags:
+                        emailed_1000, emailed_500 = email_flags['emailed_1000'], email_flags['emailed_500']
 
-                    if result['miles_remaining'] <= 1000 and not emailed_1000:
-                        from email_utils import send_maintenance_email
-                        vehicle_name = f"{vehicle['vehicle_type']} {vehicle['license_plate']}"
-                        send_maintenance_email(  # ⬅️ replace this call
-                            vehicle_id=vehicle_id,
-                            vehicle_name=vehicle_name,
-                            due_miles=result['due_at'],
-                            current_miles=last_mileage,
-                            license_plate=vehicle['license_plate']
-                        )
-                        cur.execute("""
-                            UPDATE maintenance_reminders
-                            SET emailed_1000 = TRUE
-                            WHERE vehicle_id = %s AND service_type = %s AND odometer_due = %s
-                        """, (vehicle_id, service, result['due_at']))
-                        conn.commit()
+                        if result['miles_remaining'] <= 1000 and not emailed_1000:
+                            from email_utils import send_maintenance_email
+                            vehicle_name = f"{vehicle['vehicle_type']} {vehicle['license_plate']}"
+                            send_maintenance_email(
+                                vehicle_id=vehicle_id,
+                                vehicle_name=vehicle_name,
+                                due_miles=result['due_at'],
+                                current_miles=last_mileage,
+                                license_plate=vehicle['license_plate']
+                            )
+                            cur.execute("""
+                                UPDATE maintenance_reminders
+                                SET emailed_1000 = TRUE
+                                WHERE vehicle_id = %s AND service_type = %s AND odometer_due = %s
+                            """, (vehicle_id, service, result['due_at']))
+                            conn.commit()
 
-                    if result['miles_remaining'] <= 500 and not emailed_500:
-                        from email_utils import send_maintenance_email
-                        vehicle_name = f"{vehicle['vehicle_type']} {vehicle['license_plate']}"
-                        send_maintenance_email(  # ⬅️ replace this call
-                            vehicle_id=vehicle_id,
-                            vehicle_name=vehicle_name,
-                            due_miles=result['due_at'],
-                            current_miles=last_mileage,
-                            license_plate=vehicle['license_plate']
-                        )
-                        cur.execute("""
-                            UPDATE maintenance_reminders
-                            SET emailed_500 = TRUE
-                            WHERE vehicle_id = %s AND service_type = %s AND odometer_due = %s
-                        """, (vehicle_id, service, result['due_at']))
-                        conn.commit()
+                        if result['miles_remaining'] <= 500 and not emailed_500:
+                            from email_utils import send_maintenance_email
+                            vehicle_name = f"{vehicle['vehicle_type']} {vehicle['license_plate']}"
+                            send_maintenance_email(
+                                vehicle_id=vehicle_id,
+                                vehicle_name=vehicle_name,
+                                due_miles=result['due_at'],
+                                current_miles=last_mileage,
+                                license_plate=vehicle['license_plate']
+                            )
+                            cur.execute("""
+                                UPDATE maintenance_reminders
+                                SET emailed_500 = TRUE
+                                WHERE vehicle_id = %s AND service_type = %s AND odometer_due = %s
+                            """, (vehicle_id, service, result['due_at']))
+                            conn.commit()
 
     # Full Maintenance Log (history + generated reminders)
     cur.execute("""
