@@ -800,12 +800,16 @@ def mark_maintenance_complete(vehicle_id):
 
         # ✅ 1. Mark the most recent open reminder as completed
         cur.execute("""
+            WITH target AS (
+                SELECT id FROM maintenance_reminders
+                WHERE vehicle_id = %s AND service_type = %s AND odometer_completed IS NULL
+                ORDER BY odometer_due ASC
+                LIMIT 1
+            )
             UPDATE maintenance_reminders
             SET odometer_completed = %s, received_at = CURRENT_DATE
-            WHERE vehicle_id = %s AND service_type = %s AND odometer_completed IS NULL
-            ORDER BY odometer_due ASC
-            LIMIT 1
-        """, (current_odometer, vehicle_id, service_type))
+            WHERE id IN (SELECT id FROM target)
+        """, (vehicle_id, service_type, current_odometer))
 
         # ✅ 2. Delete any future placeholder reminders (if they weren’t completed yet)
         cur.execute("""
