@@ -1025,7 +1025,7 @@ def vehicles_list():
             ORDER BY received_at DESC LIMIT 1
         """, (vid,))
         maint = cur.fetchone()
-        last_oil = maint['odometer_due'] if maint else 0
+        last_oil = maint['odometer_due'] if maint and maint['odometer_due'] is not None else 0
         next_due = last_oil + 5000
 
         miles_remaining = next_due - last_mileage
