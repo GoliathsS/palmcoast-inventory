@@ -410,27 +410,6 @@ def vehicle_inspection(vehicle_id):
             WHERE vehicle_id = %s
         """, (mileage, vehicle_id))
 
-        # Parse current mileage as integer
-        odo = int(mileage)
-        interval = 5000
-
-        for service_type in ['Oil Change', 'Tire Rotation']:
-            new_due = odo + interval
-
-            # Check if there's already a reminder for this upcoming mileage
-            cur.execute("""
-                SELECT 1 FROM maintenance_reminders
-                WHERE vehicle_id = %s AND service_type = %s AND odometer_due = %s
-            """, (vehicle_id, service_type, new_due))
-            exists = cur.fetchone()
-
-            if not exists:
-                cur.execute("""
-                    INSERT INTO maintenance_reminders (
-                        vehicle_id, service_type, odometer_due, received_at, emailed_1000, emailed_500
-                    ) VALUES (%s, %s, %s, NULL, FALSE, FALSE)
-                """, (vehicle_id, service_type, new_due))
-
         conn.commit()
         cur.close()
         conn.close()
