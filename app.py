@@ -1686,7 +1686,7 @@ def inventory_analytics():
             SUM(unit_cost)
         FROM scan_logs
         WHERE action = 'out'
-        GROUP BY technician, TO_CHAR(timestamp, 'YYYY-MM')
+        GROUP BY technician, TO_CHAR(timestamp::timestamp, 'YYYY-MM')
     """)
     scan_costs = cur.fetchall()
 
