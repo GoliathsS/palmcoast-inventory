@@ -1702,7 +1702,7 @@ def inventory_analytics():
         if key in production_map:
             production = production_map[key]["production"]
             tech_name = production_map[key]["tech_name"]
-            percent = (chem_used / production * 100) if production > 0 else 0
+            percent = (float(chem_used) / float(production) * 100) if production > 0 else 0
 
             tech_chemical_table.append({
                 "tech_name": tech_name,
