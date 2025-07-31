@@ -38,6 +38,52 @@
     <h2>3️⃣ Pest vs Lawn Monthly Totals</h2>
     <canvas id="categoryChart" height="100"></canvas>
   </div>
+  <div class="chart-container">
+    <h2>4️⃣ Tech Chemical % vs Production</h2>
+    <form method="POST" action="/update-production" style="margin-bottom: 20px;">
+      <label>Technician:</label>
+      <select name="technician_id">
+        {% for tech in technicians %}
+          <option value="{{ tech[0] }}">{{ tech[1] }}</option>
+        {% endfor %}
+      </select>
+
+      <label>Month:</label>
+      <input type="month" name="month" required>
+
+      <label>Production $:</label>
+      <input type="number" step="0.01" name="production" required>
+
+      <button type="submit">Save</button>
+    </form>
+
+    <table border="1" cellpadding="8" cellspacing="0" style="width:100%; text-align:center;">
+      <thead>
+        <tr>
+          <th>Technician</th>
+          <th>Month</th>
+          <th>Production $</th>
+          <th>Chemical Used $</th>
+          <th>% Used</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in tech_chemical_table %}
+          <tr>
+            <td>{{ row.tech_name }}</td>
+            <td>{{ row.month }}</td>
+            <td>${{ "%.2f"|format(row.production) }}</td>
+            <td>${{ "%.2f"|format(row.chemical_used) }}</td>
+            <td>{{ "%.2f"|format(row.percent_used) }}%</td>
+            <td style="color: {{ 'red' if row.percent_used > 4 else 'green' }}">
+              {{ '❌ Over' if row.percent_used > 4 else '✅ OK' }}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 
   <script>
     const priceCtx = document.getElementById('priceHistoryChart').getContext('2d');
