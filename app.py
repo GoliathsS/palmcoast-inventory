@@ -1682,7 +1682,7 @@ def inventory_analytics():
     cur.execute("""
         SELECT 
             technician,
-            TO_CHAR(timestamp, 'YYYY-MM') AS month,
+            TO_CHAR(timestamp::timestamp, 'YYYY-MM') AS month,
             SUM(unit_cost)
         FROM scan_logs
         WHERE action = 'out'
