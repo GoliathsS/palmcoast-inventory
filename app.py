@@ -1559,6 +1559,24 @@ def upload_invoice():
 
     return render_template("upload_invoice.html")
 
+@app.route('/update-production', methods=['POST'])
+def update_production():
+    technician_id = int(request.form['technician_id'])
+    month = request.form['month']
+    production = float(request.form['production'])
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO tech_production (technician_id, month, production)
+        VALUES (%s, %s, %s)
+        ON CONFLICT (technician_id, month)
+        DO UPDATE SET production = EXCLUDED.production
+    """, (technician_id, month, production))
+    conn.commit()
+    conn.close()
+    return redirect('/inventory-analytics')
+
 @app.route('/inventory-analytics')
 def inventory_analytics():
     selected_id = request.args.get("product_id", type=int)
@@ -1580,9 +1598,13 @@ def inventory_analytics():
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # Get all product names for dropdown
+    # 🧪 Get all product names for dropdown
     cur.execute("SELECT id, name FROM products ORDER BY name ASC")
     all_products = cur.fetchall()
+
+    # 🧑‍🔧 Get all technicians for dropdown/form
+    cur.execute("SELECT id, name FROM technicians ORDER BY name")
+    technicians = cur.fetchall()
 
     # 1️⃣ Product Price History
     if selected_id:
@@ -1646,6 +1668,50 @@ def inventory_analytics():
     pest_values = [cat_map[m]['Pest'] for m in category_labels]
     lawn_values = [cat_map[m]['Lawn'] for m in category_labels]
 
+    # 4️⃣ Tech Chemical % vs Production
+    # -- Load production data
+    cur.execute("""
+        SELECT tp.technician_id, t.name, tp.month, tp.production
+        FROM tech_production tp
+        JOIN technicians t ON tp.technician_id = t.id
+    """)
+    productions = cur.fetchall()
+    production_map = {(p[0], p[2]): {"tech_name": p[1], "production": float(p[3])} for p in productions}
+
+    # -- Load chemical usage from scan_logs
+    cur.execute("""
+        SELECT 
+            technician,
+            TO_CHAR(timestamp, 'YYYY-MM') AS month,
+            SUM(unit_cost)
+        FROM scan_logs
+        WHERE action = 'out'
+        GROUP BY technician, TO_CHAR(timestamp, 'YYYY-MM')
+    """)
+    scan_costs = cur.fetchall()
+
+    tech_chemical_table = []
+    for row in scan_costs:
+        tech_id_raw, month, chem_used = row
+        try:
+            tech_id = int(tech_id_raw)
+        except:
+            continue  # skip entries where technician isn't an integer ID
+
+        key = (tech_id, month)
+        if key in production_map:
+            production = production_map[key]["production"]
+            tech_name = production_map[key]["tech_name"]
+            percent = (chem_used / production * 100) if production > 0 else 0
+
+            tech_chemical_table.append({
+                "tech_name": tech_name,
+                "month": month,
+                "production": production,
+                "chemical_used": chem_used,
+                "percent_used": percent
+            })
+
     cur.close()
     conn.close()
 
@@ -1663,7 +1729,9 @@ def inventory_analytics():
         percent_used=percent_used or [],
         category_labels=category_labels or [],
         pest_values=pest_values or [],
-        lawn_values=lawn_values or []
+        lawn_values=lawn_values or [],
+        technicians=technicians,
+        tech_chemical_table=tech_chemical_table
     )
 
 @app.route('/static/debug')
