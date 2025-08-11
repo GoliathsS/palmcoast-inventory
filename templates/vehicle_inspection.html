@@ -2,306 +2,438 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Vehicle Inspection | Palm Coast</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="/static/style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&display=swap" rel="stylesheet">
+
   <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background: #f1f4f9;
-      margin: 0;
-      padding: 0;
+    :root{
+      --pc-bg:#f5f7fb; --pc-card:#ffffff; --pc-border:rgba(0,0,0,.08);
+      --pc-text:#101828; --pc-muted:#667085; --pc-green:#14532d; --pc-blue:#007aff;
     }
+    *{box-sizing:border-box}
+    body{ margin:0; background:var(--pc-bg); color:var(--pc-text);
+          font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; }
 
-    .form-box {
-      background: white;
-      max-width: 100%;
-      margin: 0 auto;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    /* Top mini-nav */
+    .top-tabs{
+      position:sticky; top:0; z-index:20; background:#fff; border-bottom:1px solid var(--pc-border);
+      display:flex; gap:.5rem; overflow-x:auto; -webkit-overflow-scrolling:touch; padding:.5rem .75rem;
     }
+    .top-tabs a{
+      white-space:nowrap; text-decoration:none; border:1px solid var(--pc-border); color:#111;
+      padding:.4rem .7rem; border-radius:999px; font-weight:700; background:#fff;
+    }
+    .top-tabs a:hover{ background:#f3f4f6 }
 
-    h2 {
-      text-align: center;
-      margin-bottom: 25px;
-      font-size: 1.5rem;
-      color: #146314;
-    }
+    .wrap{ max-width:980px; margin:14px auto; padding:0 12px }
+    .form-box{ background:#fff; border:1px solid var(--pc-border); border-radius:14px; box-shadow:0 2px 10px rgba(0,0,0,.04); padding:16px; }
 
-    label {
-      font-weight: 600;
-      display: block;
-      margin-top: 18px;
-      font-size: 1rem;
-    }
+    h2{ margin:0 0 14px; font-size:1.35rem; color:var(--pc-green); text-align:center; }
+    h3{ margin:18px 0 8px; color:#0f172a; font-size:1.05rem; }
 
-    input[type="text"],
-    input[type="number"],
-    select,
-    textarea {
-      width: 100%;
-      font-size: 1rem;
-      padding: 14px;
-      margin-top: 6px;
-      border: 1px solid #ccc;
-      border-radius: 10px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    label{ font-weight:700; display:block; margin-top:14px; font-size:.95rem; color:#0f172a }
+    input[type="text"], input[type="number"], select, textarea{
+      width:100%; font-size:1rem; padding:12px; margin-top:6px;
+      border:1px solid var(--pc-border); border-radius:10px; background:#fff; outline:none;
+      box-shadow:0 1px 3px rgba(0,0,0,.03);
     }
+    input[type="file"]{ margin-top:6px; font-size:.95rem; width:100% }
 
-    input[type="file"] {
-      margin-top: 6px;
-      font-size: 0.9rem;
-      width: 100%;
-    }
+    .muted{ color:var(--pc-muted) }
 
-    .photo-section {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 16px;
-      margin-top: 10px;
-    }
+    /* Photo grid */
+    .photo-section{ display:grid; gap:14px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); margin-top:8px }
+    .photo-preview{ margin-top:8px; width:100%; height:140px; object-fit:cover; border-radius:8px; box-shadow:0 1px 4px rgba(0,0,0,.15) }
 
-    .photo-section label {
-      font-weight: 500;
-      font-size: 0.95rem;
+    /* Checklist layout */
+    .checklist-container{ display:flex; flex-wrap:wrap; gap:20px }
+    .checklist-column{ flex:1; min-width:300px }
+    .check-actions{ display:flex; gap:.5rem; flex-wrap:wrap; margin:8px 0 4px }
+    .btn-chip{
+      display:inline-flex; align-items:center; gap:.35rem; padding:6px 10px; border-radius:999px;
+      border:1px solid var(--pc-border); background:#f3f4f6; cursor:pointer; font-weight:700; font-size:.85rem;
     }
+    .btn-chip:hover{ filter:brightness(0.97) }
 
-    .photo-preview {
-      margin-top: 8px;
-      max-width: 100%;
-      border-radius: 8px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.15);
-    }
+    .radio-row{ display:flex; gap:10px; margin:8px 0 12px; align-items:center; }
+    .radio-row label{ margin:0; font-weight:600 }
 
-    button {
-      position: sticky;
-      bottom: 0;
-      margin-top: 30px;
-      width: 100%;
-      padding: 16px;
-      font-size: 1.1rem;
-      background-color: #007aff;
-      color: white;
-      border: none;
-      border-radius: 12px;
-      cursor: pointer;
-      font-weight: 600;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    /* Sticky submit bar */
+    .sticky-actions{
+      position:sticky; bottom:0; z-index:15; background:rgba(255,255,255,.98); backdrop-filter: blur(6px);
+      border-top:1px solid var(--pc-border); margin-top:16px; padding:10px 12px;
     }
+    .bar{ display:grid; gap:.5rem; grid-template-columns:1fr }
+    @media (min-width:680px){ .bar{ grid-template-columns: auto auto 1fr } }
 
-    button:hover {
-      background-color: #005bb5;
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center; gap:.5rem;
+      padding:12px 16px; border-radius:10px; border:1px solid var(--pc-border); font-weight:800; cursor:pointer; text-decoration:none;
     }
+    .btn-primary{ background:var(--pc-blue); color:#fff; border:none }
+    .btn-primary:disabled{ opacity:.6; cursor:not-allowed }
+    .btn-secondary{ background:#eef2f7; color:#111 }
+    .btn-danger{ background:#fee2e2; color:#b91c1c; border-color:#fca5a5 }
 
-    textarea {
-      resize: vertical;
-    }
+    /* Counters */
+    .count-row{ display:flex; justify-content:space-between; align-items:center; margin-top:6px }
 
-    /* ✅ Responsive checklist layout */
-    .checklist-container {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 30px;
+    /* Progress card */
+    .progress-card{
+      background:#fff; border:1px solid var(--pc-border); border-radius:12px; padding:10px 12px; margin-bottom:12px;
+      display:grid; gap:6px;
     }
-
-    .checklist-column {
-      flex: 1;
-      min-width: 300px;
-    }
-
-    @media (max-width: 600px) {
-      .checklist-container {
-        flex-direction: column;
-      }
-    }
+    .progress-head{ display:flex; justify-content:space-between; align-items:end }
+    .progress-head .pct{ font-weight:900; font-size:1.1rem; color:#0f172a }
+    .progress-head .counts{ font-size:.9rem; color:var(--pc-muted) }
+    .track{ width:100%; height:10px; background:#eef2f7; border-radius:999px; overflow:hidden }
+    .fill{ height:100%; width:0%; background:linear-gradient(90deg, #22c55e, #16a34a 60%, #0ea5e9); border-radius:999px; transition:width .2s ease }
   </style>
 </head>
 <body>
 
-  <div class="form-box">
-    <h2>🚛 Vehicle Inspection</h2>
-    <form method="POST" enctype="multipart/form-data" id="inspection-form">
+  <!-- Sticky mini-nav -->
+  <nav class="top-tabs">
+    <a href="#general">General</a>
+    <a href="#photos">Photos</a>
+    <a href="#checklist">Checklist</a>
+  </nav>
 
-      <label>Technician</label>
-      <input type="text" value="{{ technician }}" readonly />
-      {% if technician_id %}
-        <input type="hidden" name="technician_id" value="{{ technician_id }}">
-      {% endif %}
-
-      <label for="mileage">Mileage</label>
-      <input type="number" name="mileage" required inputmode="numeric" />
-
-      <label for="cleanliness">Cleanliness</label>
-      <select name="cleanliness" required>
-        <option value="">Select...</option>
-        <option value="Clean">Clean</option>
-        <option value="Slightly Dirty">Slightly Dirty</option>
-        <option value="Dirty">Dirty</option>
-        <option value="Needs Immediate Cleaning">Needs Immediate Cleaning</option>
-      </select>
-
-      <label for="wrap_condition">Wrap Condition</label>
-      <select name="wrap_condition" required>
-        <option value="">Select...</option>
-        <option value="Perfect">Perfect</option>
-        <option value="Minor Damage">Minor Damage</option>
-        <option value="Major Damage">Major Damage</option>
-        <option value="Wrap Missing">Wrap Missing</option>
-      </select>
-
-      <label for="comments">Comments</label>
-      <textarea name="comments" rows="3" placeholder="Optional notes..."></textarea>
-
-      <label style="margin-top: 25px;">📸 Vehicle Photos</label>
-      <div class="photo-section">
-        {% for label, name in [
-          ('Front', 'photo_front'),
-          ('Back', 'photo_back'),
-          ('Left Side', 'photo_side_left'),
-          ('Right Side', 'photo_side_right'),
-          ('Front Left Tire', 'photo_tire_front_left'),
-          ('Front Right Tire', 'photo_tire_front_right'),
-          ('Rear Left Tire', 'photo_tire_rear_left'),
-          ('Rear Right Tire', 'photo_tire_rear_right')
-        ] %}
-          <div>
-            <label>{{ label }}</label>
-            <input type="file" name="{{ name }}" class="resize-preview" accept="image/*" />
-          </div>
-        {% endfor %}
+  <div class="wrap">
+    <!-- Completion progress -->
+    <section class="progress-card" aria-live="polite">
+      <div class="progress-head">
+        <div class="pct" id="progressPct">0%</div>
+        <div class="counts">
+          <span id="fieldCount">Fields 0/0</span> • <span id="checkCount">Checklist 0/0</span>
+        </div>
       </div>
-
-      <label style="margin-top: 25px;">📸 Miscellaneous Photos</label>
-      <div class="photo-section">
-        {% for i in range(1, 5) %}
-          <div>
-            <label>Misc {{ i }}</label>
-            <input type="file" name="photo_misc_{{ i }}" class="resize-preview" accept="image/*" />
-          </div>
-        {% endfor %}
+      <div class="track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Inspection completion">
+        <div class="fill" id="progressFill" style="width:0%"></div>
       </div>
+    </section>
 
-      <hr style="margin: 40px 0;">
+    <div class="form-box">
+      <h2>🚛 Vehicle Inspection</h2>
 
-      <h2 style="font-size: 1.3rem; color: #146314;">🧾 Vehicle & Safety Checklist</h2>
-      <div class="checklist-container">
+      <form method="POST" enctype="multipart/form-data" id="inspection-form">
 
-        <!-- Vehicle Items -->
-        <div class="checklist-column">
-          <h3 style="color:#007aff;">🚛 Vehicle Items</h3>
-          {% for label in [
-            "Headlights Working?",
-            "Turn Signals Working?",
-            "Brake Lights Working?",
-            "Windshield Wipers?",
-            "Brakes OK (Per Driver)?",
-            "Any Brake Noise?",
-            "Tie Down Straps?",
-            "Chemical Box Locked?",
-            "Windows/Windshield Cracked?",
-            "Horn Working Properly?",
-            "Seat Belts in Good Condition?",
-            "Chemical Labels Secured?",
-            "Equipment Inventory List?",
-            "Vehicle Registration?",
-            "Vehicle Insurance Card",
-            "DACS ID Card",
-            "Updated Phone/PP App?"
-          ] %}
-            <label>{{ label }}</label>
-            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-              <label><input type="radio" name="{{ label|lower|replace(' ', '_')|replace('/', '_')|replace('?', '')|replace('(', '')|replace(')', '') }}" value="Yes" required> Yes</label>
-              <label><input type="radio" name="{{ label|lower|replace(' ', '_')|replace('/', '_')|replace('?', '')|replace('(', '')|replace(')', '') }}" value="No"> No</label>
-              <label><input type="radio" name="{{ label|lower|replace(' ', '_')|replace('/', '_')|replace('?', '')|replace('(', '')|replace(')', '') }}" value="N/A"> N/A</label>
+        <!-- General -->
+        <section id="general">
+          <label>Technician</label>
+          <input type="text" value="{{ technician }}" readonly />
+          {% if technician_id %}
+            <input type="hidden" name="technician_id" value="{{ technician_id }}">
+          {% endif %}
+
+          <label for="mileage">Mileage</label>
+          <input type="number" name="mileage" required inputmode="numeric" pattern="[0-9]*" placeholder="Enter current odometer" />
+
+          <label for="cleanliness">Cleanliness</label>
+          <select name="cleanliness" required>
+            <option value="">Select…</option>
+            <option value="Clean">Clean</option>
+            <option value="Slightly Dirty">Slightly Dirty</option>
+            <option value="Dirty">Dirty</option>
+            <option value="Needs Immediate Cleaning">Needs Immediate Cleaning</option>
+          </select>
+
+          <label for="wrap_condition">Wrap Condition</label>
+          <select name="wrap_condition" required>
+            <option value="">Select…</option>
+            <option value="Perfect">Perfect</option>
+            <option value="Minor Damage">Minor Damage</option>
+            <option value="Major Damage">Major Damage</option>
+            <option value="Wrap Missing">Wrap Missing</option>
+          </select>
+
+          <label for="comments">Comments</label>
+          <textarea name="comments" rows="3" placeholder="Optional notes…" maxlength="500"></textarea>
+          <div class="count-row">
+            <small class="muted">Max 500 characters</small>
+            <small class="muted" id="commentCount">0 / 500</small>
+          </div>
+        </section>
+
+        <!-- Photos -->
+        <section id="photos" style="margin-top:22px">
+          <h3>📸 Vehicle Photos</h3>
+          <div class="photo-section">
+            {% for label, name in [
+              ('Front', 'photo_front'),
+              ('Back', 'photo_back'),
+              ('Left Side', 'photo_side_left'),
+              ('Right Side', 'photo_side_right'),
+              ('Front Left Tire', 'photo_tire_front_left'),
+              ('Front Right Tire', 'photo_tire_front_right'),
+              ('Rear Left Tire', 'photo_tire_rear_left'),
+              ('Rear Right Tire', 'photo_tire_rear_right')
+            ] %}
+              <div>
+                <label>{{ label }}</label>
+                <input type="file" name="{{ name }}" class="resize-preview" accept="image/*" capture="environment" />
+              </div>
+            {% endfor %}
+          </div>
+
+          <h3 style="margin-top:18px">📸 Miscellaneous Photos</h3>
+          <div class="photo-section">
+            {% for i in range(1, 5) %}
+              <div>
+                <label>Misc {{ i }}</label>
+                <input type="file" name="photo_misc_{{ i }}" class="resize-preview" accept="image/*" capture="environment" />
+              </div>
+            {% endfor %}
+          </div>
+        </section>
+
+        <hr style="margin: 26px 0; border:none; border-top:1px solid var(--pc-border)">
+
+        <!-- Checklist -->
+        <section id="checklist">
+          <h3>🧾 Vehicle & Safety Checklist</h3>
+          <div class="checklist-container">
+
+            <!-- Vehicle Items -->
+            <div class="checklist-column" id="vehicle-checks">
+              <div class="check-actions">
+                <button type="button" class="btn-chip" data-group="vehicle-checks" data-val="Yes">✔ Mark all Yes</button>
+                <button type="button" class="btn-chip" data-group="vehicle-checks" data-val="No">✖ Mark all No</button>
+                <button type="button" class="btn-chip" data-group="vehicle-checks" data-val="N/A">∼ Mark all N/A</button>
+              </div>
+              <h3 style="color:var(--pc-blue); margin-top:6px">🚛 Vehicle Items</h3>
+              {% for label in [
+                "Headlights Working?",
+                "Turn Signals Working?",
+                "Brake Lights Working?",
+                "Windshield Wipers?",
+                "Brakes OK (Per Driver)?",
+                "Any Brake Noise?",
+                "Tie Down Straps?",
+                "Chemical Box Locked?",
+                "Windows/Windshield Cracked?",
+                "Horn Working Properly?",
+                "Seat Belts in Good Condition?",
+                "Chemical Labels Secured?",
+                "Equipment Inventory List?",
+                "Vehicle Registration?",
+                "Vehicle Insurance Card",
+                "DACS ID Card",
+                "Updated Phone/PP App?"
+              ] %}
+                <label>{{ label }}</label>
+                <div class="radio-row">
+                  <label><input type="radio" name="{{ label|lower|replace(' ', '_')|replace('/', '_')|replace('?', '')|replace('(', '')|replace(')', '') }}" value="Yes" required> Yes</label>
+                  <label><input type="radio" name="{{ label|lower|replace(' ', '_')|replace('/', '_')|replace('?', '')|replace('(', '')|replace(')', '') }}" value="No"> No</label>
+                  <label><input type="radio" name="{{ label|lower|replace(' ', '_')|replace('/', '_')|replace('?', '')|replace('(', '')|replace(')', '') }}" value="N/A"> N/A</label>
+                </div>
+              {% endfor %}
             </div>
-          {% endfor %}
+
+            <!-- Safety Items -->
+            <div class="checklist-column" id="safety-checks">
+              <div class="check-actions">
+                <button type="button" class="btn-chip" data-group="safety-checks" data-val="Yes">✔ Mark all Yes</button>
+                <button type="button" class="btn-chip" data-group="safety-checks" data-val="No">✖ Mark all No</button>
+                <button type="button" class="btn-chip" data-group="safety-checks" data-val="N/A">∼ Mark all N/A</button>
+              </div>
+              <h3 style="color:var(--pc-blue); margin-top:6px">🦺 Safety Items</h3>
+              {% for label in [
+                "Soak Up/Spill Kit",
+                "First Aid Kit",
+                "Respirator Clean?",
+                "Flares/Triangles?",
+                "Fire Extinguisher?",
+                "Safety Glasses/Goggles?",
+                "Protective Gloves?",
+                "Booties Present?",
+                "Long Sleeve Shirt?",
+                "Poison Control Center Number",
+                "Chemical Sensitive List",
+                "Label/MSDS Binder?"
+              ] %}
+                <label>{{ label }}</label>
+                <div class="radio-row">
+                  <label><input type="radio" name="{{ label|lower|replace(' ', '_')|replace('/', '_')|replace('?', '')|replace('(', '')|replace(')', '') }}" value="Yes" required> Yes</label>
+                  <label><input type="radio" name="{{ label|lower|replace(' ', '_')|replace('/', '_')|replace('?', '')|replace('(', '')|replace(')', '') }}" value="No"> No</label>
+                  <label><input type="radio" name="{{ label|lower|replace(' ', '_')|replace('/', '_')|replace('?', '')|replace('(', '')|replace(')', '') }}" value="N/A"> N/A</label>
+                </div>
+              {% endfor %}
+            </div>
+
+          </div>
+        </section>
+
+        <!-- Sticky submit / actions -->
+        <div class="sticky-actions">
+          <div class="bar">
+            <button type="button" id="saveDraft" class="btn btn-secondary">💾 Save Draft</button>
+            <button type="button" id="clearForm" class="btn btn-danger">🧹 Clear</button>
+            <button type="submit" id="submitBtn" class="btn btn-primary" disabled>✅ Submit Inspection</button>
+          </div>
         </div>
 
-        <!-- Safety Items -->
-        <div class="checklist-column">
-          <h3 style="color:#007aff;">🦺 Safety Items</h3>
-          {% for label in [
-            "Soak Up/Spill Kit",
-            "First Aid Kit",
-            "Respirator Clean?",
-            "Flares/Triangles?",
-            "Fire Extinguisher?",
-            "Safety Glasses/Goggles?",
-            "Protective Gloves?",
-            "Booties Present?",
-            "Long Sleeve Shirt?",
-            "Poison Control Center Number",
-            "Chemical Sensitive List",
-            "Label/MSDS Binder?"
-          ] %}
-            <label>{{ label }}</label>
-            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-              <label><input type="radio" name="{{ label|lower|replace(' ', '_')|replace('/', '_')|replace('?', '')|replace('(', '')|replace(')', '') }}" value="Yes" required> Yes</label>
-              <label><input type="radio" name="{{ label|lower|replace(' ', '_')|replace('/', '_')|replace('?', '')|replace('(', '')|replace(')', '') }}" value="No"> No</label>
-              <label><input type="radio" name="{{ label|lower|replace(' ', '_')|replace('/', '_')|replace('?', '')|replace('(', '')|replace(')', '') }}" value="N/A"> N/A</label>
-            </div>
-          {% endfor %}
-        </div>
-
-      </div>
-
-      <button type="submit">✅ Submit Inspection</button>
-
-    </form>
+      </form>
+    </div>
   </div>
 
   <script>
-  document.querySelectorAll('.resize-preview').forEach(input => {
-    input.addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (!file || !file.type.startsWith('image/')) return;
+    // ---------- Comment counter
+    (function(){
+      const ta = document.querySelector('textarea[name="comments"]');
+      const out = document.getElementById('commentCount');
+      if (!ta || !out) return;
+      const max = parseInt(ta.getAttribute('maxlength') || '500', 10);
+      const update = () => { out.textContent = (ta.value || '').length + ' / ' + max; };
+      ta.addEventListener('input', update); update();
+    })();
 
-      const resized = await resizeImage(file, 1600, 0.85);
-      const dataTransfer = new DataTransfer();
-      dataTransfer.items.add(resized);
-      input.files = dataTransfer.files;
-
-      const preview = document.createElement('img');
-      preview.src = URL.createObjectURL(resized);
-      preview.className = 'photo-preview';
-
-      const existing = input.parentElement.querySelector('img');
-      if (existing) existing.remove();
-      input.parentElement.appendChild(preview);
+    // ---------- Checklist bulk toggles
+    function setAllRadios(containerId, value){
+      document.querySelectorAll(`#${containerId} input[type="radio"][value="${value}"]`)
+        .forEach(r => { r.checked = true; r.dispatchEvent(new Event('change', { bubbles:true })); });
+    }
+    document.querySelectorAll('.btn-chip').forEach(btn => {
+      btn.addEventListener('click', () => setAllRadios(btn.dataset.group, btn.dataset.val));
     });
-  });
 
-  function resizeImage(file, maxWidth, quality) {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          const scale = maxWidth / img.width;
-          const width = maxWidth;
-          const height = img.height * scale;
+    // ---------- Image resize + preview
+    document.querySelectorAll('.resize-preview').forEach(input => {
+      input.addEventListener('change', async (e) => {
+        const file = e.target.files?.[0];
+        if (!file || !file.type.startsWith('image/')) return;
+        const resized = await resizeImage(file, 1600, 0.85);
+        const dt = new DataTransfer(); dt.items.add(resized); input.files = dt.files;
 
-          const canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
+        // preview
+        const prev = input.parentElement.querySelector('img.photo-preview');
+        if (prev) prev.remove();
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(resized);
+        img.className = 'photo-preview';
+        input.parentElement.appendChild(img);
+      });
+    });
 
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-
-          canvas.toBlob((blob) => {
-            const resizedFile = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), {
-              type: 'image/jpeg',
-              lastModified: Date.now()
-            });
-            resolve(resizedFile);
-          }, 'image/jpeg', quality);
+    function resizeImage(file, maxWidth, quality){
+      return new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = e => {
+          const img = new Image();
+          img.onload = () => {
+            const scale = Math.min(1, maxWidth / img.width);
+            const width = Math.round(img.width * scale);
+            const height = Math.round(img.height * scale);
+            const canvas = document.createElement('canvas');
+            canvas.width = width; canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            canvas.toBlob(b => {
+              resolve(new File([b], file.name.replace(/\.[^.]+$/, '.jpg'), {
+                type:'image/jpeg', lastModified: Date.now()
+              }));
+            }, 'image/jpeg', quality);
+          };
+          img.src = e.target.result;
         };
-        img.src = e.target.result;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // ---------- Autosave (text/number/select/textarea/radios)
+    (function(){
+      const form = document.getElementById('inspection-form');
+      const STORAGE_KEY = 'inspection-draft:' + location.pathname;
+      const save = () => {
+        const data = {};
+        new FormData(form).forEach((v,k) => {
+          if (String(k).startsWith('photo_')) return; // skip files
+          data[k] = v;
+        });
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
       };
-      reader.readAsDataURL(file);
-    });
-  }
+      const restore = () => {
+        try{
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return;
+          const data = JSON.parse(raw) || {};
+          Object.entries(data).forEach(([k,v]) => {
+            const els = form.querySelectorAll(`[name="${CSS.escape(k)}"]`);
+            if (!els.length) return;
+            const el = els[0];
+            if (el.type === 'radio'){
+              els.forEach(r => { r.checked = (r.value === v); });
+            } else {
+              el.value = v;
+            }
+          });
+        }catch(e){}
+      };
+      // wire events
+      form.querySelectorAll('input:not([type=file]), textarea, select').forEach(el => {
+        el.addEventListener('input', () => { save(); updateProgress(); });
+        el.addEventListener('change', () => { save(); updateProgress(); });
+      });
+      restore();
+      // update after restore
+      requestAnimationFrame(updateProgress);
+
+      document.getElementById('saveDraft').addEventListener('click', () => {
+        save();
+        alert('Draft saved on this device.');
+      });
+      document.getElementById('clearForm').addEventListener('click', () => {
+        if (!confirm('Clear all fields and remove local draft?')) return;
+        localStorage.removeItem(STORAGE_KEY);
+        form.reset();
+        document.querySelectorAll('.photo-preview').forEach(img => img.remove());
+        updateProgress();
+      });
+    })();
+
+    // ---------- Completion progress (required fields + all checklist groups)
+    function updateProgress(){
+      const form = document.getElementById('inspection-form');
+      const submitBtn = document.getElementById('submitBtn');
+
+      // Required non-radio fields
+      const requiredNonRadios = Array.from(form.querySelectorAll('input[required]:not([type=radio]):not([type=hidden]), select[required], textarea[required]'));
+      const nonRadioDone = requiredNonRadios.filter(el => (el.value || '').toString().trim().length > 0).length;
+
+      // Radio groups (by unique name); many "Yes" radios are marked required to enforce group validity
+      const radioRequired = Array.from(form.querySelectorAll('input[type=radio][required]'));
+      const radioNames = Array.from(new Set(radioRequired.map(r => r.name)));
+      const radioDone = radioNames.filter(name => form.querySelector(`input[name="${CSS.escape(name)}"]:checked`)).length;
+
+      const totalFields = requiredNonRadios.length;
+      const totalChecks = radioNames.length;
+
+      const totalReq = totalFields + totalChecks;
+      const done = nonRadioDone + radioDone;
+
+      const pct = totalReq ? Math.round((done / totalReq) * 100) : 100;
+
+      // UI
+      const fill = document.getElementById('progressFill');
+      const pctEl = document.getElementById('progressPct');
+      const fc = document.getElementById('fieldCount');
+      const cc = document.getElementById('checkCount');
+      const track = document.querySelector('.track');
+
+      fill.style.width = pct + '%';
+      pctEl.textContent = pct + '%';
+      track.setAttribute('aria-valuenow', pct);
+
+      fc.textContent = `Fields ${nonRadioDone}/${totalFields}`;
+      cc.textContent = `Checklist ${radioDone}/${totalChecks}`;
+
+      submitBtn.disabled = pct < 100;
+    }
+
+    // Kick off initial calculation
+    document.addEventListener('DOMContentLoaded', updateProgress);
   </script>
 
 </body>
