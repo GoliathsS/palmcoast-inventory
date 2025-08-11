@@ -1,142 +1,206 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>🛠️ Correction Panel</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <meta charset="UTF-8" />
+  <title>🛠️ Correction Panel | Palm Coast</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/static/style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&display=swap" rel="stylesheet">
+
   <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      padding: 2rem;
-      background: #f9fafb;
+    :root{
+      --pc-bg:#f5f7fb; --pc-card:#ffffff; --pc-border:rgba(0,0,0,.08);
+      --pc-text:#101828; --pc-muted:#667085; --pc-green:#14532d; --pc-red:#dc2626; --pc-blue:#2563eb;
     }
-    h2 {
-      text-align: center;
-      margin-bottom: 1.5rem;
+    *{box-sizing:border-box}
+    body{ margin:0; padding:16px; background:var(--pc-bg); color:var(--pc-text);
+          font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; }
+
+    .wrap{max-width:1100px; margin:0 auto}
+
+    /* Header */
+    h2{ text-align:center; margin:.2rem 0 1rem; }
+    .back{ text-align:center; margin-bottom:12px }
+    .back a{ text-decoration:none; background:var(--pc-green); color:#fff; padding:10px 16px; border-radius:10px; font-weight:700 }
+
+    /* Card */
+    .card{ background:var(--pc-card); border:1px solid var(--pc-border); border-radius:14px;
+           box-shadow:0 2px 10px rgba(0,0,0,.04); padding:14px; margin-bottom:16px; }
+
+    /* Filters */
+    .filters{ display:grid; gap:.6rem; align-items:end }
+    @media (min-width: 720px){ .filters{ grid-template-columns: repeat(5, 1fr) } }
+    label{ font-weight:700; color:#0f172a; font-size:.95rem }
+    .filters input, .filters select{
+      width:100%; padding:10px 12px; border:1px solid var(--pc-border); border-radius:10px; background:#fff; font-size:.95rem;
     }
-    .back-btn {
-      text-align: center;
-      margin-bottom: 1.5rem;
+    .btn{ display:inline-flex; align-items:center; justify-content:center; gap:.4rem; padding:10px 12px;
+          border-radius:10px; border:1px solid var(--pc-border); font-weight:800; cursor:pointer; text-decoration:none }
+    .btn-primary{ background:var(--pc-green); color:#fff; border:none }
+    .btn-ghost{ background:#eef2f7; color:#111 }
+    .quick-row{ display:flex; gap:.5rem; flex-wrap:wrap; margin-top:.6rem }
+
+    /* Table */
+    .table-wrap{ overflow:auto; border:1px solid var(--pc-border); border-radius:12px }
+    table{ width:100%; border-collapse:separate; border-spacing:0; background:#fff }
+    thead th{
+      position:sticky; top:0; z-index:1; background:#f8fafc; text-align:center;
+      padding:12px; border-bottom:1px solid var(--pc-border); font-weight:800; font-size:.9rem;
     }
-    .back-btn a {
-      text-decoration: none;
-      padding: 10px 16px;
-      background: #14532d;
-      color: white;
-      border-radius: 8px;
-      font-weight: 600;
+    tbody td{ padding:12px; border-bottom:1px solid var(--pc-border); text-align:center; font-size:.95rem }
+    tbody tr:hover{ background:#fafafa }
+    .cell-left{ text-align:left }
+    .muted{ color:var(--pc-muted) }
+
+    /* Badges */
+    .badge{ display:inline-flex; align-items:center; gap:.35rem; padding:4px 10px; border-radius:999px; font-weight:800; font-size:.8rem }
+    .badge-in{ background:#e9faef; color:#065f46; border:1px solid #b7f2c8 }
+    .badge-out{ background:#fff7e6; color:#92400e; border:1px solid #fde68a }
+
+    /* Row controls */
+    select, input[type="number"]{
+      width:100%; padding:8px 10px; border:1px solid var(--pc-border); border-radius:8px; background:#fff; font-size:.95rem;
     }
-    .filter-form {
-      max-width: 900px;
-      margin: 0 auto 2rem;
-      display: flex;
-      gap: 1rem;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-    .filter-form input, .filter-form select {
-      padding: 8px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: white;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
-    }
-    th, td {
-      padding: 12px;
-      border-bottom: 1px solid #eee;
-      text-align: center;
-    }
-    th {
-      background: #f3f4f6;
-    }
-    tr:hover {
-      background: #f9f9f9;
-    }
-    button {
-      padding: 8px 12px;
-      border: none;
-      border-radius: 6px;
-      background-color: #14532d;
-      color: white;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #0e3d1f;
-    }
+    .actions{ display:flex; gap:8px; justify-content:center; align-items:center; flex-wrap:wrap }
+    .btn-danger{ background:#fee2e2; color:#b91c1c; border-color:#fca5a5 }
+
+    .note{ font-size:.85rem; color:var(--pc-muted); margin-top:.5rem }
   </style>
 </head>
 <body>
+  <div class="wrap">
+    <h2>🛠️ Correction Panel</h2>
+    <div class="back"><a href="/">← Back to Dashboard</a></div>
 
-  <h2>🛠️ Correction Panel</h2>
+    <!-- Filters -->
+    <section class="card">
+      <form method="GET" class="filters" id="filterForm">
+        <div>
+          <label for="start">Start</label>
+          <input type="date" id="start" name="start" value="{{ request.args.get('start','') }}" required>
+        </div>
+        <div>
+          <label for="end">End</label>
+          <input type="date" id="end" name="end" value="{{ request.args.get('end','') }}" required>
+        </div>
+        <div>
+          <label for="technician">Technician</label>
+          <select id="technician" name="technician">
+            <option value="">All Technicians</option>
+            {% for tech_id, tech_name in technicians %}
+              <option value="{{ tech_id }}" {% if selected_tech == tech_id|string %}selected{% endif %}>{{ tech_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label for="q">Search</label>
+          <input type="text" id="q" name="q" value="{{ request.args.get('q','') }}" placeholder="Product or tech…">
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button type="submit" class="btn btn-primary">🔍 Filter</button>
+        </div>
+      </form>
+      <div class="quick-row">
+        <button class="btn btn-ghost" data-range="7">Last 7 days</button>
+        <button class="btn btn-ghost" data-range="30">Last 30</button>
+        <button class="btn btn-ghost" data-range="90">Last 90</button>
+        <a href="/corrections" class="btn btn-ghost">Reset</a>
+      </div>
+    </section>
 
-  <div class="back-btn">
-    <a href="/">← Back to Dashboard</a>
+    <!-- Table -->
+    <section class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Date/Time</th>
+              <th class="cell-left">Product</th>
+              <th>Direction</th>
+              <th>Technician</th>
+              <th>Cost</th>
+              <th>Update</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for log in logs %}
+            <tr>
+              <!-- Date -->
+              <td>
+                {{ log[1][:10] }}<br><span class="muted">{{ log[1][11:19] }}</span>
+              </td>
+
+              <!-- Product -->
+              <td class="cell-left">{{ log[2] }}</td>
+
+              <!-- Direction -->
+              <td style="min-width:110px">
+                <select name="action" form="f{{ log[0] }}">
+                  <option value="in"  {% if log[3] == 'in' %}selected{% endif %}>In</option>
+                  <option value="out" {% if log[3] == 'out' %}selected{% endif %}>Out</option>
+                </select>
+                <div class="note">
+                  {% if log[3] == 'in' %}
+                    <span class="badge badge-in">IN</span>
+                  {% else %}
+                    <span class="badge badge-out">OUT</span>
+                  {% endif %}
+                </div>
+              </td>
+
+              <!-- Technician (kept as hidden id; showing name) -->
+              <td style="min-width:160px">
+                <input type="hidden" name="technician" value="{{ log[4] or '' }}" form="f{{ log[0] }}">
+                {{ log[6] or log[4] or '—' }}
+              </td>
+
+              <!-- Cost -->
+              <td style="min-width:170px">
+                {% if log[3] == 'in' %}
+                  <div title="Box Cost">📦 ${{ "%.2f"|format(log[5] or 0) }}</div>
+                {% else %}
+                  <div title="Unit Cost">🔹 ${{ "%.2f"|format(log[5] or 0) }}</div>
+                {% endif %}
+                <input type="number" step="0.01" name="unit_cost" value="{{ log[5] or 0 }}" form="f{{ log[0] }}">
+              </td>
+
+              <!-- Actions -->
+              <td class="actions" style="min-width:180px">
+                <!-- buttons submit the detached form below -->
+                <button type="submit" name="action_type" value="update" form="f{{ log[0] }}" class="btn btn-primary">💾 Save</button>
+                <button type="submit" name="action_type" value="delete" form="f{{ log[0] }}" class="btn btn-danger" onclick="return confirm('Delete this log entry?')">🗑 Delete</button>
+
+                <!-- Detached (empty) form per row; inputs above target it via form="id" -->
+                <form id="f{{ log[0] }}" method="POST">
+                  <input type="hidden" name="log_id" value="{{ log[0] }}">
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <small class="note">Tip: change direction, adjust cost, then hit <strong>Save</strong> on that row. Delete is permanent.</small>
+    </section>
   </div>
 
-  <form method="GET" class="filter-form">
-    <input type="date" name="start" value="{{ request.args.get('start', '') }}" required>
-    <input type="date" name="end" value="{{ request.args.get('end', '') }}" required>
-    <select name="technician" class="form-control">
-      <option value="">All Technicians</option>
-      {% for tech_id, tech_name in technicians %}
-        <option value="{{ tech_id }}" {% if selected_tech == tech_id|string %}selected{% endif %}>
-          {{ tech_name }}
-        </option>
-      {% endfor %}
-    </select>
-    <button type="submit">🔍 Filter</button>
-  </form>
-
-  <table>
-    <thead>
-      <tr>
-        <th>Date</th>
-        <th>Product</th>
-        <th>Action</th>
-        <th>Technician</th>
-        <th>Cost</th>
-        <th>Update</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for log in logs %}
-      <tr>
-        <form method="POST">
-          <input type="hidden" name="log_id" value="{{ log[0] }}">
-          <td>{{ log[1][:10] }} {{ log[1][11:19] }}</td>
-          <td>{{ log[2] }}</td>
-          <td>
-            <select name="action">
-              <option value="in" {% if log[3] == 'in' %}selected{% endif %}>In</option>
-              <option value="out" {% if log[3] == 'out' %}selected{% endif %}>Out</option>
-            </select>
-          </td>
-          <td>
-            <input type="hidden" name="technician" value="{{ log[4] or '' }}">
-            {{ log[6] or log[4] }}
-          </td>
-          <td>
-            {% if log[3] == 'in' %}
-              <span title="Box Cost">📦 ${{ "%.2f"|format(log[5]) }}</span>
-            {% else %}
-              <span title="Unit Cost">🔹 ${{ "%.2f"|format(log[5]) }}</span>
-            {% endif %}
-            <br>
-            <input type="number" step="0.01" name="unit_cost" value="{{ log[5] or 0 }}">
-          </td>
-          <td style="display:flex; gap:8px; justify-content:center;">
-            <button type="submit" name="action_type" value="update">💾 Save</button>
-            <button type="submit" name="action_type" value="delete" style="background-color:#dc2626;">🗑 Delete</button>
-          </td>
-        </form>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-
+  <script>
+    // Quick ranges
+    const startEl = document.getElementById('start');
+    const endEl = document.getElementById('end');
+    const filterForm = document.getElementById('filterForm');
+    document.querySelectorAll('[data-range]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const days = parseInt(btn.dataset.range, 10);
+        const end = new Date();
+        const start = new Date(); start.setDate(end.getDate() - (days-1));
+        const fmt = d => d.toISOString().slice(0,10);
+        endEl.value = fmt(end); startEl.value = fmt(start);
+        filterForm.submit();
+      });
+    });
+  </script>
 </body>
 </html>
+
