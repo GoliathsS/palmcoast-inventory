@@ -220,3 +220,6 @@ form {
     padding: 10px;
   }
 }
+/* Dashboard hero title (all screen sizes) */
+.hero h1 { color: #fff; }
+.hero small { color: #eaf4ee; }
