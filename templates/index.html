@@ -1,312 +1,309 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
   <title>Palm Coast Inventory Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Fonts + Bootstrap -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- App assets -->
   <link rel="stylesheet" href="/static/style.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="manifest" href="/static/manifest.json">
-  <meta name="theme-color" content="#ffffff">
+  <meta name="theme-color" content="#14532d">
   <link rel="apple-touch-icon" sizes="180x180" href="/static/palm_icon_180.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="/static/palm_icon_192.png" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
   <style>
-    body {
-      background-color: #f8f9fa;
-      font-family: 'Inter', sans-serif;
+    :root{
+      --pc-primary:#14532d;  /* deep palm green */
+      --pc-primary-2:#0e5a34;
+      --pc-accent:#1d4ed8;   /* blue accent for links */
+      --pc-soft:#f3f4f6;     /* soft gray */
     }
-    .badge-low { background-color: #dc3545; }
-    .badge-ok { background-color: #198754; }
-    .dashboard-card { box-shadow: 0 0 8px rgba(0,0,0,0.05); border-radius: 12px; }
-    .action-buttons {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.75rem;
-      margin-bottom: 1.5rem;
-      align-items: center;
+    body{ background:#f6f7f9; font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; }
+
+    /* Hero */
+    .hero {
+      background: linear-gradient(135deg, var(--pc-primary) 0%, var(--pc-primary-2) 100%);
+      color:#fff;
+      border-radius:16px;
+      padding:16px;
+      display:flex; align-items:center; justify-content:space-between; gap:16px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.12);
     }
-    .action-buttons button, .action-buttons a {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 10px 18px;
-      font-size: 0.95rem;
-      font-weight: 500;
-      border-radius: 8px;
-      border: none;
-      text-decoration: none;
-      cursor: pointer;
-      transition: all 0.2s ease;
+    .hero .brand { display:flex; align-items:center; gap:12px; }
+    .hero img { height:48px; border-radius:8px; }
+    .hero h1{ font-size:1.25rem; margin:0; font-weight:700; }
+    .hero .stat { text-align:right; }
+    .hero .stat .value{ font-weight:800; font-size:1.5rem; }
+    .hero small{ opacity:.9; }
+
+    /* Action grid */
+    .actions { display:grid; grid-template-columns: repeat(2,1fr); gap:.75rem; }
+    @media (min-width: 768px){ .actions{ grid-template-columns: repeat(4,1fr);} }
+    @media (min-width: 1200px){ .actions{ grid-template-columns: repeat(6,1fr);} }
+    .action {
+      background:#fff; border:1px solid rgba(0,0,0,.06); border-radius:12px; padding:.9rem .95rem;
+      display:flex; align-items:center; gap:.65rem; text-decoration:none; color:#111;
+      box-shadow: 0 2px 10px rgba(0,0,0,.04);
+      transition: transform .12s ease, box-shadow .12s ease;
     }
-    .settings-btn { background-color: #f3f4f6; color: #374151; }
-    .sync-btn { background-color: #e0edff; color: #1d4ed8; }
-    .manual-sync-btn { background-color: #e6fbe6; color: #15803d; }
-    .primary-btn { background-color: #14532d; color: #ffffff; font-weight: 600; }
-    .action-buttons button:hover, .action-buttons a:hover {
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      transform: translateY(-1px);
+    .action:hover{ transform: translateY(-2px); box-shadow:0 6px 18px rgba(0,0,0,.07); }
+    .action i{ width:28px; height:28px; display:grid; place-items:center; border-radius:8px; font-size:14px; }
+    .i-gray{ background:#eef2f7; color:#374151; }
+    .i-blue{ background:#e7efff; color:#1d4ed8; }
+    .i-green{ background:#e7f7ec; color:#15803d; }
+    .i-orange{ background:#fff1e6; color:#b45309; }
+    .i-red{ background:#ffe8e8; color:#b91c1c; }
+    .i-cyan{ background:#e6fbff; color:#0e7490; }
+
+    /* Cards / sections */
+    .card-soft { background:#fff; border:1px solid rgba(0,0,0,.06); border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,.04); }
+    .card-title { font-weight:700; font-size:1rem; }
+
+    /* Filters row */
+    .filters .form-select{ min-width:180px; }
+
+    /* Table */
+    .table-wrap{ max-height:65vh; overflow:auto; }
+    .table thead th{ position:sticky; top:0; z-index:1; background:#fff; }
+    .table tbody tr:hover{ background:#fafafa; }
+    .badge-low{ background:#dc3545; }
+    .badge-ok{ background:#198754; }
+
+    /* Add product compact grid */
+    .grid-form{ display:grid; gap:.75rem; }
+    @media (min-width: 768px){
+      .grid-form{ grid-template-columns: 1.2fr 1fr 1fr 1fr 1fr .8fr .8fr 1fr auto; align-items:center; }
+    }
+
+    /* Sticky bottom actions on mobile */
+    .sticky-bottom-bar{
+      position: sticky; bottom:0; z-index:1030; background:rgba(255,255,255,.98);
+      border-top:1px solid rgba(0,0,0,.08); backdrop-filter: blur(6px);
     }
   </style>
 </head>
 <body>
-  <div class="container py-4">
-    <header class="mb-4 d-flex align-items-center justify-content-between">
-      <div class="d-flex align-items-center">
-        <img src="/static/LOGO.jpg" alt="Logo" style="height: 50px; border-radius: 8px; margin-right: 10px;">
-        <h3 class="mb-0">Palm Coast Inventory Dashboard</h3>
-      </div>
-      <a href="/history" class="btn btn-outline-secondary">🧾 View History</a>
-    </header>
-    
-    <form method="get" action="/" class="mb-3">
-  <div class="row">
-    <div class="col-auto">
-      <label for="category" class="form-label fw-semibold">Filter by Category:</label>
-    </div>
-    <div class="col-auto">
-      <select class="form-select" name="category" onchange="this.form.submit()">
-        <option value="All" {% if category_filter == 'All' %}selected{% endif %}>All</option>
-        <option value="Pest" {% if category_filter == 'Pest' %}selected{% endif %}>Pest</option>
-        <option value="Lawn" {% if category_filter == 'Lawn' %}selected{% endif %}>Lawn</option>
-        <option value="Wildlife" {% if category_filter == 'Wildlife' %}selected{% endif %}>Wildlife</option>
-      </select>
-    </div>
-  </div>
-</form>
 
-    <form method="POST" action="/add-product">
-      <div class="row g-3 mb-4">
-        <div class="col-md-3">
+  <div class="container py-4">
+
+    <!-- HERO -->
+    <section class="hero mb-4">
+      <div class="brand">
+        <img src="/static/LOGO.jpg" alt="Palm Coast">
+        <div>
+          <h1>Palm Coast Inventory</h1>
+          <small>Manage products, vehicles, and pricing in one place</small>
+        </div>
+      </div>
+      <div class="stat">
+        <div class="value">${{ '%.2f' | format(total_value or 0.00) }}</div>
+        <small>
+          🌿 Lawn: {{ lawn_count }} &nbsp; • &nbsp; 🐜 Pest: {{ pest_count }} &nbsp; • &nbsp; 🦝 Wildlife: {{ wildlife_count }}
+        </small>
+      </div>
+    </section>
+
+    <!-- ACTION GRID -->
+    <section class="actions mb-4">
+      <a href="/scan" class="action"><i class="i-green fa-solid fa-barcode"></i><span>Open Scanner</span></a>
+      <a href="/history" class="action"><i class="i-gray fa-solid fa-receipt"></i><span>View History</span></a>
+      <a href="/export-products" class="action"><i class="i-green fa-solid fa-file-export"></i><span>Export to Excel</span></a>
+      <a href="/print-report" target="_blank" class="action"><i class="i-orange fa-solid fa-print"></i><span>Print Report</span></a>
+      <a href="/upload-invoice" class="action"><i class="i-blue fa-solid fa-paperclip"></i><span>Upload Invoice (Sync)</span></a>
+      <a href="/corrections" class="action"><i class="i-red fa-solid fa-screwdriver-wrench"></i><span>Corrections</span></a>
+      <a href="/sds" class="action"><i class="i-cyan fa-solid fa-file-lines"></i><span>SDS & Labels</span></a>
+      <a href="/vehicles" class="action"><i class="i-blue fa-solid fa-truck"></i><span>Vehicle Profiles</span></a>
+      <a href="/inspections" class="action"><i class="i-gray fa-solid fa-clipboard-check"></i><span>Vehicle Inspections</span></a>
+      <a href="{{ url_for('inventory_analytics') }}" class="action"><i class="i-blue fa-solid fa-chart-line"></i><span>Inventory Analytics</span></a>
+      <a href="/settings" class="action"><i class="i-gray fa-solid fa-gear"></i><span>Settings</span></a>
+    </section>
+
+    <!-- FILTERS -->
+    <section class="card-soft p-3 mb-3 filters">
+      <form method="get" action="/" class="row g-2 align-items-center">
+        <div class="col-auto">
+          <label for="category" class="fw-semibold me-2">Filter by Category:</label>
+        </div>
+        <div class="col-auto">
+          <select class="form-select" name="category" onchange="this.form.submit()">
+            <option value="All" {% if category_filter == 'All' %}selected{% endif %}>All</option>
+            <option value="Pest" {% if category_filter == 'Pest' %}selected{% endif %}>Pest</option>
+            <option value="Lawn" {% if category_filter == 'Lawn' %}selected{% endif %}>Lawn</option>
+            <option value="Wildlife" {% if category_filter == 'Wildlife' %}selected{% endif %}>Wildlife</option>
+          </select>
+        </div>
+      </form>
+    </section>
+
+    <!-- ADD PRODUCT -->
+    <section class="card-soft p-3 mb-4">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <h5 class="card-title mb-0">Add Product</h5>
+        <small class="text-muted">Barcodes scan straight into the field</small>
+      </div>
+      <form method="POST" action="/add-product">
+        <div class="grid-form">
           <input type="text" class="form-control" placeholder="Product Name" name="name" required>
-        </div>
-        <div class="col-md-2 position-relative">
-          <input type="text" class="form-control" placeholder="Barcode" name="barcode" id="barcode-field" required>
-          <button type="button" id="scan-btn" class="btn btn-sm btn-outline-secondary position-absolute top-0 end-0 mt-1 me-1">📷</button>
-        </div>
-        <div class="col-md-2">
+
+          <div class="position-relative">
+            <input type="text" class="form-control" placeholder="Barcode" name="barcode" id="barcode-field" required>
+            <button type="button" id="scan-btn" class="btn btn-sm btn-outline-secondary position-absolute top-0 end-0 mt-1 me-1">📷</button>
+          </div>
+
           <input type="number" class="form-control" placeholder="Min Stock" name="min_stock" required>
-        </div>
-        <div class="col-md-2">
-          <input type="number" step="0.01" class="form-control" placeholder="Cost per Unit" name="cost_per_unit" required>
-        </div>
-        <div class="col-md-2">
+          <input type="number" step="0.01" class="form-control" placeholder="Cost per Item" name="cost_per_unit" required>
+          <input type="number" min="1" class="form-control" placeholder="Units per Item" name="units_per_item" value="1" required>
+          <input type="number" step="0.01" class="form-control" placeholder="Auto Unit Cost" name="unit_cost" readonly>
+
           <input type="text" class="form-control" placeholder="SiteOne SKU (optional)" name="siteone_sku">
-        </div>
-        <div class="col-md-2">
+
           <select class="form-select" name="category">
             <option value="Pest">Pest</option>
             <option value="Lawn">Lawn</option>
             <option value="Wildlife">Wildlife</option>
           </select>
-        </div>
-        <div class="col-md-1 d-grid">
+
           <button type="submit" class="btn btn-success">➕ Add Product</button>
         </div>
+      </form>
+    </section>
+
+    <!-- PRODUCTS TABLE -->
+    <section class="card-soft p-0">
+      <div class="p-3 pb-0 d-flex align-items-center justify-content-between">
+        <h5 class="card-title mb-0">Products</h5>
+        <small class="text-muted">Status badges: OK / Low / Out</small>
       </div>
-    </form>
 
-    <div class="action-buttons d-flex flex-column flex-md-row align-items-stretch gap-2">
-
-      <!-- Settings button -->
-      <a href="/settings" class="btn btn-outline-secondary">
-        <i class="fas fa-cog"></i> Settings
-      </a>
-
-      <!-- Big scanner button -->
-      <button class="btn btn-success btn-lg w-100 w-md-auto" onclick="location.href='/scan'">
-        📦 Open Scanner
-      </button>
-
-      <!-- ✅ NEW: Export Button -->
-      <a href="/export-products" class="btn btn-outline-success">
-        📤 Export to Excel
-      </a>
-
-      <a href="/print-report" target="_blank" class="btn btn-outline-dark">
-        🖨️ Print Inventory Report
-      </a>
-
-      <a href="/upload-invoice" class="btn btn-outline-primary">
-        📎 Upload Invoice (Sync Prices)
-      </a>
-
-      <a href="/corrections" class="btn btn-outline-danger">
-        🛠 Corrections
-      </a>
-
-      <a href="/sds" class="btn btn-outline-info">
-        📄 SDS & Labels Portal
-      </a>
-
-      <!-- 🔧 New Buttons -->
-      <a href="/vehicles" class="btn btn-primary">
-        🚛 Vehicle Profiles
-      </a>
-
-      <a href="/inspections" class="btn btn-outline-warning">
-        📋 Vehicle Inspections
-      </a>
-
-      <a href="{{ url_for('inventory_analytics') }}" class="btn btn-primary" style="margin-top: 20px;">
-        📊 View Inventory Analytics
-      </a>
-
-    </div>
-
-    <div class="dashboard-card p-3 bg-white mb-4">
-      <h5 class="text-muted">💰 Total Inventory Value:</h5>
-      <h3 class="text-success fw-bold">${{ '%.2f' | format(total_value or 0.00) }}</h3>
-      <small class="mt-2 d-block text-muted">
-        🌿 <strong>Lawn:</strong> {{ lawn_count }} &nbsp;&nbsp; 🐜 <strong>Pest:</strong> {{ pest_count }} &nbsp;&nbsp; 🦝 <strong>Wildlife:</strong> {{ wildlife_count }}
-      </small>
-    </div>
-
-    <div class="table-responsive">
-      <table class="table table-striped align-middle">
-        <thead class="table-light">
-          <tr>
-            <th>Product</th>
-            <th>Barcode</th>
-            <th>In Stock</th>
-            <th>Units Remaining</th>
-            <th>Min Stock</th>
-            <th>Status</th>
-            <th>Price</th>
-            <th>Category</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for product in products %}
-          <tr class="{% if product[3] == 0 %}table-danger{% endif %}" {% if product[3] == 0 %}title="Out of Stock"{% endif %}>
-            <td>{{ product[1] }}</td>
-            <td>{{ product[2] }}</td>
-            <td>{{ product[3] }}</td>
-            <td>{{ product[10] or 0 }}</td>  <!-- Assuming index 10 is units_remaining -->
-            <td>{{ product[4] }}</td>
-            <td>
-              {% if product[3] == 0 %}
-                <span class="badge bg-danger">Out</span>
-              {% elif product[3] < product[4] %}
-                <span class="badge badge-low">Low</span>
-              {% else %}
-                <span class="badge badge-ok">OK</span>
-              {% endif %}
-            </td>
-            <td>${{ '%.2f' | format(product[5] or 0.00) }}</td>
-            <td>
-              {% if product[7] == 'Lawn' %}
-                <span class="badge bg-success">Lawn</span>
-              {% elif product[7] == 'Wildlife' %}
-                <span class="badge bg-warning text-dark">Wildlife</span>
-              {% else %}
-                <span class="badge bg-info text-dark">Pest</span>
-              {% endif %}
-            </td>
-            <td>
-              <button class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#editModal{{ product[0] }}">✏️ Edit</button>
-              <form action="/delete-product/{{ product[0] }}" method="post" style="display:inline-block" onsubmit="return confirm('Are you sure?')">
-                <button class="btn btn-sm btn-outline-danger">🗑 Delete</button>
-              </form>
-            </td>
-          </tr>
-
-          <div class="modal fade" id="editModal{{ product[0] }}" tabindex="-1" aria-labelledby="editModalLabel{{ product[0] }}" aria-hidden="true">
-            <div class="modal-dialog">
-              <div class="modal-content">
-                <form method="POST" action="/edit-product/{{ product[0] }}">
-                  <div class="modal-header">
-                    <h5 class="modal-title" id="editModalLabel{{ product[0] }}">Edit Product</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                  </div>
-                  <div class="modal-body">
-                    <div class="mb-3">
-                      <label class="form-label">Product Name</label>
-                      <input type="text" name="name" class="form-control" value="{{ product[1] }}" required>
-                    </div>
-                    <div class="mb-3">
-                      <label class="form-label">Barcode</label>
-                      <input type="text" name="barcode" class="form-control" value="{{ product[2] }}" required>
-                    </div>
-                    <div class="mb-3">
-                      <label class="form-label">Min Stock</label>
-                      <input type="number" name="min_stock" class="form-control" value="{{ product[4] }}" required>
-                    </div>
-                    <div class="mb-3">
-                      <label class="form-label">Cost per Unit</label>
-                      <input type="number" step="0.01" name="cost_per_unit" class="form-control" value="{{ product[5] or 0.00 }}" required>
-                    </div>
-                    <div class="mb-3">
-                      <label class="form-label">Units per Item</label>
-                      <input type="number" name="units_per_item" class="form-control" value="{{ product[8] or 1 }}" min="1" required>
-                    </div>
-                    <div class="mb-3">
-                      <label class="form-label">Unit Cost</label>
-                      <input type="number" step="0.01" name="unit_cost" class="form-control" value="{{ product[9] or '' }}">
-                    </div>
-                    <div class="mb-3">
-                      <label class="form-label">Category</label>
-                      <select name="category" class="form-select">
-                        <option value="Pest" {% if product[7] == 'Pest' %}selected{% endif %}>Pest</option>
-                        <option value="Lawn" {% if product[7] == 'Lawn' %}selected{% endif %}>Lawn</option>
-                        <option value="Wildlife" {% if product[7] == 'Wildlife' %}selected{% endif %}>Wildlife</option>
-                      </select>
-                    </div>
-                    <div class="mb-3">
-                      <label class="form-label">SiteOne SKU</label>
-                      <input type="text" name="siteone_sku" class="form-control" value="{{ product[6] or '' }}">
-                    </div>
-                  </div>
-                  <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary">Save Changes</button>
-                  </div>
+      <div class="table-wrap">
+        <table class="table table-striped align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Product</th>
+              <th>Barcode</th>
+              <th>In Stock</th>
+              <th>Units Remaining</th>
+              <th>Min Stock</th>
+              <th>Status</th>
+              <th>Price</th>
+              <th>Category</th>
+              <th style="min-width:120px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for product in products %}
+            <tr class="{% if product[3] == 0 %}table-danger{% endif %}" {% if product[3] == 0 %}title="Out of Stock"{% endif %}>
+              <td class="fw-semibold">{{ product[1] }}</td>
+              <td class="text-muted">{{ product[2] }}</td>
+              <td>{{ product[3] }}</td>
+              <td>{{ product[10] or 0 }}</td>
+              <td>{{ product[4] }}</td>
+              <td>
+                {% if product[3] == 0 %}
+                  <span class="badge bg-danger">Out</span>
+                {% elif product[3] < product[4] %}
+                  <span class="badge badge-low">Low</span>
+                {% else %}
+                  <span class="badge badge-ok">OK</span>
+                {% endif %}
+              </td>
+              <td>${{ '%.2f' | format(product[5] or 0.00) }}</td>
+              <td>
+                {% if product[7] == 'Lawn' %}
+                  <span class="badge bg-success">Lawn</span>
+                {% elif product[7] == 'Wildlife' %}
+                  <span class="badge bg-warning text-dark">Wildlife</span>
+                {% else %}
+                  <span class="badge bg-info text-dark">Pest</span>
+                {% endif %}
+              </td>
+              <td>
+                <button class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#editModal{{ product[0] }}">✏️ Edit</button>
+                <form action="/delete-product/{{ product[0] }}" method="post" style="display:inline-block" onsubmit="return confirm('Are you sure?')">
+                  <button class="btn btn-sm btn-outline-danger">🗑 Delete</button>
                 </form>
+              </td>
+            </tr>
+
+            <!-- Edit Modal -->
+            <div class="modal fade" id="editModal{{ product[0] }}" tabindex="-1" aria-labelledby="editModalLabel{{ product[0] }}" aria-hidden="true">
+              <div class="modal-dialog">
+                <div class="modal-content">
+                  <form method="POST" action="/edit-product/{{ product[0] }}">
+                    <div class="modal-header">
+                      <h5 class="modal-title" id="editModalLabel{{ product[0] }}">Edit Product</h5>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                      <div class="mb-3">
+                        <label class="form-label">Product Name</label>
+                        <input type="text" name="name" class="form-control" value="{{ product[1] }}" required>
+                      </div>
+                      <div class="mb-3">
+                        <label class="form-label">Barcode</label>
+                        <input type="text" name="barcode" class="form-control" value="{{ product[2] }}" required>
+                      </div>
+                      <div class="mb-3">
+                        <label class="form-label">Min Stock</label>
+                        <input type="number" name="min_stock" class="form-control" value="{{ product[4] }}" required>
+                      </div>
+                      <div class="mb-3">
+                        <label class="form-label">Cost per Item</label>
+                        <input type="number" step="0.01" name="cost_per_unit" class="form-control" value="{{ product[5] or 0.00 }}" required>
+                      </div>
+                      <div class="mb-3">
+                        <label class="form-label">Units per Item</label>
+                        <input type="number" name="units_per_item" class="form-control" value="{{ product[8] or 1 }}" min="1" required>
+                      </div>
+                      <div class="mb-3">
+                        <label class="form-label">Auto Unit Cost</label>
+                        <input type="number" step="0.01" name="unit_cost" class="form-control" value="{{ product[9] or '' }}" readonly>
+                      </div>
+                      <div class="mb-3">
+                        <label class="form-label">Category</label>
+                        <select name="category" class="form-select">
+                          <option value="Pest" {% if product[7] == 'Pest' %}selected{% endif %}>Pest</option>
+                          <option value="Lawn" {% if product[7] == 'Lawn' %}selected{% endif %}>Lawn</option>
+                          <option value="Wildlife" {% if product[7] == 'Wildlife' %}selected{% endif %}>Wildlife</option>
+                        </select>
+                      </div>
+                      <div class="mb-3">
+                        <label class="form-label">SiteOne SKU</label>
+                        <input type="text" name="siteone_sku" class="form-control" value="{{ product[6] or '' }}">
+                      </div>
+                    </div>
+                    <div class="modal-footer">
+                      <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                  </form>
+                </div>
               </div>
             </div>
-          </div>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
 
-          {% endfor %}
-        </tbody>
-      </table>
+  <!-- Sticky bottom bar on mobile -->
+  <div class="sticky-bottom-bar d-md-none">
+    <div class="container py-2 d-flex gap-2">
+      <a href="/scan" class="btn btn-success w-50">📦 Scan</a>
+      <a href="/history" class="btn btn-outline-secondary w-50">🧾 History</a>
     </div>
   </div>
 
-    <audio id="beep-sound" src="/static/beep.mp3" preload="auto"></audio>
-  
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script type="module">
-    import { BrowserMultiFormatReader } from 'https://cdn.jsdelivr.net/npm/@zxing/browser@latest/+esm';
+  <!-- Audio -->
+  <audio id="beep-sound" src="/static/beep.mp3" preload="auto"></audio>
 
-    const barcodeField = document.getElementById("barcode-field");
-    const scanBtn = document.getElementById("scan-btn");
-    const videoElem = document.getElementById("scannerPreview");
-    const modalElem = new bootstrap.Modal(document.getElementById("scannerModal"));
-    const closeModalBtn = document.getElementById("closeModalBtn");
-
-    let codeReader = new BrowserMultiFormatReader();
-
-    scanBtn.addEventListener("click", async () => {
-      modalElem.show(); // open modal
-
-      try {
-        const result = await codeReader.decodeOnceFromVideoDevice(undefined, videoElem);
-        barcodeField.value = result.getText();
-        document.getElementById("beep-sound").play();
-        modalElem.hide();
-        codeReader.reset();
-      } catch (err) {
-        console.error("Scan failed:", err);
-        modalElem.hide();
-        codeReader.reset();
-      }
-    });
-
-    closeModalBtn.addEventListener("click", () => {
-      codeReader.reset();
-    });
-  </script>
-  <!-- Barcode Scanner Modal -->
+  <!-- Scanner Modal -->
   <div class="modal fade" id="scannerModal" tabindex="-1" aria-labelledby="scannerModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
       <div class="modal-content">
@@ -320,65 +317,76 @@
       </div>
     </div>
   </div>
-  <script>
-  ChatGPT said:
-Perfect — you're nearly there!
 
-To complete the automation for unit cost calculation in both the Add Product form and the Edit Product modals, you just need to enhance your <script> section slightly by adding a second section that handles the form at the top (outside of modals).
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script type="module">
+    // ZXing barcode scanning
+    import { BrowserMultiFormatReader } from 'https://cdn.jsdelivr.net/npm/@zxing/browser@latest/+esm';
+    const barcodeField = document.getElementById("barcode-field");
+    const scanBtn = document.getElementById("scan-btn");
+    const videoElem = document.getElementById("scannerPreview");
+    const modalElem = new bootstrap.Modal(document.getElementById("scannerModal"));
+    const closeModalBtn = document.getElementById("closeModalBtn");
+    const beep = document.getElementById("beep-sound");
 
-✅ Here's the exact script block to paste at the bottom of your index.html, just before </body>:
-html
-Copy
-Edit
-<script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/static/service-worker.js')
-      .then(reg => console.log("✅ Service Worker registered", reg))
-      .catch(err => console.error("❌ Service Worker failed", err));
-  }
-</script>
-<script>
-  document.addEventListener("DOMContentLoaded", () => {
-    // ----------------- Edit Modals -----------------
-    const modals = document.querySelectorAll(".modal");
-    modals.forEach(modal => {
-      const costInput = modal.querySelector("input[name='cost_per_unit']");
-      const unitsInput = modal.querySelector("input[name='units_per_item']");
-      const unitCostInput = modal.querySelector("input[name='unit_cost']");
+    let codeReader = new BrowserMultiFormatReader();
 
-      const calculate = () => {
-        const cost = parseFloat(costInput?.value);
-        const units = parseInt(unitsInput?.value);
-        if (!isNaN(cost) && !isNaN(units) && units > 0) {
-          unitCostInput.value = (cost / units).toFixed(2);
-        }
-      };
-
-      costInput?.addEventListener("input", calculate);
-      unitsInput?.addEventListener("input", calculate);
-    });
-
-    // ----------------- Add Product Form -----------------
-    const form = document.querySelector("form[action='/add-product']");
-    const costInput = form?.querySelector("input[name='cost_per_unit']");
-    const unitsInput = form?.querySelector("input[name='units_per_item']");
-    const unitCostInput = form?.querySelector("input[name='unit_cost']");
-
-    const updateUnitCost = () => {
-      const cost = parseFloat(costInput?.value);
-      const units = parseInt(unitsInput?.value);
-      if (!isNaN(cost) && !isNaN(units) && units > 0) {
-        unitCostInput.value = (cost / units).toFixed(2);
+    scanBtn.addEventListener("click", async () => {
+      modalElem.show();
+      try {
+        const result = await codeReader.decodeOnceFromVideoDevice(undefined, videoElem);
+        barcodeField.value = result.getText();
+        beep?.play();
+      } catch (err) {
+        console.error("Scan failed:", err);
+      } finally {
+        modalElem.hide();
+        codeReader.reset();
       }
-    };
+    });
+    closeModalBtn.addEventListener("click", () => codeReader.reset());
+  </script>
 
-    costInput?.addEventListener("input", updateUnitCost);
-    unitsInput?.addEventListener("input", updateUnitCost);
-  });
-</script>
-</body>
-  <hr style="margin-top: 40px; border: none; border-top: 1px solid #ddd;">
-  <footer style="text-align: center; font-size: 0.85rem; color: #666; padding-top: 10px;">
+  <script>
+    // Service worker (optional PWA goodness)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/static/service-worker.js').catch(()=>{});
+    }
+
+    // Auto-calc unit cost (Add form + Edit modals)
+    document.addEventListener("DOMContentLoaded", () => {
+      // Edit modals
+      document.querySelectorAll(".modal").forEach(modal => {
+        const cost = modal.querySelector("input[name='cost_per_unit']");
+        const units = modal.querySelector("input[name='units_per_item']");
+        const unitCost = modal.querySelector("input[name='unit_cost']");
+        const calc = () => {
+          const c = parseFloat(cost?.value), u = parseInt(units?.value);
+          if (!isNaN(c) && !isNaN(u) && u > 0 && unitCost) unitCost.value = (c/u).toFixed(2);
+        };
+        cost?.addEventListener("input", calc);
+        units?.addEventListener("input", calc);
+      });
+
+      // Add form
+      const addForm = document.querySelector("form[action='/add-product']");
+      if (addForm) {
+        const cost = addForm.querySelector("input[name='cost_per_unit']");
+        const units = addForm.querySelector("input[name='units_per_item']");
+        const unitCost = addForm.querySelector("input[name='unit_cost']");
+        const calc = () => {
+          const c = parseFloat(cost?.value), u = parseInt(units?.value);
+          if (!isNaN(c) && !isNaN(u) && u > 0) unitCost.value = (c/u).toFixed(2);
+        };
+        cost?.addEventListener("input", calc);
+        units?.addEventListener("input", calc);
+      }
+    });
+  </script>
+
+  <footer class="container text-center py-4 text-muted" style="font-size:.9rem;">
     Developed for Palm Coast Pest Control by <strong>Cole Laczynski</strong>
   </footer>
+</body>
 </html>
