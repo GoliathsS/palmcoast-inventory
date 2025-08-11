@@ -1,254 +1,345 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Inspection Details</title>
+  <meta charset="UTF-8" />
+  <title>Inspection Details | Palm Coast</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
   <style>
-    body {
-      font-family: sans-serif;
-      padding: 20px;
+    :root{
+      --pc-bg:#f5f7fb; --pc-card:#ffffff; --pc-border:rgba(0,0,0,.08);
+      --pc-text:#101828; --pc-muted:#667085; --pc-green:#14532d;
+      --pc-blue:#2563eb; --pc-red:#ef4444; --pc-yellow:#f59e0b;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; background:var(--pc-bg); color:var(--pc-text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      padding:16px;
+    }
+    .container{ max-width:1100px; margin:0 auto }
+
+    /* Top bar */
+    .topbar{
+      display:flex; gap:.6rem; align-items:center; justify-content:space-between; margin-bottom:12px;
+    }
+    .back{
+      text-decoration:none; background:var(--pc-green); color:#fff;
+      padding:10px 14px; border-radius:10px; font-weight:800; display:inline-flex; align-items:center; gap:.5rem;
     }
 
-    .thumbnail {
-      height: 120px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      margin: 5px;
-      cursor: pointer;
-      transition: transform 0.2s ease;
+    /* Header card */
+    .card{
+      background:var(--pc-card); border:1px solid var(--pc-border); border-radius:14px;
+      box-shadow:0 2px 10px rgba(0,0,0,.04); padding:14px; margin-bottom:16px;
+    }
+    .head{
+      display:grid; gap:8px;
+    }
+    .title{
+      display:flex; flex-wrap:wrap; gap:.6rem 1rem; align-items:baseline;
+    }
+    .title h2{ margin:0; font-size:1.35rem; color:var(--pc-green); font-weight:900 }
+    .meta{ display:flex; gap:1rem; flex-wrap:wrap; color:var(--pc-muted); font-size:.95rem }
+    .chip{
+      display:inline-flex; align-items:center; gap:.4rem; padding:4px 10px; border-radius:999px; font-weight:800; font-size:.8rem;
+      border:1px solid transparent;
+    }
+    .chip-clean{ background:#e6f8ef; color:#14532d; border-color:#b8e8cc }
+    .chip-dirty{ background:#fff1f2; color:#b91c1c; border-color:#fecaca }
+    .chip-wrap-ok{ background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe }
+    .chip-wrap-bad{ background:#fff7ed; color:#9a3412; border-color:#fed7aa }
+
+    /* Gallery */
+    .gallery.card{ padding:12px }
+    .gallery h3, .checklist h3{ margin:0 0 10px; font-size:1.05rem; font-weight:900; color:#0f172a }
+    .grid{
+      display:grid; gap:10px;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    }
+    .photo-box{ position:relative; overflow:hidden; border-radius:10px; background:#fff; border:1px solid var(--pc-border) }
+    .photo-box img{
+      display:block; width:100%; height:120px; object-fit:cover; transition: transform .2s ease;
+    }
+    .photo-box:hover img{ transform:scale(1.03) }
+    .label{
+      position:absolute; left:8px; bottom:8px; background:rgba(0,0,0,.65); color:#fff;
+      padding:3px 7px; border-radius:999px; font-size:.8rem; font-weight:700;
     }
 
-    .thumbnail:hover {
-      transform: scale(1.05);
+    /* Checklist */
+    .checklist .list{
+      display:grid; gap:8px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     }
+    .item{
+      background:#fff; border:1px solid var(--pc-border); border-radius:10px; padding:10px;
+      display:flex; align-items:center; justify-content:space-between; gap:8px;
+    }
+    .item .name{ font-weight:700; font-size:.95rem }
+    .badge{
+      display:inline-flex; align-items:center; gap:.35rem; padding:4px 10px; border-radius:999px; font-weight:800; font-size:.8rem
+    }
+    .yes{ background:#e9faef; color:#065f46; border:1px solid #b7f2c8 }
+    .no{ background:#fee2e2; color:#991b1b; border:1px solid #fecaca }
+    .na{ background:#f1f5f9; color:#334155; border:1px solid #e2e8f0 }
 
-    .photo-box {
-      display: inline-block;
-      text-align: center;
+    /* Lightbox */
+    #lightbox{
+      display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,.95);
+      align-items:center; justify-content:center; flex-direction:column; padding:14px;
     }
+    #lightbox-img{
+      max-width:92vw; max-height:72vh; border-radius:12px; box-shadow:0 0 30px rgba(255,255,255,.15);
+      transition: transform .25s ease; cursor:zoom-in; user-select:none;
+    }
+    #lightbox-img.zoomed{ transform:scale(1.9); cursor:zoom-out }
+    .light-caption{
+      color:#fff; margin-top:10px; text-align:center; font-size:.95rem; opacity:.9
+    }
+    .light-actions{
+      display:flex; gap:.5rem; margin-top:8px; flex-wrap:wrap; justify-content:center
+    }
+    .lb-btn{
+      background:rgba(255,255,255,.12); color:#fff; border:1px solid rgba(255,255,255,.2);
+      padding:8px 12px; border-radius:10px; font-weight:800; cursor:pointer
+    }
+    .nav-arrow{
+      position:fixed; top:50%; transform:translateY(-50%); font-size:2.2rem; color:#fff;
+      background:rgba(0,0,0,.35); border:none; padding:8px 14px; cursor:pointer; user-select:none; z-index:10000;
+    }
+    .nav-arrow:hover{ background:rgba(0,0,0,.55) }
+    #prevBtn{ left:10px } #nextBtn{ right:10px }
+    #closeBtn{ position:fixed; top:10px; right:10px; font-size:1.1rem }
 
-    #lightbox {
-      display: none;
-      position: fixed;
-      z-index: 9999;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0, 0, 0, 0.9);
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-    }
-
-    #lightbox-img {
-      max-width: 90%;
-      max-height: 90%;
-      border-radius: 10px;
-      box-shadow: 0 0 30px rgba(255, 255, 255, 0.2);
-      transition: transform 0.3s ease;
-      cursor: zoom-in;
-    }
-
-    #lightbox-img.zoomed {
-      transform: scale(2.2);
-      cursor: zoom-out;
-    }
-
-    .nav-arrow {
-      position: absolute;
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: 3rem;
-      color: white;
-      background: rgba(0, 0, 0, 0.4);
-      border: none;
-      padding: 10px 20px;
-      cursor: pointer;
-      user-select: none;
-      z-index: 10000;
-    }
-
-    .nav-arrow:hover {
-      background: rgba(0, 0, 0, 0.7);
-    }
-
-    #prevBtn {
-      left: 20px;
-    }
-
-    #nextBtn {
-      right: 20px;
-    }
+    /* Utility */
+    .section{ margin-bottom:16px }
   </style>
 </head>
 <body>
-  <h2>🚛 Inspection Details - {{ inspection.license_plate }}</h2>
-  <p><strong>Date:</strong> {{ inspection.date }}</p>
-  <p><strong>Technician:</strong> {{ inspection.technician }}</p>
-  <p><strong>Mileage:</strong> {{ inspection.mileage }}</p>
-  <p><strong>Cleanliness:</strong> {{ inspection.cleanliness }}</p>
-  <p><strong>Wrap Condition:</strong> {{ inspection.wrap_condition }}</p>
+  <div class="container">
+    <div class="topbar">
+      <a class="back" href="/inspections">← Back to Inspections</a>
+    </div>
 
-  <h3>📸 Photos</h3>
-  <div id="gallery">
-    {% set photo_list = [
-      ('Front', inspection.photo_front),
-      ('Back', inspection.photo_back),
-      ('Left Side', inspection.photo_side_left),
-      ('Right Side', inspection.photo_side_right),
-      ('Tire FL', inspection.photo_tire_front_left),
-      ('Tire FR', inspection.photo_tire_front_right),
-      ('Tire RL', inspection.photo_tire_rear_left),
-      ('Tire RR', inspection.photo_tire_rear_right),
-      ('Misc 1', inspection.photo_misc_1),
-      ('Misc 2', inspection.photo_misc_2),
-      ('Misc 3', inspection.photo_misc_3),
-      ('Misc 4', inspection.photo_misc_4)
-    ] %}
-    {% for idx, (label, img) in enumerate(photo_list) %}
-      {% if img %}
-        <div class="photo-box">
-          <img src="/{{ img }}" alt="{{ label }}" class="thumbnail">
-          <div>{{ label }}</div>
+    <!-- Header -->
+    <section class="card head section">
+      <div class="title">
+        <h2>🚛 Inspection — {{ inspection.license_plate }}</h2>
+      </div>
+      <div class="meta">
+        <div><strong>Date:</strong> {{ inspection.date }}</div>
+        <div><strong>Technician:</strong> {{ inspection.technician }}</div>
+        <div><strong>Mileage:</strong> {{ inspection.mileage }}</div>
+      </div>
+      <div class="meta">
+        <span class="chip {% if inspection.cleanliness in ['Dirty','Needs Immediate Cleaning'] %}chip-dirty{% else %}chip-clean{% endif %}">
+          🧼 {{ inspection.cleanliness }}
+        </span>
+        <span class="chip {% if inspection.wrap_condition in ['Major Damage','Wrap Missing'] %}chip-wrap-bad{% else %}chip-wrap-ok{% endif %}">
+          🎨 {{ inspection.wrap_condition }}
+        </span>
+      </div>
+    </section>
+
+    <!-- Photos -->
+    <section class="gallery card section">
+      <h3>📸 Photos</h3>
+      <div id="gallery" class="grid">
+        {% set photo_list = [
+          ('Front', inspection.photo_front),
+          ('Back', inspection.photo_back),
+          ('Left Side', inspection.photo_side_left),
+          ('Right Side', inspection.photo_side_right),
+          ('Tire FL', inspection.photo_tire_front_left),
+          ('Tire FR', inspection.photo_tire_front_right),
+          ('Tire RL', inspection.photo_tire_rear_left),
+          ('Tire RR', inspection.photo_tire_rear_right),
+          ('Misc 1', inspection.photo_misc_1),
+          ('Misc 2', inspection.photo_misc_2),
+          ('Misc 3', inspection.photo_misc_3),
+          ('Misc 4', inspection.photo_misc_4)
+        ] %}
+        {% for idx, (label, img) in enumerate(photo_list) %}
+          {% if img %}
+            <button class="photo-box" data-index="{{ loop.index0 }}" data-src="/{{ img }}" data-label="{{ label }}" title="Tap to view">
+              <img src="/{{ img }}" alt="{{ label }}">
+              <span class="label">{{ label }}</span>
+            </button>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </section>
+
+    <!-- Checklist -->
+    <section class="checklist card section">
+      <h3>✅ Inspection Checklist</h3>
+
+      {% if inspection.checklist_data %}
+        {% set checklist = inspection.checklist_data | tojson | loads %}
+        <h4 style="margin:6px 0 8px; color:#0f172a">🚗 Vehicle Items</h4>
+        <div class="list">
+          {% for item in [
+            "Headlights Working?",
+            "Turn Signals Working?",
+            "Brake Lights Working?",
+            "Windshield Wipers?",
+            "Brakes OK (Per Driver)?",
+            "Any Brake Noise?",
+            "Tie Down Straps?",
+            "Chemical Box Locked?",
+            "Windows/Windshield Cracked?",
+            "Horn Working Properly?",
+            "Seat Belts in Good Condition?",
+            "Chemical Labels Secured?",
+            "Equipment Inventory List?",
+            "Vehicle Registration?",
+            "Vehicle Insurance Card",
+            "DACS ID Card",
+            "Updated Phone/PP App?"
+          ] %}
+            {% set val = checklist.get(item) %}
+            <div class="item">
+              <div class="name">{{ item }}</div>
+              {% if val == "Yes" %}
+                <span class="badge yes">✅ Yes</span>
+              {% elif val == "No" %}
+                <span class="badge no">❌ No</span>
+              {% elif val == "N/A" %}
+                <span class="badge na">∼ N/A</span>
+              {% else %}
+                <span class="badge na">—</span>
+              {% endif %}
+            </div>
+          {% endfor %}
         </div>
+
+        <h4 style="margin:14px 0 8px; color:#0f172a">🦺 Safety Items</h4>
+        <div class="list">
+          {% for item in [
+            "Soak Up/Spill Kit",
+            "First Aid Kit",
+            "Respirator Clean?",
+            "Flares/Triangles?",
+            "Fire Extinguisher?",
+            "Safety Glasses/Goggles?",
+            "Protective Gloves?",
+            "Booties Present?",
+            "Long Sleeve Shirt?",
+            "Poison Control Center Number",
+            "Chemical Sensitive List",
+            "Label/MSDS Binder?"
+          ] %}
+            {% set val = checklist.get(item) %}
+            <div class="item">
+              <div class="name">{{ item }}</div>
+              {% if val == "Yes" %}
+                <span class="badge yes">✅ Yes</span>
+              {% elif val == "No" %}
+                <span class="badge no">❌ No</span>
+              {% elif val == "N/A" %}
+                <span class="badge na">∼ N/A</span>
+              {% else %}
+                <span class="badge na">—</span>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="muted">No checklist data available for this inspection.</p>
       {% endif %}
-    {% endfor %}
+    </section>
+
+    <div class="topbar" style="margin-top:8px">
+      <a class="back" href="/inspections">← Back to Inspections</a>
+    </div>
   </div>
 
-  <h3>✅ Inspection Checklist</h3>
-
-{% if inspection.checklist_data %}
-  {% set checklist = inspection.checklist_data | tojson | loads %}
-
-  <h4>🚗 Vehicle Items</h4>
-  <ul>
-    {% for item in [
-      "Headlights Working?", "Turn Signals Working?", "Brake Lights Working?", "Windshield Wipers?",
-      "Brakes OK (Per Driver)?", "Any Brake Noise?", "Tie Down Straps?", "Chemical Box locked",
-      "Windows/Windshield Cracked?", "Horn working properly?", "Seat Belts in good condition?",
-      "Chemical Labels Secured?", "Equipment inventory list?", "Vehicle registration?",
-      "Vehicle Insurance card", "DACS ID card", "Updated Phone/PP App?"
-    ] %}
-      <li>
-        <strong>{{ item }}</strong> — 
-        {% if checklist[item] == "Yes" %}
-          ✅
-        {% elif checklist[item] == "No" %}
-          <span style="color:red;">❌</span>
-        {% else %}
-          <em>Not answered</em>
-        {% endif %}
-      </li>
-    {% endfor %}
-  </ul>
-
-  <h4>🦺 Safety Items</h4>
-  <ul>
-    {% for item in [
-      "Soak Up/Spill Kit", "First Aid Kit", "Resporator Clean?", "Flares/Triangles?", "Fire Extinguisher?",
-      "Safety Glasses/Goggles?", "Protective Gloves?", "Booties Present?", "Long Sleeve Shirt?",
-      "Poison Control Center Number", "Chemical Sensitive List", "Label/MSDS Binder?"
-    ] %}
-      <li>
-        <strong>{{ item }}</strong> — 
-        {% if checklist[item] == "Yes" %}
-          ✅
-        {% elif checklist[item] == "No" %}
-          <span style="color:red;">❌</span>
-        {% else %}
-          <em>Not answered</em>
-        {% endif %}
-      </li>
-    {% endfor %}
-  </ul>
-{% else %}
-  <p>No checklist data available for this inspection.</p>
-{% endif %}
-
-  <br>
-  <a href="/inspections">← Back to Inspections</a>
-
   <!-- Lightbox -->
-  <div id="lightbox">
-    <button class="nav-arrow" id="prevBtn">‹</button>
-    <img id="lightbox-img" src="" alt="Enlarged">
-    <button class="nav-arrow" id="nextBtn">›</button>
+  <div id="lightbox" role="dialog" aria-modal="true" aria-label="Photo viewer">
+    <button class="nav-arrow" id="prevBtn" aria-label="Previous image">‹</button>
+    <img id="lightbox-img" src="" alt="">
+    <button class="nav-arrow" id="nextBtn" aria-label="Next image">›</button>
+
+    <div class="light-caption" id="lightbox-cap"></div>
+    <div class="light-actions">
+      <button class="lb-btn" id="downloadBtn" aria-label="Download image">⬇︎ Download</button>
+      <button class="lb-btn" id="closeBtn" aria-label="Close">✕ Close</button>
+    </div>
   </div>
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      const thumbnails = document.querySelectorAll('.thumbnail');
+      // Build gallery list
+      const tiles = Array.from(document.querySelectorAll('.photo-box'));
+      const list = tiles.map(t => ({ src: t.dataset.src, label: t.dataset.label }));
+
       const lightbox = document.getElementById('lightbox');
-      const lightboxImg = document.getElementById('lightbox-img');
-      const imageList = [];
-      let currentIndex = 0;
+      const img = document.getElementById('lightbox-img');
+      const cap = document.getElementById('lightbox-cap');
+      const prev = document.getElementById('prevBtn');
+      const next = document.getElementById('nextBtn');
+      const closeBtn = document.getElementById('closeBtn');
+      const dlBtn = document.getElementById('downloadBtn');
 
-      // Build imageList and assign click handlers
-      thumbnails.forEach((img, index) => {
-        imageList.push({
-          src: img.src,
-          label: img.alt
-        });
+      let i = 0;
+      let touchStartX = 0;
 
-        img.addEventListener('click', () => {
-          currentIndex = index;
-          openLightbox();
-        });
-      });
-
-      function openLightbox() {
-        lightboxImg.src = imageList[currentIndex].src;
-        lightboxImg.alt = imageList[currentIndex].label;
+      function show(idx){
+        if (!list.length) return;
+        i = (idx + list.length) % list.length;
+        const item = list[i];
+        img.src = item.src;
+        img.alt = item.label;
+        img.classList.remove('zoomed');
+        cap.textContent = `${item.label} — ${i+1} / ${list.length}`;
+        dlBtn.onclick = () => {
+          const a = document.createElement('a');
+          a.href = item.src;
+          a.download = item.label.replace(/\s+/g,'_') + '.jpg';
+          document.body.appendChild(a); a.click(); a.remove();
+        };
+      }
+      function open(idx){
+        show(idx);
         lightbox.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+      }
+      function close(){
+        lightbox.style.display = 'none';
+        img.classList.remove('zoomed');
+        document.body.style.overflow = '';
       }
 
-      function closeLightbox(e) {
-        if (e.target.id === 'lightbox' || e.key === 'Escape') {
-          lightbox.style.display = 'none';
-          lightboxImg.classList.remove('zoomed');
+      tiles.forEach((t, idx) => {
+        t.addEventListener('click', () => open(idx));
+      });
+
+      prev.addEventListener('click', e => { e.stopPropagation(); show(i-1); });
+      next.addEventListener('click', e => { e.stopPropagation(); show(i+1); });
+      closeBtn.addEventListener('click', close);
+      lightbox.addEventListener('click', (e) => { if (e.target === lightbox) close(); });
+
+      img.addEventListener('click', (e) => {
+        e.stopPropagation();
+        img.classList.toggle('zoomed');
+      });
+
+      // Keyboard navigation
+      document.addEventListener('keydown', (e) => {
+        if (lightbox.style.display !== 'flex') return;
+        if (e.key === 'Escape') close();
+        if (e.key === 'ArrowLeft') show(i-1);
+        if (e.key === 'ArrowRight') show(i+1);
+      });
+
+      // Basic swipe support
+      lightbox.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; }, {passive:true});
+      lightbox.addEventListener('touchend', (e) => {
+        const dx = e.changedTouches[0].screenX - touchStartX;
+        if (Math.abs(dx) > 40){
+          dx > 0 ? show(i-1) : show(i+1);
         }
-      }
-
-      function showPrev() {
-        currentIndex = (currentIndex - 1 + imageList.length) % imageList.length;
-        lightboxImg.src = imageList[currentIndex].src;
-        lightboxImg.alt = imageList[currentIndex].label;
-        lightboxImg.classList.remove('zoomed');
-      }
-
-      function showNext() {
-        currentIndex = (currentIndex + 1) % imageList.length;
-        lightboxImg.src = imageList[currentIndex].src;
-        lightboxImg.alt = imageList[currentIndex].label;
-        lightboxImg.classList.remove('zoomed');
-      }
-
-      lightboxImg.addEventListener('click', e => {
-        e.stopPropagation();
-        lightboxImg.classList.toggle('zoomed');
-      });
-
-      document.getElementById('prevBtn').addEventListener('click', e => {
-        e.stopPropagation();
-        showPrev();
-      });
-
-      document.getElementById('nextBtn').addEventListener('click', e => {
-        e.stopPropagation();
-        showNext();
-      });
-
-      document.addEventListener('keydown', e => {
-        if (lightbox.style.display === 'flex') {
-          if (e.key === 'ArrowLeft') showPrev();
-          if (e.key === 'ArrowRight') showNext();
-          if (e.key === 'Escape') closeLightbox(e);
-        }
-      });
-
-      lightbox.addEventListener('click', closeLightbox);
+      }, {passive:true});
     });
   </script>
 </body>
