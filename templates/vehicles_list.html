@@ -2,208 +2,282 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Vehicle Profiles | Palm Coast Inventory</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css" />
   <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background-color: #f1f4f9;
-      margin: 0;
-      padding: 0;
+    :root{
+      --pc-bg:#f5f7fb;
+      --pc-card:#ffffff;
+      --pc-border:rgba(0,0,0,.08);
+      --pc-text:#101828;
+      --pc-muted:#667085;
+      --pc-green:#14532d;
+
+      /* status colors */
+      --ok:#16a34a;
+      --yellow:#f59e0b;
+      --orange:#f97316;
+      --red:#ef4444;
+
+      --tint-ok:#e9faef;
+      --tint-yellow:#fff7e6;
+      --tint-orange:#fff1e9;
+      --tint-red:#ffe8e8;
     }
 
-    .container {
-      max-width: 100%;
-      padding: 20px;
+    *{ box-sizing:border-box }
+    html,body{ height:100% }
+    body{
+      margin:0; background:var(--pc-bg);
+      font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:var(--pc-text);
     }
 
-    h1 {
-      font-size: 1.5rem;
-      color: #145214;
-      margin-bottom: 20px;
-      text-align: center;
+    .container{ max-width:1100px; margin:0 auto; padding:20px; }
+
+    /* Hero */
+    .hero{
+      background:#0f3b25;
+      background: linear-gradient(135deg, #14532d 0%, #0e5a34 100%);
+      color:#fff; border-radius:16px; padding:16px 18px;
+      display:flex; align-items:center; justify-content:space-between; gap:16px;
+      box-shadow:0 10px 24px rgba(0,0,0,.12); margin-bottom:18px;
     }
-
-    .btn {
-      display: inline-block;
-      text-align: center;
-      padding: 10px 16px;
-      font-size: 1rem;
-      border: none;
-      border-radius: 8px;
-      text-decoration: none;
-      cursor: pointer;
-      font-weight: 600;
+    .hero h1{ margin:0; font-size:1.2rem; font-weight:800; letter-spacing:.2px }
+    .hero small{ opacity:.9 }
+    .hero-actions{ display:flex; gap:.5rem; flex-wrap:wrap }
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center; gap:.5rem;
+      padding:10px 14px; border-radius:10px; border:1px solid transparent;
+      text-decoration:none; cursor:pointer; font-weight:600; font-size:.95rem;
+      transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+      color:#fff;
     }
+    .btn-success{ background:#22c55e; border-color:#16a34a }
+    .btn-success:hover{ transform: translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,.15) }
+    .btn-secondary{ background:rgba(255,255,255,.14); border-color:rgba(255,255,255,.25); color:#fff }
+    .btn-secondary:hover{ background:rgba(255,255,255,.2) }
 
-    .btn-success {
-      background-color: #28a745;
-      color: white;
+    /* Controls row */
+    .controls{
+      display:grid; gap:.75rem; grid-template-columns: 1fr; margin: 10px 0 18px;
     }
-
-    .btn-success:hover {
-      background-color: #1f7f35;
+    @media (min-width: 680px){
+      .controls{ grid-template-columns: 1fr 200px 160px; align-items:center }
     }
-
-    .btn-secondary {
-      background-color: #6c757d;
-      color: white;
+    .search{ position:relative }
+    .search input{
+      width:100%; background:var(--pc-card); border:1px solid var(--pc-border);
+      border-radius:12px; padding:12px 14px 12px 40px; outline:none;
+      font-size:.95rem; color:var(--pc-text);
+      box-shadow:0 2px 10px rgba(0,0,0,.04);
     }
-
-    .btn-outline-primary {
-      color: #007bff;
-      border: 1px solid #007bff;
-      background-color: white;
+    .search .icon{
+      position:absolute; left:12px; top:50%; transform:translateY(-50%); opacity:.6; font-size:18px;
     }
-
-    .btn-outline-primary:hover {
-      background-color: #007bff;
-      color: white;
+    .select, .legend{
+      background:var(--pc-card); border:1px solid var(--pc-border);
+      padding:10px 12px; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,.04);
+      font-size:.95rem; color:var(--pc-text);
     }
-
-    .btn-outline-danger {
-      color: #dc3545;
-      border: 1px solid #dc3545;
-      background-color: white;
+    .legend{ display:flex; align-items:center; gap:.5rem; flex-wrap:wrap }
+    .chip{
+      display:inline-flex; align-items:center; gap:.35rem; padding:6px 10px; border-radius:999px; font-weight:600; font-size:.85rem;
+      border:1px solid var(--pc-border); background:#fff;
     }
+    .dot{ width:9px; height:9px; border-radius:50% }
 
-    .btn-outline-danger:hover {
-      background-color: #dc3545;
-      color: white;
+    /* Grid + cards */
+    .vehicle-grid{
+      display:grid; gap:14px;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     }
-
-    /* CARD STYLES */
-    .vehicle-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
-      gap: 16px;
+    .vehicle-card{
+      background:var(--pc-card); border:1px solid var(--pc-border); border-radius:14px; padding:14px;
+      box-shadow:0 2px 12px rgba(0,0,0,.04);
+      transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+      position:relative; overflow:hidden;
     }
+    .vehicle-card:hover{ transform:translateY(-2px); box-shadow:0 10px 20px rgba(0,0,0,.08) }
 
-    .vehicle-card {
-      background: white;
-      border-radius: 12px;
-      padding: 16px;
-      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
-      border-left: 6px solid transparent;
-      transition: transform 0.1s ease-in-out;
+    .status-bar{
+      position:absolute; left:0; top:0; width:6px; height:100%;
+      background:var(--ok);
     }
+    .status-ok .status-bar{ background:var(--ok) }
+    .status-yellow .status-bar{ background:var(--yellow) }
+    .status-orange .status-bar{ background:var(--orange) }
+    .status-red .status-bar{ background:var(--red) }
 
-    .vehicle-card:hover {
-      transform: scale(1.01);
+    .header{
+      display:flex; justify-content:space-between; gap:10px; margin-bottom:6px; align-items:center;
     }
+    .plate{ font-size:1.05rem; font-weight:800; letter-spacing:.3px }
+    .type{ color:var(--pc-muted); font-weight:600 }
 
-    .vehicle-red {
-      border-left-color: #dc3545;
-      background-color: #ffe5e5;
+    .rows{ display:grid; gap:6px; margin-top:8px }
+    .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; color:var(--pc-text) }
+    .label{ color:var(--pc-muted); font-weight:600 }
+    .badge{
+      display:inline-flex; align-items:center; gap:.4rem; padding:6px 10px;
+      font-weight:700; border-radius:999px; font-size:.8rem; letter-spacing:.2px;
+      border:1px solid transparent; background:#e9faef; color:#065f46;
     }
+    .badge.ok{ background:var(--tint-ok); color:#065f46; border-color:#b7f2c8 }
+    .badge.yellow{ background:var(--tint-yellow); color:#92400e; border-color:#fde68a }
+    .badge.orange{ background:var(--tint-orange); color:#9a3412; border-color:#fdba74 }
+    .badge.red{ background:var(--tint-red); color:#991b1b; border-color:#fecaca }
 
-    .vehicle-orange {
-      border-left-color: #fd7e14;
-      background-color: #fff3cd;
+    .actions{ display:flex; gap:.5rem; flex-wrap:wrap; margin-top:12px }
+    .btn-outline{
+      background:#fff; color:var(--pc-text); border:1px solid var(--pc-border);
     }
-
-    .vehicle-yellow {
-      border-left-color: #ffc107;
-      background-color: #fffbe6;
+    .btn-outline:hover{ box-shadow:0 6px 18px rgba(0,0,0,.08) }
+    .btn-danger{
+      background:#fff; color:#b91c1c; border:1px solid #f3b4b4;
     }
+    .btn-danger:hover{ background:#fee2e2 }
 
-    .vehicle-header {
-      font-size: 1.1rem;
-      font-weight: bold;
-      margin-bottom: 8px;
-      display: flex;
-      justify-content: space-between;
+    /* Floating add button on mobile */
+    .fab{
+      position:fixed; right:16px; bottom:16px; z-index:50;
+      background:#22c55e; color:#fff; border:none; border-radius:30px; padding:14px 16px; font-weight:800;
+      box-shadow:0 12px 24px rgba(34,197,94,.35); cursor:pointer;
     }
+    @media (min-width: 700px){ .fab{ display:none } }
 
-    .vehicle-detail {
-      margin: 4px 0;
-      font-size: 0.95rem;
+    /* Back link at bottom */
+    .bottom{
+      text-align:center; margin:26px 0 6px;
     }
-
-    .vehicle-actions {
-      margin-top: 12px;
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    @media (max-width: 768px) {
-      .vehicle-header {
-        flex-direction: column;
-        gap: 6px;
-      }
-
-      .vehicle-actions {
-        flex-direction: column;
-      }
-
-      .btn {
-        font-size: 0.95rem;
-        width: 100%;
-        padding: 10px 14px;
-      }
-    }
+    .back{ color:#334155; text-decoration:none; font-weight:700 }
+    .back:hover{ text-decoration:underline }
   </style>
 </head>
 <body>
   <div class="container">
 
-    <h1>🚛 Vehicle Profiles</h1>
+    <!-- HERO -->
+    <section class="hero">
+      <div>
+        <h1>🚛 Vehicle Profiles</h1>
+        <small>Track status, mileage windows, and assigned techs</small>
+      </div>
+      <div class="hero-actions">
+        <a href="/" class="btn btn-secondary" aria-label="Back to Dashboard">← Dashboard</a>
+        <a href="/vehicles/new" class="btn btn-success" aria-label="Add New Vehicle">➕ Add Vehicle</a>
+      </div>
+    </section>
 
-    <div style="text-align: right; margin-bottom: 15px;">
-      <a href="/vehicles/new" class="btn btn-success">➕ Add New Vehicle</a>
+    <!-- CONTROLS -->
+    <div class="controls">
+      <div class="search">
+        <span class="icon">🔎</span>
+        <input id="search" type="search" placeholder="Search by plate, tech, or type…">
+      </div>
+
+      <select id="statusFilter" class="select" aria-label="Filter by status">
+        <option value="all" selected>All Statuses</option>
+        <option value="ok">Up to date</option>
+        <option value="yellow">Due < 2000 mi</option>
+        <option value="orange">Due < 1000 mi</option>
+        <option value="red">Due < 500 mi</option>
+      </select>
+
+      <div class="legend">
+        <span class="chip"><span class="dot" style="background:var(--ok)"></span> OK</span>
+        <span class="chip"><span class="dot" style="background:var(--yellow)"></span> < 2000</span>
+        <span class="chip"><span class="dot" style="background:var(--orange)"></span> < 1000</span>
+        <span class="chip"><span class="dot" style="background:var(--red)"></span> < 500</span>
+      </div>
     </div>
 
-    <!-- 🔔 Legend -->
-    <div style="margin-bottom: 20px; font-size: 0.9rem;">
-      <strong>Status Legend:</strong>
-      <span style="background:#fffbe6; padding:2px 6px; border-radius:4px;">Yellow = due in 2000 mi</span>,
-      <span style="background:#fff3cd; padding:2px 6px; border-radius:4px;">Orange = due in 1000 mi</span>,
-      <span style="background:#ffe5e5; padding:2px 6px; border-radius:4px;">Red = due in 500 mi</span>
-    </div>
-
-    <div class="vehicle-grid">
+    <!-- GRID -->
+    <div class="vehicle-grid" id="grid">
       {% for vehicle in vehicles %}
         {% set status = statuses[vehicle[0]] %}
-        {% set card_class = 'vehicle-card' %}
+        {% set status_class = 'ok' if not status else status %}
         {% if status == 'red' %}
-          {% set card_class = card_class + ' vehicle-red' %}
+          {% set status_label = 'Due in < 500 mi' %}
         {% elif status == 'orange' %}
-          {% set card_class = card_class + ' vehicle-orange' %}
+          {% set status_label = 'Due in < 1000 mi' %}
         {% elif status == 'yellow' %}
-          {% set card_class = card_class + ' vehicle-yellow' %}
+          {% set status_label = 'Due in < 2000 mi' %}
+        {% else %}
+          {% set status_label = 'Up to date' %}
         {% endif %}
 
-        <div class="{{ card_class }}">
-          <div class="vehicle-header">
-            <span>🔖 {{ vehicle[1] }}</span>
-            <span>{{ vehicle[2] }}</span>
+        <div
+          class="vehicle-card status-{{ status_class }}"
+          data-plate="{{ vehicle[1] | lower }}"
+          data-tech="{{ (vehicle[3] or '') | lower }}"
+          data-type="{{ vehicle[2] | lower }}"
+          data-status="{{ status_class }}"
+        >
+          <div class="status-bar" aria-hidden="true"></div>
+
+          <div class="header">
+            <div class="plate">🔖 {{ vehicle[1] }}</div>
+            <div class="type">{{ vehicle[2] }}</div>
           </div>
-          <div class="vehicle-detail">👨‍🔧 <strong>Technician:</strong> {{ vehicle[3] }}</div>
-          {% if status == 'red' %}
-            <div class="vehicle-detail">🛢️ <strong>Status:</strong> Due in &lt; 500 mi</div>
-          {% elif status == 'orange' %}
-            <div class="vehicle-detail">🛢️ <strong>Status:</strong> Due in &lt; 1000 mi</div>
-          {% elif status == 'yellow' %}
-            <div class="vehicle-detail">🛢️ <strong>Status:</strong> Due in &lt; 2000 mi</div>
-          {% else %}
-            <div class="vehicle-detail">🛢️ <strong>Status:</strong> Up to date</div>
-          {% endif %}
-          <div class="vehicle-actions">
-            <a href="/vehicles/{{ vehicle[0] }}" class="btn btn-outline-primary">View</a>
-            <form action="/delete-vehicle/{{ vehicle[0] }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this vehicle?')" style="display:inline;">
-              <button type="submit" class="btn btn-outline-danger">Delete</button>
+
+          <div class="rows">
+            <div class="row">
+              <span class="label">👨‍🔧 Technician:</span>
+              <span>{{ vehicle[3] or 'Unassigned' }}</span>
+            </div>
+            <div class="row">
+              <span class="label">🛢️ Status:</span>
+              <span class="badge {{ status_class }}">{{ status_label }}</span>
+            </div>
+          </div>
+
+          <div class="actions">
+            <a href="/vehicles/{{ vehicle[0] }}" class="btn btn-outline" aria-label="View vehicle {{ vehicle[1] }}">View</a>
+            <form action="/delete-vehicle/{{ vehicle[0] }}" method="POST" onsubmit="return confirm('Delete this vehicle?')" style="display:inline;">
+              <button type="submit" class="btn btn-danger">Delete</button>
             </form>
           </div>
         </div>
       {% endfor %}
     </div>
 
-    <div style="text-align: center; margin-top: 30px;">
-      <a href="/" class="btn btn-secondary">← Back to Dashboard</a>
+    <div class="bottom">
+      <a href="/" class="back">← Back to Dashboard</a>
     </div>
-
   </div>
+
+  <!-- Floating Add button (mobile) -->
+  <button class="fab" onclick="location.href='/vehicles/new'" aria-label="Add Vehicle">➕</button>
+
+  <script>
+    // Client-side filter: search + status
+    const search = document.getElementById('search');
+    const statusFilter = document.getElementById('statusFilter');
+    const cards = Array.from(document.querySelectorAll('.vehicle-card'));
+
+    function applyFilters(){
+      const q = (search.value || '').trim().toLowerCase();
+      const s = statusFilter.value; // all | ok | yellow | orange | red
+
+      cards.forEach(card => {
+        const plate = card.dataset.plate;
+        const tech  = card.dataset.tech;
+        const type  = card.dataset.type;
+        const st    = card.dataset.status;
+
+        const matchText = !q || plate.includes(q) || tech.includes(q) || type.includes(q);
+        const matchStatus = (s === 'all') || (st === s);
+
+        card.style.display = (matchText && matchStatus) ? '' : 'none';
+      });
+    }
+
+    search.addEventListener('input', applyFilters);
+    statusFilter.addEventListener('change', applyFilters);
+  </script>
 </body>
 </html>
