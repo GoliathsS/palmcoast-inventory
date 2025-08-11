@@ -2,283 +2,420 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Scan Product | Palm Coast Inventory</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
   <link rel="manifest" href="/static/manifest.json">
-  <meta name="theme-color" content="#ffffff">
+  <meta name="theme-color" content="#14532d">
   <link rel="apple-touch-icon" sizes="180x180" href="/static/palm_icon_180.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="/static/palm_icon_192.png" />
+  <link rel="stylesheet" href="/static/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&display=swap" rel="stylesheet">
+
   <style>
-    body {
-      margin: 0;
-      font-family: "Segoe UI", "Inter", sans-serif;
-      background-color: #f1f4f9;
-      color: #222;
-      padding: 0;
+    :root{
+      --pc-bg:#f5f7fb; --pc-card:#ffffff; --pc-border:rgba(0,0,0,.08);
+      --pc-text:#101828; --pc-muted:#667085; --pc-green:#14532d;
+      --ok:#16a34a; --warn:#f59e0b; --err:#dc2626;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:var(--pc-bg);color:var(--pc-text);
+         font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;}
+    header{
+      position:sticky; top:0; z-index:10; background:#fff;
+      box-shadow:0 2px 8px rgba(0,0,0,.06); text-align:center; padding:.75rem .75rem;
+    }
+    header img{height:44px;border-radius:8px}
+    header h2{margin:.25rem 0 0; font-size:1.15rem}
+
+    .wrap{max-width:640px; margin:14px auto; padding:0 12px}
+    .card{background:var(--pc-card); border:1px solid var(--pc-border); border-radius:16px;
+          box-shadow:0 4px 12px rgba(0,0,0,.05); padding:14px;}
+
+    .row{display:grid; gap:.6rem}
+    @media (min-width:600px){ .row{ grid-template-columns: 1fr 1fr } }
+
+    select,button{
+      width:100%; padding:12px; font-size:1rem; border-radius:10px; border:1px solid var(--pc-border);
+      background:#fff; outline:none;
+    }
+    select:focus, button:focus{ box-shadow:0 0 0 3px rgba(20,83,45,.15) }
+
+    .btn-primary{ background:var(--pc-green); color:#fff; border:none; font-weight:700 }
+    .btn-ghost{ background:#eef2f7; border:1px solid var(--pc-border); color:#111 }
+    .btn-danger{ background:#fee2e2; border:1px solid #fca5a5; color:#b91c1c }
+
+    .controls{ display:grid; gap:.6rem; margin-top:.6rem }
+    .controls .row-btns{ display:grid; grid-template-columns: 1fr 1fr; gap:.6rem }
+    @media (min-width:600px){ .controls .row-btns{ grid-template-columns: 1fr 1fr 1fr } }
+
+    #scanner-container{ display:none; position:relative; margin-top:.75rem }
+    #scanner-container video{
+      width:100%; height:auto; border-radius:16px; display:block;
+      box-shadow:0 0 12px rgba(0,0,0,.08);
     }
 
-    header {
-      padding: 1rem;
-      background: white;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
-      text-align: center;
+    /* Overlay guide */
+    .overlay{ pointer-events:none; position:absolute; inset:0; display:grid; place-items:center; }
+    .frame{
+      width:72%; max-width:420px; aspect-ratio: 1.6 / 1;
+      border:3px solid rgba(255,255,255,.9); border-radius:12px;
+      box-shadow:0 0 0 9999px rgba(0,0,0,.25) inset; position:relative;
+    }
+    .scanline{
+      position:absolute; left:4%; right:4%; height:2px; background:rgba(56,189,248,.9);
+      box-shadow:0 0 12px rgba(56,189,248,.7); border-radius:2px; animation:slide 2.2s linear infinite;
+    }
+    @keyframes slide{ 0%{ top:10% } 50%{ top:50% } 100%{ top:90% } }
+
+    #status{ margin: .75rem 0 .25rem; text-align:center; font-weight:800 }
+    .success{ color:var(--ok) } .error{ color:var(--err) } .warning{ color:var(--warn) }
+
+    .toggle-log{ width:100%; background:#eef2f7; border:1px solid var(--pc-border); color:#111 }
+    .log{ background:#f9fafb; border:1px solid var(--pc-border); border-radius:12px; padding:12px; margin-top:.6rem }
+    .log h3{ margin:.2rem 0 .5rem; font-size:1rem }
+    .log ul{ margin:0; padding-left:1.1rem; font-size:.95rem }
+    .hidden{ display:none }
+
+    .footer-link{
+      display:inline-block; margin:18px auto 24px; background:var(--pc-green); color:#fff;
+      padding:12px 20px; border-radius:10px; font-weight:700; text-decoration:none;
     }
 
-    header img {
-      height: 50px;
-      border-radius: 8px;
+    /* Toasts */
+    .toast-stack{
+      position:fixed; left:50%; transform:translateX(-50%);
+      bottom:16px; z-index:2000; display:grid; gap:8px;
+      width:min(92vw,520px); pointer-events:none;
     }
-
-    h2 {
-      font-size: 1.3rem;
-      margin: 0.5rem 0;
+    .toast{
+      pointer-events:auto; display:flex; align-items:center; gap:.6rem;
+      background:#111; color:#fff; padding:10px 12px; border-radius:12px;
+      box-shadow:0 10px 20px rgba(0,0,0,.2); animation:toast-in .18s ease-out;
     }
-
-    .scanner-panel {
-      padding: 1rem;
-      max-width: 520px;
-      margin: auto;
-      background: white;
-      border-radius: 16px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-    }
-
-    select, button {
-      width: 100%;
-      padding: 14px;
-      font-size: 1.05rem;
-      margin: 0.75rem 0;
-      border: 1px solid #ccc;
-      border-radius: 10px;
-      background: #fff;
-      transition: 0.2s ease;
-    }
-
-    button:hover {
-      background-color: #f2f2f2;
-    }
-
-    #scanner-container video {
-      width: 100% !important;
-      height: auto !important;
-      border-radius: 16px;
-      margin-top: 1rem;
-      box-shadow: 0 0 12px rgba(0,0,0,0.08);
-    }
-
-    #status {
-      margin: 1rem 0 0.5rem;
-      font-weight: bold;
-      font-size: 1.1rem;
-      text-align: center;
-    }
-
-    .success { color: #15803d; }
-    .error { color: #dc2626; }
-    .warning { color: #f59e0b; }
-
-    .collapsible-log {
-      background: #f9f9f9;
-      border-radius: 12px;
-      margin-top: 1rem;
-      padding: 1rem;
-      box-shadow: inset 0 1px 3px rgba(0,0,0,0.03);
-    }
-
-    .collapsible-log h3 {
-      font-size: 1.1rem;
-      margin-bottom: 0.5rem;
-      font-weight: 600;
-      color: #374151;
-    }
-
-    .collapsible-log ul {
-      padding-left: 1.2rem;
-      list-style-type: disc;
-      font-size: 0.95rem;
-    }
-
-    .toggle-log {
-      background: #eef2f7;
-      border: none;
-      padding: 12px;
-      width: 100%;
-      border-radius: 10px;
-      font-weight: 500;
-      font-size: 1rem;
-      color: #333;
-    }
-
-    #start-btn {
-      background-color: #14532d;
-      color: white;
-      font-weight: 600;
-      border: none;
-      border-radius: 10px;
-      transition: background 0.2s ease;
-    }
-    #start-btn:hover {
-      background-color: #0e3d1f;
-    }
-
+    .toast.success{ background: var(--pc-green, #14532d); }
+    .toast.error{ background:#b91c1c; }
+    .toast .msg{ font-weight:700 }
+    .toast .sub{ font-size:.85rem; opacity:.9 }
+    @keyframes toast-in{ from{ transform:translateY(8px); opacity:0 } to{ transform:translateY(0); opacity:1 } }
   </style>
 </head>
 <body>
-
   <header>
-    <img src="/static/LOGO.jpg" alt="Palm Coast Pest Control Logo">
+    <img src="/static/LOGO.jpg" alt="Palm Coast Pest Control Logo" />
     <h2>🎞️ Scan Product</h2>
   </header>
 
-  <div class="scanner-panel">
-    <select id="direction">
-      <option value="in">Scan In</option>
-      <option value="out">Scan Out</option>
-    </select>
+  <div class="wrap">
+    <div class="card">
+      <!-- Direction + Technician (tech only for 'out') -->
+      <div class="row">
+        <select id="direction" aria-label="Scan direction">
+          <option value="in">Scan In</option>
+          <option value="out">Scan Out</option>
+        </select>
 
-    <select id="technician" name="technician">
-      <option value="">-- Select Technician --</option>
-      {% for tech in technicians %}
-        <option value="{{ tech.id }}">{{ tech.name }}</option>
-      {% endfor %}
-    </select>
+        <select id="technician" name="technician" aria-label="Technician">
+          <option value="">-- Select Technician --</option>
+          {% for tech in technicians %}
+            <option value="{{ tech.id }}">{{ tech.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
 
-    <button id="start-btn">▶️ Start Scanner</button>
-    <div id="scanner-container" style="display:none;"></div>
+      <!-- Camera/device & actions -->
+      <div class="controls">
+        <div class="row">
+          <select id="cameraSelect" aria-label="Camera device">
+            <option value="">Default Camera</option>
+          </select>
+          <div class="row-btns">
+            <button id="start-btn" class="btn-primary">▶️ Start</button>
+            <button id="pause-btn" class="btn-ghost" disabled>⏸ Pause</button>
+            <button id="torch-btn" class="btn-ghost" disabled>🔦 Flash</button>
+          </div>
+        </div>
 
-    <p id="status"></p>
+        <div id="scanner-container">
+          <video id="preview" playsinline autoplay muted></video>
+          <div class="overlay" aria-hidden="true">
+            <div class="frame">
+              <div class="scanline"></div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-    <button class="toggle-log" onclick="document.getElementById('log-panel').classList.toggle('hidden')">
-      🗞 Toggle Checkout List
-    </button>
+      <p id="status" class=""></p>
 
-    <div id="log-panel" class="collapsible-log">
-      <h3>Scanned Items</h3>
-      <ul id="scanned-items"></ul>
+      <button class="toggle-log" type="button" id="toggleLog">🗞 Checkout List</button>
+      <div id="log-panel" class="log hidden">
+        <h3>Scanned Items</h3>
+        <ul id="scanned-items"></ul>
+      </div>
+    </div>
+
+    <div style="text-align:center">
+      <a href="/" class="footer-link">⬅ Back to Dashboard</a>
     </div>
   </div>
 
+  <!-- Toast stack -->
+  <div id="toasts" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
+
   <audio id="beep" src="/static/beep.mp3" preload="auto"></audio>
 
-<script type="module">
-  import { BrowserMultiFormatReader } from "https://cdn.jsdelivr.net/npm/@zxing/browser@latest/+esm";
+  <!-- ZXing -->
+  <script type="module">
+    import { BrowserMultiFormatReader } from "https://cdn.jsdelivr.net/npm/@zxing/browser@latest/+esm";
 
-  const statusDisplay = document.getElementById("status");
-  const directionSelect = document.getElementById("direction");
-  const technicianSelect = document.getElementById("technician");
-  const scannedItems = document.getElementById("scanned-items");
-  const scannerContainer = document.getElementById("scanner-container");
-  const startBtn = document.getElementById("start-btn");
-  const beep = document.getElementById("beep");
-
-  const codeReader = new BrowserMultiFormatReader();
-  let videoElement;
-
-  async function scanLoop() {
-    try {
-      const result = await codeReader.decodeOnceFromVideoElement(videoElement);
-      const barcode = result.getText();
-      const direction = directionSelect.value;
-      const technician = technicianSelect.value;
-
-      if (direction === "out" && !technician) {
-        statusDisplay.textContent = "⚠️ Technician required for Scan Out.";
-        statusDisplay.className = "warning";
-        return scanLoop(); // Retry after showing warning
-      }
-
-      beep.play().catch(e => console.warn("🔇 Beep error:", e));
-      statusDisplay.textContent = `📦 Scanned: ${barcode}`;
-      statusDisplay.className = "";
-
-      const li = document.createElement("li");
-      const now = new Date().toLocaleTimeString();
-      li.textContent = `${now} — ${barcode} (${direction})`;
-      scannedItems.appendChild(li);
-
-      const res = await fetch("/scan-action", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ barcode, direction, technician }),
-      });
-
-      const data = await res.json();
-
-      if (data.status === "success") {
-        statusDisplay.textContent = `✅ Scan ${direction} successful for ${barcode}`;
-        statusDisplay.className = "success";
-      } else {
-        statusDisplay.textContent = `❌ Product ${barcode} not found`;
-        statusDisplay.className = "error";
-      }
-
-      setTimeout(scanLoop, 1500); // Restart scanner
-    } catch (err) {
-      console.error("Scan error:", err);
-      statusDisplay.textContent = `❌ ${err.message || "Scan failed"}`;
-      statusDisplay.className = "error";
+    // Toast helper (module-local)
+    function toast(message, {sub=null, variant='success', ttl=2600} = {}){
+      const stack = document.getElementById('toasts');
+      const el = document.createElement('div');
+      el.className = `toast ${variant}`;
+      el.innerHTML = `<span>${variant==='success'?'✅':'❌'}</span>
+                      <div><div class="msg">${message}</div>${sub?`<div class="sub">${sub}</div>`:''}</div>`;
+      stack.appendChild(el);
+      while (stack.children.length > 3) stack.firstElementChild.remove();
+      setTimeout(() => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(8px)';
+        setTimeout(() => el.remove(), 300);
+      }, ttl);
     }
-  }
 
-  startBtn.addEventListener("click", async () => {
-    startBtn.disabled = true;
-    scannerContainer.innerHTML = "";
-    scannerContainer.style.display = "block";
+    const statusEl = document.getElementById("status");
+    const directionEl = document.getElementById("direction");
+    const techEl = document.getElementById("technician");
+    const camSelect = document.getElementById("cameraSelect");
 
-    try {
+    const startBtn = document.getElementById("start-btn");
+    const pauseBtn = document.getElementById("pause-btn");
+    const torchBtn = document.getElementById("torch-btn");
+    const toggleLogBtn = document.getElementById("toggleLog");
+
+    const container = document.getElementById("scanner-container");
+    const video = document.getElementById("preview");
+    const list = document.getElementById("scanned-items");
+    const beep = document.getElementById("beep");
+    const logPanel = document.getElementById("log-panel");
+
+    const reader = new BrowserMultiFormatReader();
+
+    let stream = null;
+    let active = false;
+    let lastBarcode = "";
+    let lastTime = 0;
+    let currentTrack = null;
+    let torchOn = false;
+
+    const SCAN_COOLDOWN_MS = 900;   // prevent rapid dupes
+    const LOOP_DELAY_MS = 250;      // let UI/network breathe
+
+    function setStatus(msg, cls=""){
+      statusEl.textContent = msg;
+      statusEl.className = cls;
+    }
+
+    function showTechIfNeeded(){
+      const isOut = directionEl.value === "out";
+      techEl.style.display = isOut ? "" : "none";
+    }
+    showTechIfNeeded();
+    directionEl.addEventListener("change", showTechIfNeeded);
+
+    toggleLogBtn.addEventListener("click", () => logPanel.classList.toggle("hidden"));
+
+    async function listCameras(){
+      try{
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const vids = devices.filter(d => d.kind === "videoinput");
+        camSelect.innerHTML = '<option value="">Default Camera</option>';
+        vids.forEach((v, i) => {
+          const opt = document.createElement("option");
+          opt.value = v.deviceId;
+          opt.textContent = v.label || `Camera ${i+1}`;
+          camSelect.appendChild(opt);
+        });
+      }catch(e){ /* ignore */ }
+    }
+
+    async function startCamera(){
       const constraints = {
-        video: {
-          facingMode: { exact: "environment" },
-          focusMode: "continuous", // hint for focus
+        audio:false,
+        video:{
+          deviceId: camSelect.value || undefined,
+          facingMode: camSelect.value ? undefined : { ideal: "environment" },
+          focusMode: "continuous",
           width: { ideal: 1280 },
           height: { ideal: 720 }
-        },
-        audio: false
+        }
       };
+      stream = await navigator.mediaDevices.getUserMedia(constraints);
+      video.srcObject = stream;
+      await video.play();
 
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      videoElement = document.createElement("video");
-      videoElement.setAttribute("playsinline", true);
-      videoElement.setAttribute("autoplay", true);
-      videoElement.setAttribute("muted", true);
-      videoElement.style.width = "100%";
-      videoElement.style.borderRadius = "16px";
-      scannerContainer.appendChild(videoElement);
-      videoElement.srcObject = stream;
-      await videoElement.play();
-
-      scanLoop(); // Start scanning loop
-
-    } catch (err) {
-      console.error("Camera error:", err);
-      statusDisplay.textContent = `❌ ${err.message || "Camera access denied"}`;
-      statusDisplay.className = "error";
+      // track + torch support
+      currentTrack = stream.getVideoTracks()[0];
+      const caps = currentTrack.getCapabilities?.() || {};
+      if ("torch" in caps){
+        torchBtn.disabled = false;
+      } else {
+        torchBtn.disabled = true;
+      }
+      container.style.display = "block";
     }
-  });
-</script>
 
-<script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/static/service-worker.js')
-      .then(reg => console.log("✅ Service Worker registered", reg))
-      .catch(err => console.error("❌ Service Worker failed", err));
-  }
-</script>
+    async function stopCamera(){
+      if (stream){
+        stream.getTracks().forEach(t => t.stop());
+        stream = null;
+        currentTrack = null;
+      }
+      container.style.display = "none";
+      torchOn = false;
+      torchBtn.textContent = "🔦 Flash";
+      torchBtn.disabled = true;
+    }
 
-  <div style="text-align: center; margin-top: 2rem;">
-    <a href="/" style="
-      display: inline-block;
-      background-color: #14532d;
-      color: white;
-      text-decoration: none;
-      padding: 12px 20px;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 1rem;
-    ">
-      ⬅ Back to Dashboard
-    </a>
-  </div>
+    async function toggleTorch(){
+      try{
+        if (!currentTrack) return;
+        torchOn = !torchOn;
+        await currentTrack.applyConstraints({ advanced: [{ torch: torchOn }] });
+        torchBtn.textContent = torchOn ? "🔦 Flash: On" : "🔦 Flash";
+      }catch(e){
+        torchBtn.disabled = true;
+      }
+    }
+
+    async function sendScan(barcode, direction, technician){
+      try{
+        const res = await fetch("/scan-action",{
+          method:"POST",
+          headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify({ barcode, direction, technician })
+        });
+        const data = await res.json().catch(() => ({}));
+
+        const name = data.product_name || data.name || "";
+        if (data.status === "success"){
+          setStatus(`✅ ${name ? name + " • " : ""}${barcode} ${direction} successful`, "success");
+
+          // Toast on success
+          const verb = direction === 'out' ? 'Checked out' : 'Checked in';
+          toast(verb, { sub: name ? `${name} • ${barcode}` : barcode, variant:'success' });
+
+        } else {
+          setStatus(`❌ Product ${barcode} not found`, "error");
+          // toast('Not found', { sub: barcode, variant:'error' }); // enable if desired
+        }
+      }catch(e){
+        setStatus(`❌ Network error`, "error");
+        // toast('Network error', { variant:'error' });
+      }
+    }
+
+    async function scanLoop(){
+      if (!active) return;
+      try{
+        const result = await reader.decodeOnceFromVideoElement(video);
+        const now = Date.now();
+        const barcode = result.getText();
+        const direction = directionEl.value;
+        const technician = techEl.value;
+
+        if (direction === "out" && !technician){
+          setStatus("⚠️ Technician required for Scan Out.", "warning");
+          setTimeout(scanLoop, LOOP_DELAY_MS);
+          return;
+        }
+
+        // De-dupe: skip same code within cooldown window
+        if (barcode === lastBarcode && (now - lastTime) < SCAN_COOLDOWN_MS){
+          setTimeout(scanLoop, LOOP_DELAY_MS);
+          return;
+        }
+        lastBarcode = barcode; lastTime = now;
+
+        // Beep only on successful decode
+        beep?.play().catch(()=>{});
+
+        // Log entry
+        const li = document.createElement("li");
+        const t = new Date().toLocaleTimeString();
+        li.textContent = `${t} — ${barcode} (${direction})`;
+        list.appendChild(li);
+
+        // Send to server
+        await sendScan(barcode, direction, technician);
+
+        setTimeout(scanLoop, LOOP_DELAY_MS);
+      }catch(err){
+        if (!active) return;
+        console.warn("Scan error:", err?.message || err);
+        setStatus(``, "");
+        setTimeout(scanLoop, LOOP_DELAY_MS);
+      }
+    }
+
+    startBtn.addEventListener("click", async () => {
+      try{
+        startBtn.disabled = true;
+        setStatus("Starting camera…");
+        await listCameras();
+        await startCamera();
+        active = true;
+        pauseBtn.disabled = false;
+        setStatus("Point camera at barcode");
+        scanLoop();
+      }catch(e){
+        console.error(e);
+        setStatus(`❌ ${e.message || "Camera access denied"}`, "error");
+        startBtn.disabled = false;
+      }
+    });
+
+    pauseBtn.addEventListener("click", async () => {
+      if (!active){
+        active = true;
+        pauseBtn.textContent = "⏸ Pause";
+        setStatus("Resumed");
+        scanLoop();
+      } else {
+        active = false;
+        pauseBtn.textContent = "▶️ Resume";
+        setStatus("Paused");
+      }
+    });
+
+    torchBtn.addEventListener("click", toggleTorch);
+
+    camSelect.addEventListener("change", async () => {
+      const wasActive = active;
+      active = false;
+      await stopCamera();
+      try{
+        await startCamera();
+        if (wasActive){
+          active = true;
+          scanLoop();
+        }
+      }catch(e){
+        setStatus("❌ Failed to switch camera", "error");
+      }
+    });
+
+    // Cleanup on page unload
+    window.addEventListener("beforeunload", stopCamera);
+  </script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/static/service-worker.js').catch(()=>{});
+    }
+  </script>
 </body>
 </html>
