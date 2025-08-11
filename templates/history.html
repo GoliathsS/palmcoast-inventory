@@ -2,127 +2,382 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Scan History | Palm Coast Inventory</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css">
+
   <style>
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: white;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
-      margin-top: 20px;
-      border-radius: 8px;
-      overflow: hidden;
+    :root{
+      --pc-bg:#f5f7fb; --pc-card:#ffffff; --pc-border:rgba(0,0,0,.08);
+      --pc-text:#101828; --pc-muted:#667085; --pc-green:#14532d;
+      --pc-yellow:#f59e0b; --pc-red:#ef4444; --pc-blue:#2563eb;
     }
-    th, td {
-      padding: 12px;
-      border-bottom: 1px solid #eee;
-      text-align: left;
+    *{box-sizing:border-box}
+    body{ margin:0; background:var(--pc-bg); color:var(--pc-text);
+          font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; }
+
+    /* Header */
+    .header{
+      background:#fff; box-shadow:0 2px 8px rgba(0,0,0,.06);
+      text-align:center; padding:.9rem .75rem;
     }
-    th {
-      background: #f3f4f6;
-      font-weight: bold;
+    .header img{ height:56px; border-radius:10px }
+    .header h2{ margin:.4rem 0 0; font-size:1.25rem }
+
+    .container{ max-width:1100px; margin:0 auto; padding:16px }
+
+    /* Back button */
+    .back-bar{ text-align:center; margin: 0 0 14px }
+    .back-btn{
+      display:inline-block; text-decoration:none; background:var(--pc-green); color:#fff;
+      padding:10px 16px; border-radius:10px; font-weight:700;
     }
+
+    /* Card */
+    .card{
+      background:var(--pc-card); border:1px solid var(--pc-border); border-radius:14px;
+      box-shadow:0 2px 10px rgba(0,0,0,.04); padding:14px; margin-bottom:16px;
+    }
+    .card h3{ margin:0 0 10px; font-size:1.05rem; font-weight:800; color:#0f172a }
+
+    /* Filters */
+    .filters{ display:grid; gap:.6rem; align-items:end }
+    @media (min-width: 700px){ .filters{ grid-template-columns: 1fr 1fr auto auto } }
+    label{ font-weight:600; color:var(--pc-muted); display:block; margin-bottom:4px }
+    select, button{
+      width:100%; padding:10px 12px; border:1px solid var(--pc-border); border-radius:10px;
+      background:#fff; font-size:.95rem; outline:none;
+    }
+    .btn-primary{ background:var(--pc-green); color:#fff; border:none; font-weight:700 }
+    .btn-ghost{ background:#eef2f7; border:1px solid var(--pc-border); color:#111; font-weight:700 }
+
+    /* Tables */
+    .table-wrap{ overflow:auto; border:1px solid var(--pc-border); border-radius:12px }
+    table{ width:100%; border-collapse:separate; border-spacing:0; background:#fff }
+    thead th{
+      position:sticky; top:0; z-index:1; background:#f8fafc; text-align:left;
+      padding:12px; border-bottom:1px solid var(--pc-border); font-weight:800; font-size:.9rem;
+    }
+    tbody td{ padding:12px; border-bottom:1px solid var(--pc-border); font-size:.95rem }
+    tbody tr:nth-child(odd){ background:#fafafa }
+
+    /* Direction badges */
+    .badge{
+      display:inline-flex; align-items:center; gap:.4rem; padding:4px 10px; border-radius:999px;
+      font-weight:800; font-size:.8rem; border:1px solid transparent;
+    }
+    .badge-in{ background:#e9faef; color:#065f46; border-color:#b7f2c8 }
+    .badge-out{ background:#fff7e6; color:#92400e; border-color:#fde68a }
+
+    .totals{ text-align:right; font-weight:800; margin-top:.6rem }
+    .muted{ color:var(--pc-muted) }
+
+    /* Section actions */
+    .section-actions{ display:flex; gap:.6rem; flex-wrap:wrap; justify-content:flex-end; margin-bottom:.6rem }
+    .export-btn{ white-space:nowrap }
+
+    /* Subtotal row */
+    .subtotal-row{ background:#fffdf2; font-weight:800 }
+    .subtotal-row td{ border-top:1px solid var(--pc-border) }
+
+    /* Sparkline cell */
+    .spark-td{ width:120px; min-width:120px }
+    .spark{ width:100px; height:28px; display:block; }
   </style>
 </head>
 <body>
 
-  <header style="text-align:center; padding: 1rem 0; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 1rem;">
-    <img src="/static/LOGO.jpg" alt="Palm Coast Pest Control Logo" style="height: 60px; border-radius: 8px;">
-    <h2 style="margin-top: 0.5rem;">📜 Product Scan History</h2>
+  <header class="header">
+    <img src="/static/LOGO.jpg" alt="Palm Coast Pest Control Logo">
+    <h2>📜 Product Scan History</h2>
   </header>
 
-  <div style="text-align:center; margin-bottom: 1.5rem;">
-  <a href="/" style="text-decoration:none; padding: 10px 16px; background:#14532d; color:white; border-radius: 8px; font-weight:600;">
-    ← Back to Dashboard
-  </a>
-</div>
+  <div class="container">
+    <div class="back-bar">
+      <a href="/" class="back-btn">← Back to Dashboard</a>
+    </div>
 
-  <div class="settings-section" style="max-width: 600px; margin: auto;">
-    <form method="GET" action="/history">
-      <label for="month">Month:</label>
-      <select name="month" id="month">
-        <option value="">All Months</option>
-        {% for m in months %}
-          <option value="{{ m }}" {% if selected_month == m %}selected{% endif %}>{{ m }}</option>
-        {% endfor %}
-      </select>
+    <!-- Filters -->
+    <section class="card">
+      <h3>Filters</h3>
+      <form method="GET" action="/history" class="filters">
+        <div>
+          <label for="month">Month</label>
+          <select name="month" id="month">
+            <option value="">All Months</option>
+            {% for m in months %}
+              <option value="{{ m }}" {% if selected_month == m %}selected{% endif %}>{{ m }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label for="technician">Technician</label>
+          <select name="technician" id="technician">
+            <option value="">All Techs</option>
+            {% for tech in technicians %}
+              <option value="{{ tech }}" {% if selected_tech == tech %}selected{% endif %}>{{ tech }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <button type="submit" class="btn-primary">🔍 Filter</button>
+        <a href="/history" class="btn-ghost" style="text-align:center; text-decoration:none; display:inline-grid; place-items:center">Reset</a>
+      </form>
+      {% if selected_month or selected_tech %}
+        <div class="muted" style="margin-top:.6rem">
+          Active filters:
+          {% if selected_month %}<strong>Month:</strong> {{ selected_month }}{% endif %}
+          {% if selected_month and selected_tech %} • {% endif %}
+          {% if selected_tech %}<strong>Tech:</strong> {{ selected_tech }}{% endif %}
+        </div>
+      {% endif %}
+    </section>
 
-      <label for="technician">Technician:</label>
-      <select name="technician" id="technician">
-        <option value="">All Techs</option>
-        {% for tech in technicians %}
-          <option value="{{ tech }}" {% if selected_tech == tech %}selected{% endif %}>{{ tech }}</option>
-        {% endfor %}
-      </select>
-
-      <button type="submit">🔍 Filter</button>
-    </form>
-  </div>
-
-  <div style="max-width: 960px; margin: 40px auto 20px;">
-    <h3>📦 Technician Usage Summary</h3>
-    <table>
-      <thead>
-        <tr>
-          <th>Technician</th>
-          <th>Product</th>
-          <th>Quantity</th>
-          <th>Unit Cost</th>
-          <th>Total Cost</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in summary %}
-        <tr>
-          <td>{{ row[0] }}</td>
-          <td>{{ row[1] }}</td>
-          <td>{{ row[2] }}</td>
-          <td>${{ '%.2f' | format(row[3] or 0) }}</td>
-          <td>${{ '%.2f' | format(row[4] or 0) }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    <p style="text-align:right; font-weight:bold; margin-top: 1rem;">
-      🧾 Total Cost: ${{ '%.2f' | format(total_cost or 0.00) }}
-    </p>
-  </div>
-
-  <div style="max-width: 960px; margin: 40px auto;">
-    <h3>🕓 Scan Log</h3>
-    <table>
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Time</th>
-          <th>Product</th>
-          <th>Direction</th>
-          <th>Technician</th>
-          <th>Unit Cost</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in logs %}
-        <tr>
-          <td>{{ row[2][:10] }}</td>
-          <td>{{ row[2][11:19] }}</td>
-          <td>{{ row[0] }}</td>
-          <td>{{ row[1].capitalize() }}</td>
-          <td>{{ row[3] or '—' }}</td>  {# This assumes your query already maps to technician name #}
-          <td>
-            {% if row[1] == 'in' %}
-              <span title="Box Cost">📦 ${{ '%.2f' | format(row[4] or 0.00) }}</span>
+    <!-- Technician Usage Summary -->
+    <section class="card">
+      <div class="section-actions">
+        <button class="btn-ghost export-btn" data-export="#summaryTable" data-name="technician-usage-summary.csv">📤 Export CSV</button>
+      </div>
+      <h3>📦 Technician Usage Summary</h3>
+      <div class="table-wrap">
+        <table id="summaryTable">
+          <thead>
+            <tr>
+              <th>Technician</th>
+              <th>Product</th>
+              <th>Quantity</th>
+              <th>Unit Cost</th>
+              <th>Total Cost</th>
+              <!-- Trend column gets added dynamically if data exists -->
+            </tr>
+          </thead>
+          <tbody>
+            {% if summary|length == 0 %}
+              <tr><td colspan="5" class="muted" style="text-align:center">No data for the selected filters.</td></tr>
             {% else %}
-              <span title="Unit Cost">🔹 ${{ '%.2f' | format(row[4] or 0.00) }}</span>
+              {% for row in summary %}
+              <tr>
+                <td>{{ row[0] }}</td>
+                <td class="prod-name">{{ row[1] }}</td>
+                <td>{{ row[2] }}</td>
+                <td>${{ '%.2f' | format(row[3] or 0) }}</td>
+                <td>${{ '%.2f' | format(row[4] or 0) }}</td>
+                <!-- Trend cell injected by JS -->
+              </tr>
+              {% endfor %}
             {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+          </tbody>
+        </table>
+      </div>
+      <p class="totals">🧾 Total Cost: ${{ '%.2f' | format(total_cost or 0.00) }}</p>
+    </section>
+
+    <!-- Scan Log -->
+    <section class="card">
+      <div class="section-actions">
+        <button class="btn-ghost export-btn" data-export="#logTable" data-name="scan-log.csv">📤 Export CSV</button>
+      </div>
+      <h3>🕓 Scan Log</h3>
+      <div class="table-wrap">
+        <table id="logTable">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Time</th>
+              <th>Product</th>
+              <th>Direction</th>
+              <th>Technician</th>
+              <th>Unit Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if logs|length == 0 %}
+              <tr><td colspan="6" class="muted" style="text-align:center">No scans found.</td></tr>
+            {% else %}
+              {% for row in logs %}
+              <tr>
+                <td>{{ row[2][:10] }}</td>
+                <td>{{ row[2][11:19] }}</td>
+                <td>{{ row[0] }}</td>
+                <td>
+                  {% if row[1] == 'in' %}
+                    <span class="badge badge-in">IN</span>
+                  {% else %}
+                    <span class="badge badge-out">OUT</span>
+                  {% endif %}
+                </td>
+                <td>{{ row[3] or '—' }}</td> {# assumes query maps to tech name #}
+                <td>
+                  {% if row[1] == 'in' %}
+                    <span title="Box Cost">📦 ${{ '%.2f' | format(row[4] or 0.00) }}</span>
+                  {% else %}
+                    <span title="Unit Cost">🔹 ${{ '%.2f' | format(row[4] or 0.00) }}</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+      <small class="muted">Direction badges: <span class="badge badge-in">IN</span> = scanned into inventory, <span class="badge badge-out">OUT</span> = scanned to a technician.</small>
+    </section>
   </div>
 
+  <!-- Optional trend data (product -> monthly numbers). Provide from backend or it stays {}. -->
+  <script id="trendData" type="application/json">
+    {{ trends|tojson if trends is defined else '{}' }}
+  </script>
+
+  <script>
+    // CSV export for any table (simple DOM-based, no dependencies)
+    function exportTableToCSV(tableSelector, filename){
+      const table = document.querySelector(tableSelector);
+      if (!table) return;
+
+      let csv = [];
+      const rows = table.querySelectorAll('tr');
+      rows.forEach(row => {
+        const cells = row.querySelectorAll('th, td');
+        const line = Array.from(cells).map(c => {
+          const text = c.innerText.replace(/\s+/g,' ').trim();
+          const safe = '"' + text.replace(/"/g, '""') + '"';
+          return safe;
+        }).join(',');
+        csv.push(line);
+      });
+
+      const blob = new Blob([csv.join('\n')], {type:'text/csv;charset=utf-8;'});
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename || 'export.csv';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // Hook up export buttons
+    document.querySelectorAll('.export-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        exportTableToCSV(btn.dataset.export, btn.dataset.name);
+      });
+    });
+
+    // Insert per-tech subtotal rows in the summary table
+    (function addPerTechSubtotals(){
+      const table = document.getElementById('summaryTable');
+      if (!table) return;
+      const tbody = table.querySelector('tbody');
+      const rows = Array.from(tbody.querySelectorAll('tr'));
+      if (!rows.length) return;
+
+      const groups = new Map(); // tech -> { qty, total, lastIndex }
+      rows.forEach((tr, idx) => {
+        const tds = tr.children;
+        if (tds.length < 5) return;
+        const tech = tds[0].innerText.trim();
+        const qty = parseFloat((tds[2].innerText || '0').replace(/[^\d.-]/g,'')) || 0;
+        const total = parseFloat((tds[4].innerText || '0').replace(/[^\d.-]/g,'')) || 0;
+
+        if (!groups.has(tech)) groups.set(tech, { qty:0, total:0, lastIndex:idx });
+        const g = groups.get(tech);
+        g.qty += qty;
+        g.total += total;
+        g.lastIndex = idx; // keep overwriting to land on last row for that tech
+      });
+
+      // Insert subtotal rows after each group's last row (iterate in reverse so indexes remain valid)
+      const entries = Array.from(groups.entries())
+        .map(([tech,v]) => ({ tech, ...v }))
+        .sort((a,b) => b.lastIndex - a.lastIndex);
+
+      entries.forEach(g => {
+        const afterRow = rows[g.lastIndex];
+        const tr = document.createElement('tr');
+        tr.className = 'subtotal-row';
+        tr.innerHTML = `
+          <td colspan="2">Subtotal — ${g.tech}</td>
+          <td>${g.qty}</td>
+          <td>—</td>
+          <td>$${g.total.toFixed(2)}</td>
+        `;
+        afterRow.insertAdjacentElement('afterend', tr);
+      });
+    })();
+
+    // Add "Trend" column with tiny sparklines if trend data is provided (product -> values[])
+    (function addSparklines(){
+      const dataEl = document.getElementById('trendData');
+      if (!dataEl) return;
+      let trends = {};
+      try { trends = JSON.parse(dataEl.textContent || '{}') || {}; } catch(e){ trends = {}; }
+      const hasData = Object.keys(trends).length > 0;
+      if (!hasData) return;
+
+      const table = document.getElementById('summaryTable');
+      if (!table) return;
+
+      // Add header cell
+      const headRow = table.querySelector('thead tr');
+      const th = document.createElement('th');
+      th.textContent = 'Trend';
+      headRow.appendChild(th);
+
+      // Helper: draw sparkline on a canvas
+      function drawSpark(canvas, values){
+        if (!canvas || !values || values.length < 2) return;
+        const dpr = window.devicePixelRatio || 1;
+        const cssW = 100, cssH = 28;
+        canvas.width  = cssW * dpr;
+        canvas.height = cssH * dpr;
+        canvas.style.width = cssW + 'px';
+        canvas.style.height = cssH + 'px';
+        const ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+
+        const w = cssW, h = cssH, pad = 2;
+        const min = Math.min(...values), max = Math.max(...values);
+        const rng = (max - min) || 1;
+        const stepX = (w - pad*2) / (values.length - 1);
+
+        // line
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = '#2563eb';
+        ctx.beginPath();
+        values.forEach((v,i) => {
+          const x = pad + i*stepX;
+          const y = pad + (h - pad*2) * (1 - (v - min)/rng);
+          if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+        });
+        ctx.stroke();
+
+        // last dot
+        const lastX = pad + (values.length - 1)*stepX;
+        const lastY = pad + (h - pad*2) * (1 - (values[values.length-1] - min)/rng);
+        ctx.fillStyle = '#14532d';
+        ctx.beginPath(); ctx.arc(lastX, lastY, 2.3, 0, Math.PI*2); ctx.fill();
+      }
+
+      // Append a sparkline cell per row
+      const rows = table.querySelectorAll('tbody tr');
+      rows.forEach(tr => {
+        const prodCell = tr.querySelector('.prod-name');
+        const prod = prodCell ? prodCell.textContent.trim() : '';
+        const td = document.createElement('td');
+        td.className = 'spark-td';
+        if (trends[prod] && Array.isArray(trends[prod]) && trends[prod].length > 1){
+          const canvas = document.createElement('canvas');
+          canvas.className = 'spark';
+          td.appendChild(canvas);
+          drawSpark(canvas, trends[prod].map(Number).filter(n => !isNaN(n)));
+        } else {
+          td.textContent = '—';
+          td.classList.add('muted');
+        }
+        tr.appendChild(td);
+      });
+    })();
+  </script>
 </body>
 </html>
