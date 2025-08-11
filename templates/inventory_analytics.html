@@ -1,166 +1,338 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Inventory Analytics | Palm Coast</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Font (optional but nice) -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&display=swap" rel="stylesheet">
+
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    canvas { margin-bottom: 40px; }
-    h2 { margin-top: 40px; }
-    .chart-container { max-width: 900px; margin: auto; }
+    :root{
+      --pc-bg:#f5f7fb;
+      --pc-card:#ffffff;
+      --pc-border:rgba(0,0,0,.08);
+      --pc-text:#101828;
+      --pc-muted:#667085;
+      --pc-green:#14532d;
+      --pc-blue:#2563eb;
+      --pc-orange:#f59e0b;
+      --pc-red:#ef4444;
+      --pc-purple:#7c3aed;
+      --pc-teal:#0d9488;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; background:var(--pc-bg);
+      font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      color:var(--pc-text);
+      padding:16px;
+    }
+    .container{max-width:1100px;margin:0 auto}
+
+    /* Hero */
+    .hero{
+      background: linear-gradient(135deg, var(--pc-green) 0%, #0e5a34 100%);
+      color:#fff; border-radius:16px; padding:16px 18px;
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      box-shadow:0 10px 24px rgba(0,0,0,.12); margin-bottom:18px;
+    }
+    .hero h1{margin:0;font-size:1.25rem;font-weight:800;letter-spacing:.2px}
+    .hero small{opacity:.9}
+
+    /* Card */
+    .card{
+      background:var(--pc-card); border:1px solid var(--pc-border); border-radius:14px;
+      box-shadow:0 2px 10px rgba(0,0,0,.04); margin-bottom:16px; padding:14px;
+    }
+    .card h2{
+      font-size:1.05rem; margin:0 0 10px; font-weight:800; color:#0f172a;
+      display:flex; align-items:center; gap:.5rem;
+    }
+    .row{display:grid; gap:16px}
+    @media (min-width: 900px){ .row{ grid-template-columns: repeat(2, 1fr) } }
+
+    /* Forms */
+    .form-row{display:flex; gap:.5rem; flex-wrap:wrap; align-items:center}
+    label{font-weight:600; color:var(--pc-muted)}
+    select,input[type="month"],input[type="number"]{
+      background:#fff; border:1px solid var(--pc-border); border-radius:10px;
+      padding:8px 10px; font-size:.95rem; outline:none;
+    }
+    button, .btn{
+      display:inline-flex; align-items:center; gap:.5rem; cursor:pointer;
+      border:none; border-radius:10px; padding:10px 14px; font-weight:700;
+      background:var(--pc-green); color:#fff;
+    }
+    button:hover{filter:brightness(1.05)}
+
+    /* Charts */
+    .chart-wrap{ position:relative; width:100%; height:320px }
+    @media (min-width: 480px){ .chart-wrap{ height:360px } }
+
+    /* Table */
+    .table-wrap{ overflow:auto; max-height:60vh; border:1px solid var(--pc-border); border-radius:12px }
+    table{ width:100%; border-collapse:separate; border-spacing:0 }
+    thead th{
+      position:sticky; top:0; z-index:1; background:#fff; text-align:left;
+      padding:10px; border-bottom:1px solid var(--pc-border); font-size:.9rem;
+    }
+    tbody td{ padding:10px; border-bottom:1px solid var(--pc-border); font-size:.95rem }
+    tbody tr:nth-child(odd){ background:#fafafa }
+    .status-ok{color:#16a34a;font-weight:800}
+    .status-bad{color:var(--pc-red);font-weight:800}
+    .muted{color:var(--pc-muted)}
   </style>
 </head>
 <body>
-  <h1>📊 Inventory Analytics</h1>
+  <div class="container">
 
-  <div class="chart-container">
-    <h2>1️⃣ Product Price History</h2>
-    <form method="GET">
-      <label for="product">Select Product:</label>
-      <select name="product_id" id="product" onchange="this.form.submit()">
-        {% for product in all_products %}
-          <option value="{{ product[0] }}" {% if selected_id == product[0] %}selected{% endif %}>
-            {{ product[1] }}
-          </option>
-        {% endfor %}
-      </select>
-    </form>
-    <canvas id="priceHistoryChart" height="100"></canvas>
-  </div>
+    <!-- HERO -->
+    <section class="hero">
+      <div>
+        <h1>📊 Inventory Analytics</h1>
+        <small>Price trends, monthly usage, category splits, and technician efficiency</small>
+      </div>
+      <a href="/" class="btn" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25)">← Dashboard</a>
+    </section>
 
-  <div class="chart-container">
-    <h2>2️⃣ Monthly Inventory Usage</h2>
-    <canvas id="usageChart" height="100"></canvas>
-  </div>
+    <!-- ROW 1 -->
+    <div class="row">
+      <!-- 1) Product Price History -->
+      <section class="card">
+        <h2>1️⃣ Product Price History</h2>
+        <form method="GET" class="form-row" style="margin-bottom:10px">
+          <label for="product">Product:</label>
+          <select name="product_id" id="product" onchange="this.form.submit()">
+            {% for product in all_products %}
+              <option value="{{ product[0] }}" {% if selected_id == product[0] %}selected{% endif %}>{{ product[1] }}</option>
+            {% endfor %}
+          </select>
+          <span class="muted" style="font-size:.9rem;">(select to update)</span>
+        </form>
+        <div class="chart-wrap">
+          <canvas id="priceHistoryChart"></canvas>
+        </div>
+      </section>
 
-  <div class="chart-container">
-    <h2>3️⃣ Pest vs Lawn Monthly Totals</h2>
-    <canvas id="categoryChart" height="100"></canvas>
-  </div>
-  <div class="chart-container">
-    <h2>4️⃣ Tech Chemical % vs Production</h2>
-    <form method="POST" action="/update-production" style="margin-bottom: 20px;">
-      <label>Technician:</label>
-      <select name="technician_id">
-        {% for tech in technicians %}
-          <option value="{{ tech[0] }}">{{ tech[1] }}</option>
-        {% endfor %}
-      </select>
+      <!-- 2) Monthly Inventory Usage -->
+      <section class="card">
+        <h2>2️⃣ Monthly Inventory Usage</h2>
+        <div class="chart-wrap">
+          <canvas id="usageChart"></canvas>
+        </div>
+      </section>
+    </div>
 
-      <label>Month:</label>
-      <input type="month" name="month" required>
+    <!-- ROW 2 -->
+    <div class="row">
+      <!-- 3) Pest vs Lawn Monthly Totals -->
+      <section class="card">
+        <h2>3️⃣ Pest vs Lawn Monthly Totals</h2>
+        <div class="chart-wrap">
+          <canvas id="categoryChart"></canvas>
+        </div>
+      </section>
 
-      <label>Production $:</label>
-      <input type="number" step="0.01" name="production" required>
+      <!-- 4) Tech Chemical % vs Production -->
+      <section class="card">
+        <h2>4️⃣ Tech Chemical % vs Production</h2>
 
-      <button type="submit">Save</button>
-    </form>
+        <form method="POST" action="/update-production" class="form-row" style="margin-bottom:12px">
+          <label>Technician:</label>
+          <select name="technician_id">
+            {% for tech in technicians %}
+              <option value="{{ tech[0] }}">{{ tech[1] }}</option>
+            {% endfor %}
+          </select>
 
-    <table border="1" cellpadding="8" cellspacing="0" style="width:100%; text-align:center;">
-      <thead>
-        <tr>
-          <th>Technician</th>
-          <th>Month</th>
-          <th>Production $</th>
-          <th>Chemical Used $</th>
-          <th>% Used</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in tech_chemical_table %}
-          <tr>
-            <td>{{ row.tech_name }}</td>
-            <td>{{ row.month }}</td>
-            <td>${{ "%.2f"|format(row.production) }}</td>
-            <td>${{ "%.2f"|format(row.chemical_used) }}</td>
-            <td>{{ "%.2f"|format(row.percent_used) }}%</td>
-            <td style="color: {{ 'red' if row.percent_used > 4 else 'green' }}">
-              {{ '❌ Over' if row.percent_used > 4 else '✅ OK' }}
-            </td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+          <label>Month:</label>
+          <input type="month" name="month" required>
+
+          <label>Production $:</label>
+          <input type="number" step="0.01" name="production" required>
+
+          <button type="submit">Save</button>
+        </form>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Technician</th>
+                <th>Month</th>
+                <th>Production $</th>
+                <th>Chemical Used $</th>
+                <th>% Used</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in tech_chemical_table %}
+              <tr>
+                <td>{{ row.tech_name }}</td>
+                <td>{{ row.month }}</td>
+                <td>${{ "%.2f"|format(row.production) }}</td>
+                <td>${{ "%.2f"|format(row.chemical_used) }}</td>
+                <td>{{ "%.2f"|format(row.percent_used) }}%</td>
+                <td class="{{ 'status-bad' if row.percent_used > 4 else 'status-ok' }}">
+                  {{ '❌ Over' if row.percent_used > 4 else '✅ OK' }}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <small class="muted">Target: ≤ 4% chemical cost vs production.</small>
+      </section>
+    </div>
   </div>
 
   <script>
-    const priceCtx = document.getElementById('priceHistoryChart').getContext('2d');
-    new Chart(priceCtx, {
-      type: 'line',
-      data: {
-        labels: {{ price_labels|tojson }},
-        datasets: [{
-          label: 'Unit Price ($)',
-          data: {{ price_values|tojson }},
-          borderColor: 'blue',
-          tension: 0.3,
-          fill: false
-        }]
-      }
-    });
+    // Theme colors
+    const C = {
+      green: getComputedStyle(document.documentElement).getPropertyValue('--pc-green').trim() || '#14532d',
+      blue:  getComputedStyle(document.documentElement).getPropertyValue('--pc-blue').trim()  || '#2563eb',
+      orange:getComputedStyle(document.documentElement).getPropertyValue('--pc-orange').trim()|| '#f59e0b',
+      red:   getComputedStyle(document.documentElement).getPropertyValue('--pc-red').trim()   || '#ef4444',
+      purple:getComputedStyle(document.documentElement).getPropertyValue('--pc-purple').trim()|| '#7c3aed',
+      teal:  getComputedStyle(document.documentElement).getPropertyValue('--pc-teal').trim()  || '#0d9488',
+    };
 
-    const usageCtx = document.getElementById('usageChart').getContext('2d');
-    new Chart(usageCtx, {
-      type: 'bar',
-      data: {
-        labels: {{ usage_labels|tojson }},
-        datasets: [
-          {
-            label: 'Start Value ($)',
-            data: {{ start_values|tojson }},
-            backgroundColor: 'green'
+    // Global Chart.js defaults
+    Chart.defaults.font.family = "'Inter', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif";
+    Chart.defaults.plugins.legend.position = 'bottom';
+    Chart.defaults.plugins.tooltip.mode = 'index';
+    Chart.defaults.maintainAspectRatio = false;
+    const fmtCurrency = v => '$' + (Number(v)||0).toFixed(2);
+
+    // 1) Price History (Line)
+    (() => {
+      const ctx = document.getElementById('priceHistoryChart');
+      if (!ctx) return;
+      new Chart(ctx.getContext('2d'), {
+        type: 'line',
+        data: {
+          labels: {{ price_labels|tojson }},
+          datasets: [{
+            label: 'Unit Price ($)',
+            data: {{ price_values|tojson }},
+            borderColor: C.blue,
+            backgroundColor: C.blue,
+            tension: 0.28,
+            pointRadius: 3,
+            pointHoverRadius: 4,
+            fill: false
+          }]
+        },
+        options: {
+          scales: {
+            y: { beginAtZero: false, ticks: { callback: fmtCurrency } },
+            x: { ticks: { autoSkip: true, maxTicksLimit: 8 } }
           },
-          {
-            label: 'End Value ($)',
-            data: {{ end_values|tojson }},
-            backgroundColor: 'orange'
-          },
-          {
-            label: '% Used',
-            data: {{ percent_used|tojson }},
-            type: 'line',
-            borderColor: 'red',
-            yAxisID: 'y1'
-          }
-        ]
-      },
-      options: {
-        scales: {
-          y: { beginAtZero: true },
-          y1: {
-            position: 'right',
-            beginAtZero: true,
-            grid: { drawOnChartArea: false },
-            title: { display: true, text: "% Used" }
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: ctx => `${ctx.dataset.label}: ${fmtCurrency(ctx.parsed.y)}`
+              }
+            }
           }
         }
-      }
-    });
+      });
+    })();
 
-    const categoryCtx = document.getElementById('categoryChart').getContext('2d');
-    new Chart(categoryCtx, {
-      type: 'bar',
-      data: {
-        labels: {{ category_labels|tojson }},
-        datasets: [
-          {
-            label: 'Pest ($)',
-            data: {{ pest_values|tojson }},
-            backgroundColor: 'purple'
+    // 2) Monthly Usage (Bar + Line on right axis)
+    (() => {
+      const ctx = document.getElementById('usageChart');
+      if (!ctx) return;
+      new Chart(ctx.getContext('2d'), {
+        data: {
+          labels: {{ usage_labels|tojson }},
+          datasets: [
+            {
+              type: 'bar',
+              label: 'Start Value ($)',
+              data: {{ start_values|tojson }},
+              backgroundColor: C.green
+            },
+            {
+              type: 'bar',
+              label: 'End Value ($)',
+              data: {{ end_values|tojson }},
+              backgroundColor: C.orange
+            },
+            {
+              type: 'line',
+              label: '% Used',
+              data: {{ percent_used|tojson }},
+              borderColor: C.red,
+              yAxisID: 'y1',
+              tension: 0.25,
+            }
+          ]
+        },
+        options: {
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { callback: fmtCurrency }
+            },
+            y1: {
+              position: 'right',
+              beginAtZero: true,
+              grid: { drawOnChartArea: false },
+              title: { display: true, text: '% Used' },
+              ticks: {
+                callback: v => v + '%'
+              }
+            },
+            x: { ticks: { autoSkip: true, maxTicksLimit: 8 } }
           },
-          {
-            label: 'Lawn ($)',
-            data: {{ lawn_values|tojson }},
-            backgroundColor: 'teal'
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: ctx => {
+                  if (ctx.dataset.type === 'line') return `${ctx.dataset.label}: ${ctx.formattedValue}%`;
+                  return `${ctx.dataset.label}: ${fmtCurrency(ctx.parsed.y)}`;
+                }
+              }
+            }
           }
-        ]
-      },
-      options: {
-        scales: { y: { beginAtZero: true } }
-      }
-    });
+        }
+      });
+    })();
+
+    // 3) Category Totals (Grouped Bars)
+    (() => {
+      const ctx = document.getElementById('categoryChart');
+      if (!ctx) return;
+      new Chart(ctx.getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: {{ category_labels|tojson }},
+          datasets: [
+            { label: 'Pest ($)', data: {{ pest_values|tojson }},  backgroundColor: C.purple },
+            { label: 'Lawn ($)', data: {{ lawn_values|tojson }}, backgroundColor: C.teal }
+          ]
+        },
+        options: {
+          scales: {
+            y: { beginAtZero: true, ticks: { callback: fmtCurrency } },
+            x: { ticks: { autoSkip: true, maxTicksLimit: 8 } }
+          },
+          plugins: {
+            tooltip: {
+              callbacks: { label: ctx => `${ctx.dataset.label}: ${fmtCurrency(ctx.parsed.y)}` }
+            }
+          }
+        }
+      });
+    })();
   </script>
 </body>
 </html>
+
