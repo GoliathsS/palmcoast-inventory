@@ -9,25 +9,12 @@
   <link rel="stylesheet" href="/static/style.css" />
   <style>
     :root{
-      --pc-bg:#f5f7fb;
-      --pc-card:#ffffff;
-      --pc-border:rgba(0,0,0,.08);
-      --pc-text:#101828;
-      --pc-muted:#667085;
-      --pc-green:#14532d;
+      --pc-bg:#f5f7fb; --pc-card:#ffffff; --pc-border:rgba(0,0,0,.08);
+      --pc-text:#101828; --pc-muted:#667085; --pc-green:#14532d;
 
-      /* status colors */
-      --ok:#16a34a;
-      --yellow:#f59e0b;
-      --orange:#f97316;
-      --red:#ef4444;
-
-      --tint-ok:#e9faef;
-      --tint-yellow:#fff7e6;
-      --tint-orange:#fff1e9;
-      --tint-red:#ffe8e8;
+      --ok:#16a34a; --yellow:#f59e0b; --orange:#f97316; --red:#ef4444;
+      --tint-ok:#e9faef; --tint-yellow:#fff7e6; --tint-orange:#fff1e9; --tint-red:#ffe8e8;
     }
-
     *{ box-sizing:border-box }
     html,body{ height:100% }
     body{
@@ -35,12 +22,10 @@
       font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       color:var(--pc-text);
     }
-
     .container{ max-width:1100px; margin:0 auto; padding:20px; }
 
     /* Hero */
     .hero{
-      background:#0f3b25;
       background: linear-gradient(135deg, #14532d 0%, #0e5a34 100%);
       color:#fff; border-radius:16px; padding:16px 18px;
       display:flex; align-items:center; justify-content:space-between; gap:16px;
@@ -54,19 +39,20 @@
       padding:10px 14px; border-radius:10px; border:1px solid transparent;
       text-decoration:none; cursor:pointer; font-weight:600; font-size:.95rem;
       transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
-      color:#fff;
     }
-    .btn-success{ background:#22c55e; border-color:#16a34a }
+    .btn-success{ background:#22c55e; color:#fff; border-color:#16a34a }
     .btn-success:hover{ transform: translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,.15) }
     .btn-secondary{ background:rgba(255,255,255,.14); border-color:rgba(255,255,255,.25); color:#fff }
     .btn-secondary:hover{ background:rgba(255,255,255,.2) }
+    .btn-outline{ background:#fff; color:var(--pc-text); border:1px solid var(--pc-border) }
+    .btn-outline:hover{ box-shadow:0 6px 18px rgba(0,0,0,.08) }
+    .btn-danger{ background:#fff; color:#b91c1c; border:1px solid #f3b4b4 }
+    .btn-danger:hover{ background:#fee2e2 }
 
     /* Controls row */
-    .controls{
-      display:grid; gap:.75rem; grid-template-columns: 1fr; margin: 10px 0 18px;
-    }
-    @media (min-width: 680px){
-      .controls{ grid-template-columns: 1fr 200px 160px; align-items:center }
+    .controls{ display:grid; gap:.75rem; grid-template-columns: 1fr; margin: 10px 0 10px; }
+    @media (min-width: 760px){
+      .controls{ grid-template-columns: 1fr 180px 180px 140px; align-items:center }
     }
     .search{ position:relative }
     .search input{
@@ -90,17 +76,32 @@
     }
     .dot{ width:9px; height:9px; border-radius:50% }
 
+    /* Summary row */
+    .summary{ display:flex; gap:.6rem; flex-wrap:wrap; align-items:center; margin: 6px 0 14px; color:var(--pc-muted) }
+    .summary strong{ color:#0f172a }
+    .count-chip{
+      display:inline-flex; align-items:center; gap:.35rem; padding:4px 8px; border-radius:999px; font-weight:800; font-size:.8rem;
+      background:#fff; border:1px solid var(--pc-border);
+    }
+    .count-ok{ border-color:#b7f2c8; background:var(--tint-ok); color:#065f46 }
+    .count-yellow{ border-color:#fde68a; background:var(--tint-yellow); color:#92400e }
+    .count-orange{ border-color:#fdba74; background:var(--tint-orange); color:#9a3412 }
+    .count-red{ border-color:#fecaca; background:var(--tint-red); color:#991b1b }
+
     /* Grid + cards */
     .vehicle-grid{
       display:grid; gap:14px;
       grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      transition: grid-template-columns .12s ease;
     }
+    .vehicle-grid.compact{ grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
     .vehicle-card{
       background:var(--pc-card); border:1px solid var(--pc-border); border-radius:14px; padding:14px;
       box-shadow:0 2px 12px rgba(0,0,0,.04);
-      transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+      transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease, padding .12s ease;
       position:relative; overflow:hidden;
     }
+    .vehicle-grid.compact .vehicle-card{ padding:10px }
     .vehicle-card:hover{ transform:translateY(-2px); box-shadow:0 10px 20px rgba(0,0,0,.08) }
 
     .status-bar{
@@ -112,9 +113,7 @@
     .status-orange .status-bar{ background:var(--orange) }
     .status-red .status-bar{ background:var(--red) }
 
-    .header{
-      display:flex; justify-content:space-between; gap:10px; margin-bottom:6px; align-items:center;
-    }
+    .header{ display:flex; justify-content:space-between; gap:10px; margin-bottom:6px; align-items:center; }
     .plate{ font-size:1.05rem; font-weight:800; letter-spacing:.3px }
     .type{ color:var(--pc-muted); font-weight:600 }
 
@@ -132,14 +131,7 @@
     .badge.red{ background:var(--tint-red); color:#991b1b; border-color:#fecaca }
 
     .actions{ display:flex; gap:.5rem; flex-wrap:wrap; margin-top:12px }
-    .btn-outline{
-      background:#fff; color:var(--pc-text); border:1px solid var(--pc-border);
-    }
-    .btn-outline:hover{ box-shadow:0 6px 18px rgba(0,0,0,.08) }
-    .btn-danger{
-      background:#fff; color:#b91c1c; border:1px solid #f3b4b4;
-    }
-    .btn-danger:hover{ background:#fee2e2 }
+    .empty{ text-align:center; color:var(--pc-muted); margin:20px 0 6px }
 
     /* Floating add button on mobile */
     .fab{
@@ -150,9 +142,7 @@
     @media (min-width: 700px){ .fab{ display:none } }
 
     /* Back link at bottom */
-    .bottom{
-      text-align:center; margin:26px 0 6px;
-    }
+    .bottom{ text-align:center; margin:26px 0 6px; }
     .back{ color:#334155; text-decoration:none; font-weight:700 }
     .back:hover{ text-decoration:underline }
   </style>
@@ -173,26 +163,44 @@
     </section>
 
     <!-- CONTROLS -->
-    <div class="controls">
+    <div class="controls" role="region" aria-label="Filters">
       <div class="search">
         <span class="icon">🔎</span>
-        <input id="search" type="search" placeholder="Search by plate, tech, or type…">
+        <input id="search" type="search" placeholder="Search by plate, tech, or type…" aria-label="Search vehicles">
       </div>
 
       <select id="statusFilter" class="select" aria-label="Filter by status">
         <option value="all" selected>All Statuses</option>
         <option value="ok">Up to date</option>
-        <option value="yellow">Due < 2000 mi</option>
-        <option value="orange">Due < 1000 mi</option>
-        <option value="red">Due < 500 mi</option>
+        <option value="yellow">Due &lt; 2000 mi</option>
+        <option value="orange">Due &lt; 1000 mi</option>
+        <option value="red">Due &lt; 500 mi</option>
       </select>
 
-      <div class="legend">
-        <span class="chip"><span class="dot" style="background:var(--ok)"></span> OK</span>
-        <span class="chip"><span class="dot" style="background:var(--yellow)"></span> < 2000</span>
-        <span class="chip"><span class="dot" style="background:var(--orange)"></span> < 1000</span>
-        <span class="chip"><span class="dot" style="background:var(--red)"></span> < 500</span>
-      </div>
+      <select id="sortBy" class="select" aria-label="Sort vehicles">
+        <option value="plate" selected>Sort: Plate (A→Z)</option>
+        <option value="tech">Sort: Technician (A→Z)</option>
+        <option value="type">Sort: Type (A→Z)</option>
+        <option value="status">Sort: Status (OK→Red)</option>
+      </select>
+
+      <button id="compactBtn" class="btn btn-outline" type="button" aria-pressed="false">📦 Compact mode</button>
+    </div>
+
+    <div class="legend" aria-hidden="true">
+      <span class="chip"><span class="dot" style="background:var(--ok)"></span> OK</span>
+      <span class="chip"><span class="dot" style="background:var(--yellow)"></span> &lt; 2000</span>
+      <span class="chip"><span class="dot" style="background:var(--orange)"></span> &lt; 1000</span>
+      <span class="chip"><span class="dot" style="background:var(--red)"></span> &lt; 500</span>
+    </div>
+
+    <!-- SUMMARY -->
+    <div class="summary" aria-live="polite" id="summary">
+      <strong id="visCount">Showing 0</strong>
+      <span class="count-chip count-ok" id="cOk">OK 0</span>
+      <span class="count-chip count-yellow" id="cYellow">Yellow 0</span>
+      <span class="count-chip count-orange" id="cOrange">Orange 0</span>
+      <span class="count-chip count-red" id="cRed">Red 0</span>
     </div>
 
     <!-- GRID -->
@@ -237,12 +245,17 @@
 
           <div class="actions">
             <a href="/vehicles/{{ vehicle[0] }}" class="btn btn-outline" aria-label="View vehicle {{ vehicle[1] }}">View</a>
+            <a href="/vehicle-inspection/{{ vehicle[0] }}" class="btn btn-outline" aria-label="Start inspection for {{ vehicle[1] }}">📝 Inspect</a>
             <form action="/delete-vehicle/{{ vehicle[0] }}" method="POST" onsubmit="return confirm('Delete this vehicle?')" style="display:inline;">
               <button type="submit" class="btn btn-danger">Delete</button>
             </form>
           </div>
         </div>
       {% endfor %}
+    </div>
+
+    <div id="emptyState" class="empty" hidden>
+      No vehicles match your filters. Try clearing search or changing status.
     </div>
 
     <div class="bottom">
@@ -254,15 +267,29 @@
   <button class="fab" onclick="location.href='/vehicles/new'" aria-label="Add Vehicle">➕</button>
 
   <script>
-    // Client-side filter: search + status
+    // --- Elements
     const search = document.getElementById('search');
     const statusFilter = document.getElementById('statusFilter');
+    const sortBy = document.getElementById('sortBy');
+    const compactBtn = document.getElementById('compactBtn');
+    const grid = document.getElementById('grid');
     const cards = Array.from(document.querySelectorAll('.vehicle-card'));
+    const empty = document.getElementById('emptyState');
 
+    const visCount = document.getElementById('visCount');
+    const cOk = document.getElementById('cOk');
+    const cYellow = document.getElementById('cYellow');
+    const cOrange = document.getElementById('cOrange');
+    const cRed = document.getElementById('cRed');
+
+    const STATUS_ORDER = { ok:0, yellow:1, orange:2, red:3 };
+
+    // --- Apply filters + sort
     function applyFilters(){
       const q = (search.value || '').trim().toLowerCase();
       const s = statusFilter.value; // all | ok | yellow | orange | red
 
+      let visible = [];
       cards.forEach(card => {
         const plate = card.dataset.plate;
         const tech  = card.dataset.tech;
@@ -272,12 +299,89 @@
         const matchText = !q || plate.includes(q) || tech.includes(q) || type.includes(q);
         const matchStatus = (s === 'all') || (st === s);
 
-        card.style.display = (matchText && matchStatus) ? '' : 'none';
+        const show = (matchText && matchStatus);
+        card.style.display = show ? '' : 'none';
+        if (show) visible.push(card);
       });
+
+      // Sort visible cards
+      const key = sortBy.value;
+      visible.sort((a,b) => {
+        if (key === 'status') {
+          return STATUS_ORDER[a.dataset.status] - STATUS_ORDER[b.dataset.status];
+        }
+        const av = (a.dataset[key] || '').toString();
+        const bv = (b.dataset[key] || '').toString();
+        return av.localeCompare(bv, undefined, { sensitivity:'base' });
+      });
+
+      // Re-append in sorted order
+      visible.forEach(card => grid.appendChild(card));
+
+      updateCounts();
+      empty.hidden = visible.length !== 0;
+
+      saveFilters();
     }
 
+    // --- Counts
+    function updateCounts(){
+      let total = 0, ok=0, y=0, o=0, r=0;
+      cards.forEach(c => {
+        if (c.style.display === 'none') return;
+        total++;
+        const st = c.dataset.status;
+        if (st === 'ok') ok++;
+        else if (st === 'yellow') y++;
+        else if (st === 'orange') o++;
+        else if (st === 'red') r++;
+      });
+      visCount.textContent = `Showing ${total}`;
+      cOk.textContent = `OK ${ok}`;
+      cYellow.textContent = `Yellow ${y}`;
+      cOrange.textContent = `Orange ${o}`;
+      cRed.textContent = `Red ${r}`;
+    }
+
+    // --- Compact toggle
+    function toggleCompact(){
+      const on = grid.classList.toggle('compact');
+      compactBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      saveFilters();
+    }
+
+    // --- Persist filters
+    const STORE_KEY = 'vehListFilters';
+    function saveFilters(){
+      const data = {
+        q: search.value || '',
+        status: statusFilter.value,
+        sort: sortBy.value,
+        compact: grid.classList.contains('compact')
+      };
+      localStorage.setItem(STORE_KEY, JSON.stringify(data));
+    }
+    function restoreFilters(){
+      try{
+        const raw = localStorage.getItem(STORE_KEY);
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        if (data.q !== undefined) search.value = data.q;
+        if (data.status) statusFilter.value = data.status;
+        if (data.sort) sortBy.value = data.sort;
+        if (data.compact) grid.classList.add('compact'), compactBtn.setAttribute('aria-pressed','true');
+      }catch(e){}
+    }
+
+    // --- Wire up
     search.addEventListener('input', applyFilters);
     statusFilter.addEventListener('change', applyFilters);
+    sortBy.addEventListener('change', applyFilters);
+    compactBtn.addEventListener('click', toggleCompact);
+
+    // Init
+    restoreFilters();
+    applyFilters();
   </script>
 </body>
 </html>
