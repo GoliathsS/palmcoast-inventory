@@ -505,6 +505,35 @@ def edit_inspection(inspection_id):
     conn.close()
     return render_template("edit_inspection.html", inspection=inspection)
 
+# Single-row equipment update (status + notes)
+@app.route("/vehicles/<int:vehicle_id>/equipment/<int:equipment_id>/update", methods=["POST"])
+def update_single_equipment(vehicle_id, equipment_id):
+    status = request.form.get("status")
+    notes = (request.form.get("notes") or "").strip()
+
+    if not status:
+        return "Missing status", 400
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        # Adjust table/column names if yours differ
+        cur.execute("""
+            UPDATE vehicle_equipment
+               SET status = %s,
+                   notes = %s,
+                   last_verified = NOW()
+             WHERE id = %s AND vehicle_id = %s
+        """, (status, notes, equipment_id, vehicle_id))
+        conn.commit()
+    finally:
+        cur.close()
+        conn.close()
+
+    # Optional flash if you’re using messages
+    # flash("Equipment updated", "success")
+    return redirect(url_for("vehicle_profile", vehicle_id=vehicle_id))
+
 @app.route('/vehicles/<int:vehicle_id>')
 def vehicle_profile(vehicle_id):
     conn = get_db_connection()
