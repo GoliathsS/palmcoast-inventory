@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, send_from_directory, session, abort, send_file
 import psycopg2
+import psycopg2.extras
 import os
 import boto3
 import fitz  # PyMuPDF
