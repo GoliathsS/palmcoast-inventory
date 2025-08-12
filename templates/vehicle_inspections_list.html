@@ -6,138 +6,332 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="/static/style.css" />
   <style>
-    body {
-      font-family: 'Segoe UI', Tahoma, sans-serif;
-      background: #f0f2f5;
-      margin: 0;
-      padding: 20px;
+    :root{
+      --pc-bg:#f5f7fb; --pc-card:#ffffff; --pc-border:rgba(0,0,0,.08);
+      --pc-text:#101828; --pc-muted:#667085; --pc-green:#14532d;
+      --pc-blue:#2563eb; --pc-red:#ef4444; --pc-amber:#f59e0b;
     }
+    *{box-sizing:border-box}
+    body{ margin:0; background:var(--pc-bg); color:var(--pc-text); font-family:'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif; padding:16px; }
+    .wrap{ max-width:1080px; margin:0 auto }
 
-    .container {
-      max-width: 1080px;
-      margin: 0 auto;
-      background: #fff;
-      padding: 25px 30px;
-      border-radius: 6px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    /* Hero */
+    .hero{
+      background: linear-gradient(135deg, #14532d 0%, #0e5a34 100%);
+      color:#fff; border-radius:14px; padding:14px 16px; display:flex; align-items:center; justify-content:space-between; gap:12px;
+      box-shadow:0 8px 20px rgba(0,0,0,.12); margin-bottom:14px;
     }
+    .hero h2{ margin:0; font-size:1.2rem; font-weight:900; color:#fff }
+    .hero small{ opacity:.9 }
 
-    h2 {
-      font-size: 1.8rem;
-      margin-bottom: 20px;
-      color: #0A4D68;
-      text-align: center;
+    /* Controls */
+    .card{ background:var(--pc-card); border:1px solid var(--pc-border); border-radius:14px; box-shadow:0 2px 10px rgba(0,0,0,.04); padding:12px; margin-bottom:14px; }
+    .controls{ display:grid; gap:.6rem; grid-template-columns:1fr; align-items:end }
+    @media (min-width: 780px){ .controls{ grid-template-columns: 1fr 170px 170px 180px 160px } }
+    label{ font-weight:700; font-size:.92rem; color:#0f172a }
+    .controls input, .controls select{
+      width:100%; padding:10px 12px; border:1px solid var(--pc-border); border-radius:10px; background:#fff; font-size:.95rem;
     }
+    .search{ position:relative }
+    .search input{ padding-left:38px }
+    .search .icon{ position:absolute; left:12px; top:50%; transform:translateY(-50%); opacity:.6 }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.95rem;
-    }
+    .btn{ display:inline-flex; align-items:center; justify-content:center; gap:.4rem; padding:10px 12px; border-radius:10px; border:1px solid var(--pc-border); background:#fff; cursor:pointer; font-weight:800; }
+    .btn-primary{ background:#14532d; color:#fff; border:none }
+    .btn-ghost{ background:#eef2f7; color:#111 }
+    .row2{ display:flex; gap:.5rem; flex-wrap:wrap; margin-top:.5rem }
 
-    thead {
-      background-color: #e9eef5;
-    }
+    /* Table */
+    .table-wrap{ overflow:auto; border:1px solid var(--pc-border); border-radius:12px; background:#fff }
+    table{ width:100%; border-collapse:separate; border-spacing:0; }
+    thead th{ position:sticky; top:0; z-index:1; background:#f8fafc; text-align:left; padding:12px; border-bottom:1px solid var(--pc-border); font-weight:800; font-size:.9rem }
+    tbody td{ padding:12px; border-bottom:1px solid var(--pc-border); font-size:.95rem }
+    tbody tr:hover{ background:#fafafa; }
+    .actions a{ text-decoration:none; font-weight:700 }
+    .view-link{ color:var(--pc-blue) }
+    .edit-link{ color:#b45309 }
 
-    th {
-      text-align: left;
-      padding: 12px;
-      font-weight: 600;
-      color: #333;
-      border-bottom: 2px solid #d3dce6;
-    }
+    /* Chips */
+    .chip{ display:inline-flex; align-items:center; padding:4px 10px; border-radius:999px; font-weight:800; font-size:.8rem; border:1px solid transparent }
+    .chip-ok{ background:#e9faef; color:#065f46; border-color:#b7f2c8 }
+    .chip-warn{ background:#fff7e6; color:#92400e; border-color:#fde68a }
+    .chip-bad{ background:#fee2e2; color:#991b1b; border-color:#fecaca }
 
-    td {
-      padding: 12px;
-      border-bottom: 1px solid #eee;
-      color: #444;
-    }
-
-    tr:hover {
-      background-color: #f7faff;
-    }
-
-    a.view-link {
-      color: #0077cc;
-      font-weight: 500;
-      text-decoration: none;
-    }
-
-    a.view-link:hover {
-      text-decoration: underline;
-    }
-
-    a.edit-link {
-      color: #f39c12;
-      text-decoration: none;
-    }
-
-    a.edit-link:hover {
-      text-decoration: underline;
-    }
-
-    .back-link {
-      display: inline-block;
-      margin-top: 20px;
-      color: #0A4D68;
-      font-weight: 600;
-      text-decoration: none;
-    }
-
-    .back-link:hover {
-      color: #063447;
-    }
-
-    @media (max-width: 768px) {
-      table {
-        font-size: 0.9rem;
-      }
-
-      th, td {
-        padding: 10px 8px;
+    /* Mobile card view */
+    @media (max-width: 720px){
+      thead{ display:none }
+      table, tbody, tr, td{ display:block; width:100% }
+      tbody tr{ background:#fff; margin:10px 0; border:1px solid var(--pc-border); border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,.04) }
+      tbody td{ border:none; border-bottom:1px solid var(--pc-border) }
+      tbody td:last-child{ border-bottom:none }
+      tbody td::before{
+        content: attr(data-label);
+        display:block; font-size:.8rem; color:var(--pc-muted); font-weight:800; margin-bottom:4px;
       }
     }
+
+    .footer{ text-align:center; margin-top:10px }
+    .back{ color:#334155; text-decoration:none; font-weight:800 }
+    .back:hover{ text-decoration:underline }
+
+    .summary{ color:var(--pc-muted); font-size:.92rem; margin-top:.4rem }
+    .summary strong{ color:#0f172a }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h2>📋 Vehicle Inspections</h2>
+  <div class="wrap">
 
+    <!-- HERO -->
+    <section class="hero">
+      <div>
+        <h2>📋 Vehicle Inspections</h2>
+        <small aria-live="polite" id="countNote">Loading…</small>
+      </div>
+      <a href="/" class="btn">← Dashboard</a>
+    </section>
+
+    <!-- CONTROLS -->
+    <section class="card" role="region" aria-label="Filters">
+      <div class="controls">
+        <div class="search">
+          <label for="q">Search</label>
+          <span class="icon">🔎</span>
+          <input id="q" type="search" placeholder="Search vehicle or technician…">
+        </div>
+
+        <div>
+          <label for="start">Start date</label>
+          <input id="start" type="date">
+        </div>
+
+        <div>
+          <label for="end">End date</label>
+          <input id="end" type="date">
+        </div>
+
+        <div>
+          <label for="tech">Technician</label>
+          <select id="tech">
+            <option value="">All Technicians</option>
+            <!-- filled by JS from table -->
+          </select>
+        </div>
+
+        <div>
+          <label for="sort">Sort</label>
+          <select id="sort">
+            <option value="dateDesc" selected>Date (newest)</option>
+            <option value="dateAsc">Date (oldest)</option>
+            <option value="vehicle">Vehicle (A→Z)</option>
+            <option value="tech">Technician (A→Z)</option>
+            <option value="mileage">Mileage (high→low)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row2">
+        <button class="btn btn-ghost" data-range="7">Last 7 days</button>
+        <button class="btn btn-ghost" data-range="30">Last 30</button>
+        <button class="btn btn-ghost" data-range="90">Last 90</button>
+        <button class="btn" id="reset">Reset</button>
+        <button class="btn btn-primary" id="exportCsv">📥 Export CSV (visible)</button>
+      </div>
+      <div class="summary" id="summary"></div>
+    </section>
+
+    <!-- TABLE -->
     {% if inspections %}
-    <table>
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Vehicle</th>
-          <th>Technician</th>
-          <th>Mileage</th>
-          <th>Cleanliness</th>
-          <th>Wrap</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for i in inspections %}
-        <tr>
-          <td>{{ i[1] }}</td>
-          <td><a href="/vehicles/{{ i[0] }}" class="view-link">{{ i[2] }}</a></td>
-          <td>{{ i[3] }}</td>
-          <td>{{ i[4] }}</td>
-          <td>{{ i[5] }}</td>
-          <td>{{ i[6] }}</td>
-          <td>
-            <a href="/inspection/{{ i[7] }}" class="view-link">View</a> |
-            <a href="/edit-inspection/{{ i[7] }}" class="view-link edit-link">Edit</a>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    <div class="table-wrap">
+      <table id="inspectionsTable">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Vehicle</th>
+            <th>Technician</th>
+            <th>Mileage</th>
+            <th>Cleanliness</th>
+            <th>Wrap</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for i in inspections %}
+          <tr>
+            <td>{{ i[1] }}</td>
+            <td><a href="/vehicles/{{ i[0] }}" class="view-link">{{ i[2] }}</a></td>
+            <td>{{ i[3] }}</td>
+            <td>{{ i[4] }}</td>
+            <td class="clean">{{ i[5] }}</td>
+            <td class="wrap">{{ i[6] }}</td>
+            <td class="actions">
+              <a href="/inspection/{{ i[7] }}" class="view-link">View</a> |
+              <a href="/edit-inspection/{{ i[7] }}" class="edit-link">Edit</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
     {% else %}
-    <p>No inspections have been recorded yet.</p>
+      <div class="card">No inspections have been recorded yet.</div>
     {% endif %}
 
-    <a href="/" class="back-link">← Back to Dashboard</a>
+    <div class="footer">
+      <a href="/" class="back">← Back to Dashboard</a>
+    </div>
   </div>
+
+  <script>
+    // Helpers
+    const $ = s => document.querySelector(s);
+    const $$ = s => Array.from(document.querySelectorAll(s));
+
+    const table = $('#inspectionsTable');
+    if (table){
+      const tbody = table.tBodies[0];
+      const rows = Array.from(tbody.rows);
+      const headers = Array.from(table.tHead.rows[0].cells).map(th => th.textContent.trim());
+
+      // Label tds for mobile cards
+      rows.forEach(r => Array.from(r.cells).forEach((td, idx) => td.setAttribute('data-label', headers[idx])));
+
+      // Add chips to cleanliness/wrap
+      function chipify(){
+        rows.forEach(r => {
+          const clean = r.querySelector('.clean');
+          const wrap = r.querySelector('.wrap');
+          const apply = (td) => {
+            const val = (td.textContent || '').trim().toLowerCase();
+            let cls = 'chip chip-ok';
+            if (val.includes('dirty') || val.includes('major') || val.includes('missing')) cls = 'chip chip-bad';
+            else if (val.includes('minor')) cls = 'chip chip-warn';
+            td.innerHTML = `<span class="${cls}">${td.textContent.trim()}</span>`;
+          };
+          if (clean && !clean.dataset.chipped){ apply(clean); clean.dataset.chipped = '1'; }
+          if (wrap && !wrap.dataset.chipped){ apply(wrap); wrap.dataset.chipped = '1'; }
+        });
+      }
+      chipify();
+
+      // Build technician dropdown from table values
+      const techSel = $('#tech');
+      const techs = Array.from(new Set(rows.map(r => (r.cells[2].textContent || '').trim()).filter(Boolean))).sort();
+      techs.forEach(t => techSel.insertAdjacentHTML('beforeend', `<option>${t.replace(/</g,'&lt;')}</option>`));
+
+      // Filters
+      const q = $('#q'), start = $('#start'), end = $('#end'), sortSel = $('#sort');
+      const countNote = $('#countNote'), summary = $('#summary');
+
+      function inRange(dateStr){
+        if (!dateStr) return true;
+        const d = new Date(dateStr);
+        if (isNaN(d)) return true;
+        const sVal = start.value ? new Date(start.value) : null;
+        const eVal = end.value ? new Date(end.value) : null;
+        if (sVal && d < sVal) return false;
+        if (eVal){
+          eVal.setHours(23,59,59,999);
+          if (d > eVal) return false;
+        }
+        return true;
+      }
+
+      function applyFilters(){
+        const query = (q.value || '').toLowerCase().trim();
+        const tech = techSel.value;
+
+        let visible = [];
+        rows.forEach(r => {
+          const dateTxt = r.cells[0].textContent.trim();
+          const vehicle = r.cells[1].textContent.toLowerCase();
+          const technician = r.cells[2].textContent.trim();
+          const matchText = !query || vehicle.includes(query) || technician.toLowerCase().includes(query);
+          const matchTech = !tech || technician === tech;
+          const matchDate = inRange(dateTxt);
+          const show = matchText && matchTech && matchDate;
+          r.style.display = show ? '' : 'none';
+          if (show) visible.push(r);
+        });
+
+        // Sort visible
+        const key = sortSel.value;
+        visible.sort((a,b) => {
+          if (key === 'dateDesc' || key === 'dateAsc'){
+            const da = new Date(a.cells[0].textContent.trim());
+            const db = new Date(b.cells[0].textContent.trim());
+            const comp = (db - da); // desc
+            return key === 'dateDesc' ? comp : -comp;
+          }
+          if (key === 'vehicle'){
+            return a.cells[1].textContent.localeCompare(b.cells[1].textContent);
+          }
+          if (key === 'tech'){
+            return a.cells[2].textContent.localeCompare(b.cells[2].textContent);
+          }
+          if (key === 'mileage'){
+            const ma = parseInt(a.cells[3].textContent.replace(/\D+/g,''))||0;
+            const mb = parseInt(b.cells[3].textContent.replace(/\D+/g,''))||0;
+            return mb - ma; // high→low
+          }
+          return 0;
+        });
+        visible.forEach(r => tbody.appendChild(r));
+
+        // Counts
+        countNote.textContent = `Showing ${visible.length} inspection${visible.length===1?'':'s'}.`;
+        const cleanCounts = { ok:0, warn:0, bad:0 };
+        visible.forEach(r => {
+          const td = r.querySelector('.clean .chip');
+          if (!td) return;
+          if (td.classList.contains('chip-bad')) cleanCounts.bad++;
+          else if (td.classList.contains('chip-warn')) cleanCounts.warn++;
+          else cleanCounts.ok++;
+        });
+        summary.textContent = `Cleanliness — OK: ${cleanCounts.ok} • Watch: ${cleanCounts.warn} • Issues: ${cleanCounts.bad}`;
+      }
+
+      // Wire up
+      [q, start, end, techSel, sortSel].forEach(el => el.addEventListener('input', applyFilters));
+      document.querySelectorAll('[data-range]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const days = parseInt(btn.dataset.range,10);
+          const e = new Date(); const s = new Date(); s.setDate(e.getDate() - (days-1));
+          start.value = s.toISOString().slice(0,10);
+          end.value = e.toISOString().slice(0,10);
+          applyFilters();
+        });
+      });
+      $('#reset').addEventListener('click', ()=>{
+        q.value = ''; start.value=''; end.value=''; techSel.value=''; sortSel.value='dateDesc';
+        applyFilters();
+      });
+
+      // CSV export of visible
+      $('#exportCsv').addEventListener('click', ()=>{
+        const visible = rows.filter(r => r.style.display !== 'none');
+        const header = headers.join(',');
+        const lines = visible.map(r => {
+          // Use plain text values; strip commas from mileage/values
+          const vals = Array.from(r.cells).slice(0,7).map((td, idx)=>{
+            let t = td.textContent.trim();
+            if (idx===3) t = t.replace(/,/g,''); // mileage numeric
+            // Quote if contains comma
+            if (t.includes(',')) t = `"${t.replace(/"/g,'""')}"`;
+            return t;
+          });
+          return vals.join(',');
+        });
+        const csv = [header, ...lines].join('\n');
+        const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'vehicle_inspections_visible.csv';
+        document.body.appendChild(a); a.click(); a.remove();
+      });
+
+      // Initial
+      applyFilters();
+    }
+  </script>
 </body>
 </html>
