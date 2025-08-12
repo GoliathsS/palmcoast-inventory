@@ -195,9 +195,16 @@ td:last-child{ white-space:nowrap }
 #status.error{ color:var(--danger) }
 #status.warning{ color:var(--warning) }
 
-/* ---- Dashboard hero title (kept) ---- */
-.hero h1{ color:#fff }
-.hero small{ color:#eaf4ee }
+/* ---- Dashboard hero title (scoped so it doesn't affect other small text) ---- */
+.hero h1{ color:#fff; }
+
+/* only the subtitle line next to the logo/title */
+.hero .brand small,
+.hero .subtitle{ color:#eaf4ee; }
+
+/* keep the KPI block on the right legible on the green bar */
+.hero .stat .value{ color:#fff; }
+.hero .stat small{ color:rgba(255,255,255,.9); }
 
 /* ---- Utility: soft chips, badges, etc. ---- */
 .badge-ok{ background:color-mix(in oklab, var(--success), #fff 85%); color:#065f46; border:1px solid color-mix(in oklab, var(--success), #000 12%) }
