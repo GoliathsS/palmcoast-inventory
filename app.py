@@ -860,46 +860,63 @@ def upload_vehicle_invoice(maintenance_id):
 
 @app.route('/mark-maintenance-complete/<int:vehicle_id>', methods=['POST'])
 def mark_maintenance_complete(vehicle_id):
-    service_type = request.form.get('service_type')
-    current_odometer = request.form.get('odometer')
+    # Pull and sanitize form data
+    raw_service_type = request.form.get('service_type', '')
+    current_odometer = request.form.get('odometer', '').strip()
 
+    service_type = (raw_service_type or '').strip()   # remove leading/trailing spaces
     if not service_type or not current_odometer:
         return "Missing data", 400
 
     try:
-        current_odometer = int(current_odometer)
+        # ensure numeric miles (reject commas etc.)
+        current_odometer = int(str(current_odometer).replace(',', '').strip())
         next_due = current_odometer + 5000
 
         conn = get_db_connection()
         cur = conn.cursor()
 
-        # ✅ 1. Only delete *future* unreceived reminders
-        cur.execute("""
+        # 1) Delete only FUTURE, pending reminders of this type
+        cur.execute(
+            """
             DELETE FROM maintenance_reminders
-            WHERE vehicle_id = %s AND service_type = %s
+            WHERE vehicle_id = %s
+              AND service_type = %s
+              AND odometer_due > %s
               AND received_at IS NULL
-        """, (vehicle_id, service_type, current_odometer))
+            """,
+            (vehicle_id, service_type, current_odometer)  # <-- explicit tuple
+        )
 
-        # ✅ 2. Insert completed maintenance
-        cur.execute("""
+        # 2) Insert the completed record
+        cur.execute(
+            """
             INSERT INTO maintenance_reminders (vehicle_id, service_type, odometer_due, received_at)
             VALUES (%s, %s, %s, CURRENT_DATE)
-        """, (vehicle_id, service_type, current_odometer))
+            """,
+            (vehicle_id, service_type, current_odometer)
+        )
 
-        # ✅ 3. Insert new reminder
-        cur.execute("""
+        # 3) Insert the next pending reminder
+        cur.execute(
+            """
             INSERT INTO maintenance_reminders (vehicle_id, service_type, odometer_due, received_at)
             VALUES (%s, %s, %s, NULL)
-        """, (vehicle_id, service_type, next_due))
+            """,
+            (vehicle_id, service_type, next_due)
+        )
 
         conn.commit()
         cur.close()
         conn.close()
-
         return redirect(url_for('vehicle_profile', vehicle_id=vehicle_id))
 
     except Exception as e:
-        app.logger.error(f"⛔ Failed to mark maintenance complete for vehicle {vehicle_id}: {e}")
+        # helpful diagnostics in logs
+        app.logger.exception(
+            "Failed to complete maintenance: vehicle_id=%s, service_type=%r, odometer=%r",
+            vehicle_id, raw_service_type, current_odometer
+        )
         return f"Error: {e}", 500
 
 @app.before_request
