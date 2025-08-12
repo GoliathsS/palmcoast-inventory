@@ -19,6 +19,15 @@ from datetime import datetime, date
 from technician_manager import add_technician, remove_technician, get_all_technicians
 from decimal import Decimal, ROUND_HALF_UP
 from rapidfuzz import process, fuzz
+from datetime import timedelta
+from functools import wraps
+from flask_login import (
+    LoginManager, UserMixin, login_user, logout_user,
+    login_required, current_user
+)
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from werkzeug.security import generate_password_hash, check_password_hash
 from email_utils import send_maintenance_email
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -26,6 +35,15 @@ log = logging.getLogger("scan_action")
 log.setLevel(logging.INFO)
 
 app = Flask(__name__)
+app.secret_key = os.getenv("SECRET_KEY", "CHANGE_ME_IN_PROD")  # set env var in prod
+
+# Rate limiter – used on /login only
+limiter = Limiter(get_remote_address, app=app, default_limits=[])
+
+# Flask-Login setup
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = "login"
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB limit
 
 # Set up S3 client using environment variables
@@ -51,12 +69,134 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "YOUR_RENDER_POSTGRES_CONNECTION_S
 
 def get_db_connection():
     return psycopg2.connect(DATABASE_URL)
+    class LoginUser(UserMixin):
+    def __init__(self, row):
+        self.id = row["id"]
+        self.email = row["email"]
+        self.role = row["role"]
+        self._active = row["is_active"]
+    def is_active(self):
+        return self._active
+
+def get_user_by_id(user_id):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cur.execute("SELECT * FROM users WHERE id = %s AND is_active = TRUE", (user_id,))
+    row = cur.fetchone()
+    cur.close(); conn.close()
+    return row
+
+def get_user_by_email(email):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cur.execute("SELECT * FROM users WHERE email = %s AND is_active = TRUE", (email,))
+    row = cur.fetchone()
+    cur.close(); conn.close()
+    return row
+
+def create_user(email, password, role):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO users (email, password_hash, role)
+        VALUES (%s, %s, %s) RETURNING id
+    """, (email.strip().lower(), generate_password_hash(password), role))
+    uid = cur.fetchone()[0]
+    conn.commit(); cur.close(); conn.close()
+    return uid
+
+@login_manager.user_loader
+def load_user(user_id):
+    row = get_user_by_id(user_id)
+    return LoginUser(row) if row else None
+
+def role_required(*roles):
+    def decorator(fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            if not current_user.is_authenticated:
+                return login_manager.unauthorized()
+            if current_user.role not in roles:
+                abort(403)
+            return fn(*args, **kwargs)
+        return wrapper
+    return decorator
+
+def tech_can_access_vehicle(vehicle_id:int) -> bool:
+    if current_user.role == "ADMIN":
+        return True
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT 1
+        FROM vehicles v
+        JOIN technicians t ON v.technician_id = t.id
+        JOIN users u ON t.user_id = u.id
+        WHERE v.vehicle_id = %s AND u.id = %s
+        LIMIT 1
+    """, (vehicle_id, current_user.id))
+    ok = cur.fetchone() is not None
+    cur.close(); conn.close()
+    return ok
+
+def require_vehicle_access(fn):
+    @wraps(fn)
+    def wrapper(vehicle_id, *args, **kwargs):
+        if not current_user.is_authenticated:
+            return login_manager.unauthorized()
+        if not tech_can_access_vehicle(vehicle_id):
+            abort(403)
+        return fn(vehicle_id, *args, **kwargs)
+    return wrapper
+
+@app.get("/login")
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for("index"))
+    return render_template("auth_login.html")
+
+@app.post("/login")
+@limiter.limit("10 per minute")
+def login_post():
+    email = request.form.get("email","").strip().lower()
+    password = request.form.get("password","")
+    user_row = get_user_by_email(email)
+    if not user_row or not check_password_hash(user_row["password_hash"], password):
+        return render_template("auth_login.html", error="Invalid email or password"), 401
+    login_user(LoginUser(user_row), remember=True, duration=timedelta(days=14))
+    return redirect(url_for("index"))
+
+@app.get("/logout")
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for("login"))
+
+@app.get("/my")
+@login_required
+@role_required("TECH","ADMIN")
+def tech_home():
+    vehicle_id = None
+    if current_user.role == "TECH":
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT v.vehicle_id
+            FROM vehicles v
+            JOIN technicians t ON v.technician_id = t.id
+            WHERE t.user_id = %s
+            LIMIT 1
+        """, (current_user.id,))
+        row = cur.fetchone()
+        vehicle_id = row[0] if row else None
+        cur.close(); conn.close()
+    return render_template("tech_home.html", vehicle_id=vehicle_id)
 
 @app.route('/')
+@login_required
 def index():
-    # If the logged-in user is a tech, redirect to SDS portal
-    if session.get('role') == 'tech':
-        return redirect(url_for('sds_portal'))
+    if current_user.role == 'TECH':
+        return redirect(url_for('tech_home'))
 
     # Otherwise continue to load admin dashboard
     conn = get_db_connection()
@@ -103,16 +243,22 @@ def index():
     )
 
 @app.route("/test-email")
+@login_required
+@role_required('ADMIN')
 def test_email():
     send_maintenance_email("Test Vehicle", 500)
     return "✅ Test email sent!"
 
 @app.route("/scan")
+@login_required
+@role_required('ADMIN')
 def scan():
     technicians = get_all_technicians()
     return render_template("scanner.html", technicians=technicians)
 
 @app.route("/add-product", methods=["POST"])
+@login_required
+@role_required('ADMIN')
 def add_product():
     name = request.form["name"]
     barcode = request.form["barcode"]
@@ -133,6 +279,8 @@ def add_product():
     return redirect("/")
 
 @app.route('/edit-product/<int:product_id>', methods=['POST'])
+@login_required
+@role_required('ADMIN')
 def edit_product(product_id):
     data = request.form
     name = data['name']
@@ -166,6 +314,8 @@ def edit_product(product_id):
     return redirect(url_for('index'))
 
 @app.route('/delete-product/<int:product_id>', methods=['POST'])
+@login_required
+@role_required('ADMIN')
 def delete_product(product_id):
     conn = get_db_connection()
     cur = conn.cursor()
@@ -176,6 +326,8 @@ def delete_product(product_id):
     return redirect(url_for('index'))
 
 @app.route('/export-products')
+@login_required
+@role_required('ADMIN')
 def export_products():
     conn = get_db_connection()
     cur = conn.cursor()
@@ -197,6 +349,8 @@ def export_products():
     )
 
 @app.route('/scan-action', methods=['POST'])
+@login_required
+@role_required('ADMIN')
 def scan_action():
     from datetime import datetime
 
@@ -311,6 +465,8 @@ def scan_action():
         conn.close()
 
 @app.route('/assign-technician/<int:vehicle_id>', methods=['POST'])
+@login_required
+@role_required('ADMIN')
 def assign_technician(vehicle_id):
     tech_id = request.form['technician_id']
     conn = get_db_connection()
@@ -321,6 +477,8 @@ def assign_technician(vehicle_id):
     return redirect(url_for('vehicle_profile', vehicle_id=vehicle_id))
 
 @app.route('/vehicle-inspection/<int:vehicle_id>', methods=['GET', 'POST'])
+@login_required
+@role_required('ADMIN')
 def vehicle_inspection(vehicle_id):
     import json
     import boto3
@@ -454,6 +612,8 @@ def vehicle_inspection(vehicle_id):
     )
 
 @app.route('/edit-inspection/<int:inspection_id>', methods=['GET', 'POST'])
+@login_required
+@role_required('ADMIN')
 def edit_inspection(inspection_id):
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
@@ -507,6 +667,8 @@ def edit_inspection(inspection_id):
 
 # Single-row equipment update (status + notes)
 @app.route("/vehicles/<int:vehicle_id>/equipment/<int:equipment_id>/update", methods=["POST"])
+@login_required
+@role_required('ADMIN')
 def update_single_equipment(vehicle_id, equipment_id):
     status = request.form.get("status")
     notes = (request.form.get("notes") or "").strip()
@@ -535,6 +697,8 @@ def update_single_equipment(vehicle_id, equipment_id):
     return redirect(url_for("vehicle_profile", vehicle_id=vehicle_id))
 
 @app.route('/vehicles/<int:vehicle_id>')
+@login_required
+@require_vehicle_access
 def vehicle_profile(vehicle_id):
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
@@ -782,6 +946,8 @@ def vehicle_profile(vehicle_id):
     )
     
 @app.route("/add-vehicle-service", methods=["POST"])
+@login_required
+@role_required('ADMIN')
 def add_vehicle_service():
     vehicle_id = request.form["vehicle_id"]
     service_type = request.form["service_type"]
@@ -827,6 +993,8 @@ def add_vehicle_service():
     return redirect(f"/vehicles/{vehicle_id}")
 
 @app.route('/upload-invoice/<int:maintenance_id>', methods=['POST'])
+@login_required
+@role_required('ADMIN')
 def upload_vehicle_invoice(maintenance_id):
     import boto3
     from datetime import datetime
@@ -859,6 +1027,8 @@ def upload_vehicle_invoice(maintenance_id):
     return redirect(request.referrer or '/vehicles')
 
 @app.route('/mark-maintenance-complete/<int:vehicle_id>', methods=['POST'])
+@login_required
+@role_required('ADMIN')
 def mark_maintenance_complete(vehicle_id):
     # Pull and sanitize form data
     raw_service_type = request.form.get('service_type', '')
@@ -919,48 +1089,9 @@ def mark_maintenance_complete(vehicle_id):
         )
         return f"Error: {e}", 500
 
-@app.before_request
-def check_verizon_auth():
-    if request.path.startswith("/api/verizon/"):
-        auth = request.authorization
-        if not auth or not (auth.username == "pcpc" and auth.password == "801Maplewood!"):
-            abort(401)
-
-@app.route('/api/verizon/odometer', methods=['POST'])
-def update_vehicle_mileage():
-    data = request.json or {}
-    vehicle_id = data.get('vehicleId')
-    current_mileage = (
-        data.get('odometer') or
-        data.get('currentMileage') or
-        data.get('mileage')  # support for different field names
-    )
-
-    app.logger.info(f"📡 Verizon Odometer Update: {data}")
-
-    if not vehicle_id or current_mileage is None:
-        return jsonify({"error": "Missing vehicleId or mileage"}), 400
-
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute(
-            """
-            UPDATE vehicles
-            SET mileage = %s
-            WHERE vehicle_id = %s
-            """,
-            (current_mileage, vehicle_id)
-        )
-        conn.commit()
-        cur.close()
-        conn.close()
-        return jsonify({"status": "mileage updated"}), 200
-    except Exception as e:
-        app.logger.exception("❌ Mileage update failed")
-        return jsonify({"error": "Failed to update mileage"}), 500
-
 @app.route('/inspections') 
+@login_required
+@role_required('ADMIN')
 def inspections_list():
     conn = get_db_connection()
     cur = conn.cursor()
@@ -980,6 +1111,8 @@ def inspections_list():
     return render_template('vehicle_inspections_list.html', inspections=inspections)
 
 @app.route('/inspection/<int:inspection_id>')
+@login_required
+@role_required('ADMIN')
 def inspection_detail(inspection_id):
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
@@ -1065,6 +1198,8 @@ def inspection_detail(inspection_id):
     )
 
 @app.route('/delete-inspection/<int:inspection_id>', methods=['POST'])
+@login_required
+@role_required('ADMIN')
 def delete_inspection(inspection_id):
     conn = get_db_connection()
     cur = conn.cursor()
@@ -1077,6 +1212,8 @@ def delete_inspection(inspection_id):
     return redirect(url_for('inspections_list'))
 
 @app.route('/vehicles')
+@login_required
+@role_required('ADMIN')
 def vehicles_list():
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
@@ -1133,6 +1270,8 @@ def vehicles_list():
     return render_template('vehicles_list.html', vehicles=vehicles, statuses=vehicle_statuses)
 
 @app.route('/vehicles/new', methods=['GET', 'POST'])
+@login_required
+@role_required('ADMIN')
 def create_vehicle():
     conn = get_db_connection()
     cur = conn.cursor()
@@ -1156,6 +1295,8 @@ def create_vehicle():
     return render_template('create_vehicle.html', technicians=technicians)
 
 @app.route('/delete-vehicle/<int:vehicle_id>', methods=['POST'])
+@login_required
+@role_required('ADMIN')
 def delete_vehicle(vehicle_id):
     conn = get_db_connection()
     cur = conn.cursor()
@@ -1175,6 +1316,8 @@ def delete_vehicle(vehicle_id):
     return redirect(url_for('vehicles_list'))
 
 @app.route('/vehicles/<int:vehicle_id>/update-equipment', methods=['POST'])
+@login_required
+@role_required('ADMIN')
 def update_equipment(vehicle_id):
     conn = get_db_connection()
     cur = conn.cursor()
@@ -1201,6 +1344,8 @@ def update_equipment(vehicle_id):
     return redirect(url_for('vehicle_profile', vehicle_id=vehicle_id))
 
 @app.route('/vehicles/<int:vehicle_id>/add-equipment', methods=['POST'])
+@login_required
+@role_required('ADMIN')
 def add_equipment(vehicle_id):
     item_name = request.form['item_name']
     status = request.form.get('status', 'Assigned')
@@ -1218,6 +1363,8 @@ def add_equipment(vehicle_id):
     return redirect(url_for('vehicle_profile', vehicle_id=vehicle_id))
 
 @app.route('/vehicles/<int:vehicle_id>/delete-equipment/<int:equipment_id>', methods=['POST'])
+@login_required
+@role_required('ADMIN')
 def delete_equipment(vehicle_id, equipment_id):
     conn = get_db_connection()
     cur = conn.cursor()
@@ -1227,6 +1374,8 @@ def delete_equipment(vehicle_id, equipment_id):
     return redirect(url_for('vehicle_profile', vehicle_id=vehicle_id))
 
 @app.route('/sds')
+@login_required
+@role_required('TECH','ADMIN')
 def sds_portal():
     filter_type = request.args.get('filter', '')
     conn = get_db_connection()
@@ -1252,10 +1401,14 @@ def sds_portal():
     return render_template('sds_view.html', products=products, today=date.today())
 
 @app.route('/static/uploads/<path:filename>')
+@login_required
+@role_required('ADMIN')
 def uploaded_file(filename):
     return send_from_directory('static/uploads', filename)
 
 @app.route('/edit-sds', methods=['GET', 'POST'])
+@login_required
+@role_required('ADMIN')
 def edit_sds():
     # Only allow admins to access this route
     if session.get('role') == 'tech':
@@ -1331,6 +1484,8 @@ def edit_sds():
     return render_template('edit_sds.html', products=products)
 
 @app.route('/corrections', methods=['GET', 'POST'])
+@login_required
+@role_required('ADMIN')
 def corrections():
     conn = get_db_connection()
     cur = conn.cursor()
@@ -1402,6 +1557,8 @@ def corrections():
     )
 
 @app.route("/history")
+@login_required
+@role_required('ADMIN')
 def history():
     selected_month = request.args.get("month")
     selected_tech = request.args.get("technician")
@@ -1510,11 +1667,15 @@ def history():
     )
 
 @app.route("/settings")
+@login_required
+@role_required('ADMIN')
 def settings():
     technicians = get_all_technicians()
     return render_template("settings.html", technicians=technicians)
 
 @app.route("/add-technician", methods=["POST"])
+@login_required
+@role_required('ADMIN')
 def add_technician_route():
     name = request.form.get("tech_name")
     if name:
@@ -1522,6 +1683,8 @@ def add_technician_route():
     return redirect("/")
 
 @app.route("/remove-technician", methods=["POST"])
+@login_required
+@role_required('ADMIN')
 def remove_technician_route():
     name = request.form.get("tech_name")
     if name:
@@ -1529,10 +1692,14 @@ def remove_technician_route():
     return redirect("/")
 
 @app.route('/static/manifest.json')
+@login_required
+@role_required('ADMIN')
 def manifest():
     return send_from_directory('static', 'manifest.json', mimetype='application/manifest+json')
 
 @app.route("/print-report")
+@login_required
+@role_required('ADMIN')
 def print_report():
     conn = get_db_connection()
     cur = conn.cursor()
@@ -1547,6 +1714,8 @@ def print_report():
 
 
 @app.route('/upload-invoice', methods=['GET', 'POST'])
+@login_required
+@role_required('ADMIN')
 def upload_invoice():
     if request.method == 'POST':
         file = request.files['pdf']
@@ -1644,6 +1813,8 @@ def upload_invoice():
     return render_template("upload_invoice.html")
 
 @app.route('/update-production', methods=['POST'])
+@login_required
+@role_required('ADMIN')
 def update_production():
     technician_id = int(request.form['technician_id'])
     month = request.form['month']
@@ -1662,6 +1833,8 @@ def update_production():
     return redirect('/inventory-analytics')
 
 @app.route('/inventory-analytics')
+@login_required
+@role_required('ADMIN')
 def inventory_analytics():
     selected_id = request.args.get("product_id", type=int)
     selected_name = ""
