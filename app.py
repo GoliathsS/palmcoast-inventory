@@ -578,6 +578,57 @@ def vehicle_profile(vehicle_id):
     # --- Current mileage basis comes ONLY from vehicles table ---
     current_mileage = int(vehicle['vehicle_miles'] or 0)
 
+    # ---------- SELF-HEAL: normalize & seed missing service types ----------
+    # 1) Normalize service_type for this vehicle (trailing spaces/variants)
+    cur.execute("""
+        UPDATE maintenance_reminders
+           SET service_type = TRIM(service_type)
+         WHERE vehicle_id = %s
+           AND service_type <> TRIM(service_type)
+    """, (vehicle_id,))
+
+    # 2) Ensure each service exists at least once for this vehicle
+    def ensure_service_exists(service_type: str, interval_miles: int = 5000):
+        # Any row for this service?
+        cur.execute("""
+            SELECT COUNT(*)
+              FROM maintenance_reminders
+             WHERE vehicle_id = %s AND service_type = %s
+        """, (vehicle_id, service_type))
+        have = cur.fetchone()[0]
+
+        if have and have > 0:
+            return  # already have history/pending for this service
+
+        # Try last completed to base the next due
+        cur.execute("""
+            SELECT odometer_due
+              FROM maintenance_reminders
+             WHERE vehicle_id = %s
+               AND service_type = %s
+               AND received_at IS NOT NULL
+             ORDER BY received_at DESC
+             LIMIT 1
+        """, (vehicle_id, service_type))
+        last_done = cur.fetchone()
+
+        if last_done:
+            due_at = int(last_done['odometer_due']) + interval_miles
+        else:
+            due_at = current_mileage + interval_miles
+
+        # Insert a pending reminder so Upcoming will show it
+        cur.execute("""
+            INSERT INTO maintenance_reminders (vehicle_id, service_type, odometer_due, received_at)
+            VALUES (%s, %s, %s, NULL)
+        """, (vehicle_id, service_type, due_at))
+
+    # Ensure both services exist
+    ensure_service_exists('Oil Change', 5000)
+    ensure_service_exists('Tire Rotation', 5000)
+    conn.commit()
+    # ---------- end self-heal ----------
+
     # --- Reminder Generation Logic (history-driven only) ---
     def get_next_due(service_type_exact, interval_miles):
         """
@@ -664,8 +715,8 @@ def vehicle_profile(vehicle_id):
                         )
                         cur.execute("""
                             UPDATE maintenance_reminders
-                            SET emailed_1000 = TRUE
-                            WHERE vehicle_id = %s AND service_type = %s AND odometer_due = %s
+                               SET emailed_1000 = TRUE
+                             WHERE vehicle_id = %s AND service_type = %s AND odometer_due = %s
                         """, (vehicle_id, service, result['due_at']))
                         conn.commit()
 
@@ -677,8 +728,8 @@ def vehicle_profile(vehicle_id):
                         )
                         cur.execute("""
                             UPDATE maintenance_reminders
-                            SET emailed_500 = TRUE
-                            WHERE vehicle_id = %s AND service_type = %s AND odometer_due = %s
+                               SET emailed_500 = TRUE
+                             WHERE vehicle_id = %s AND service_type = %s AND odometer_due = %s
                         """, (vehicle_id, service, result['due_at']))
                         conn.commit()
 
@@ -724,11 +775,12 @@ def vehicle_profile(vehicle_id):
         inventory=inventory,
         inspections=inspections,
         maintenance_logs=maintenance_logs,
-        last_mileage=current_mileage,      # 👈 now the true odometer
+        last_mileage=current_mileage,
         reminders=reminders,
         vehicle_services=service_logs,
         equipment=equipment
     )
+    
 @app.route("/add-vehicle-service", methods=["POST"])
 def add_vehicle_service():
     vehicle_id = request.form["vehicle_id"]
