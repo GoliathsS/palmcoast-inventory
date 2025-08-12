@@ -2,115 +2,113 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Palm Coast Inventory Dashboard</title>
+  <title>Palm Coast Inventory · Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Manage products, vehicles, pricing, and scans in one clean dashboard." />
+  <meta property="og:title" content="Palm Coast Inventory · Dashboard" />
+  <meta property="og:description" content="Fast, mobile-first inventory control with scanning and analytics." />
+  <meta name="theme-color" content="#14532d" />
 
   <!-- Fonts + Bootstrap -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
   <!-- App assets -->
-  <link rel="stylesheet" href="/static/style.css">
   <link rel="manifest" href="/static/manifest.json">
-  <meta name="theme-color" content="#14532d">
   <link rel="apple-touch-icon" sizes="180x180" href="/static/palm_icon_180.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="/static/palm_icon_192.png" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
   <style>
+    /* ========= Tokens ========= */
     :root{
-      --pc-primary:#14532d;  /* deep palm green */
-      --pc-primary-2:#0e5a34;
-      --pc-accent:#1d4ed8;   /* blue accent for links */
-      --pc-soft:#f3f4f6;     /* soft gray */
+      --pc-brand:#14532d; --pc-brand-2:#0e5a34; --pc-ink:#101418; --pc-muted:#6b7280;
+      --pc-bg:#f5f7fa; --pc-card:#ffffff; --pc-ring:rgba(20,83,45,.35);
+      --ok:#198754; --low:#dc3545; --warn:#f59e0b;
     }
-    body{ background:#f6f7f9; font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; }
+    @media (prefers-color-scheme: dark){
+      :root{ --pc-bg:#0d1117; --pc-card:#0f141c; --pc-ink:#e6edf3; --pc-muted:#9aa4b2; }
+      .table thead th{background:#111827!important}
+    }
+    html{scroll-behavior:smooth}
+    body{background:var(--pc-bg); color:var(--pc-ink); font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+
+    /* Header */
+    .app-header{position:sticky; top:0; z-index:1030; background:rgba(255,255,255,.92); backdrop-filter:blur(8px); border-bottom:1px solid rgba(0,0,0,.06)}
+    .brand-logo{width:32px; height:32px; border-radius:6px; object-fit:cover}
+    .kpi{display:flex; gap:.5rem; align-items:baseline; padding:.35rem .6rem; border:1px solid rgba(0,0,0,.08); border-radius:8px; background:#f1f8f4}
 
     /* Hero */
-    .hero {
-      background: linear-gradient(135deg, var(--pc-primary) 0%, var(--pc-primary-2) 100%);
-      color:#fff;
-      border-radius:16px;
-      padding:16px;
-      display:flex; align-items:center; justify-content:space-between; gap:16px;
-      box-shadow: 0 8px 24px rgba(0,0,0,.12);
-    }
-    .hero .brand { display:flex; align-items:center; gap:12px; }
-    .hero img { height:48px; border-radius:8px; }
-    .hero h1{ font-size:1.25rem; margin:0; font-weight:700; }
-    .hero .stat { text-align:right; }
-    .hero .stat .value{ font-weight:800; font-size:1.5rem; }
-    .hero small{ opacity:.9; }
+    .hero{background:linear-gradient(135deg,var(--pc-brand),var(--pc-brand-2)); color:#fff; border-radius:16px; padding:16px; display:flex; align-items:center; justify-content:space-between; gap:12px; box-shadow:0 10px 24px rgba(0,0,0,.14)}
+    .hero .value{font-weight:800; font-size:clamp(1.25rem,1.2vw+1rem,1.6rem)}
 
-    /* Action grid */
-    .actions { display:grid; grid-template-columns: repeat(2,1fr); gap:.75rem; }
-    @media (min-width: 768px){ .actions{ grid-template-columns: repeat(4,1fr);} }
-    @media (min-width: 1200px){ .actions{ grid-template-columns: repeat(6,1fr);} }
-    .action {
-      background:#fff; border:1px solid rgba(0,0,0,.06); border-radius:12px; padding:.9rem .95rem;
-      display:flex; align-items:center; gap:.65rem; text-decoration:none; color:#111;
-      box-shadow: 0 2px 10px rgba(0,0,0,.04);
-      transition: transform .12s ease, box-shadow .12s ease;
-    }
-    .action:hover{ transform: translateY(-2px); box-shadow:0 6px 18px rgba(0,0,0,.07); }
-    .action i{ width:28px; height:28px; display:grid; place-items:center; border-radius:8px; font-size:14px; }
-    .i-gray{ background:#eef2f7; color:#374151; }
-    .i-blue{ background:#e7efff; color:#1d4ed8; }
-    .i-green{ background:#e7f7ec; color:#15803d; }
-    .i-orange{ background:#fff1e6; color:#b45309; }
-    .i-red{ background:#ffe8e8; color:#b91c1c; }
-    .i-cyan{ background:#e6fbff; color:#0e7490; }
+    /* Cards / Actions */
+    .card-soft{background:var(--pc-card); border:1px solid rgba(0,0,0,.06); border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,.04)}
+    .actions{display:grid; grid-template-columns:repeat(2,1fr); gap:.75rem}
+    @media(min-width:768px){.actions{grid-template-columns:repeat(6,1fr)}}
+    .action{background:var(--pc-card); border:1px solid rgba(0,0,0,.06); border-radius:12px; padding:.85rem .9rem; display:flex; gap:.6rem; align-items:center; text-decoration:none; color:inherit; transition:transform .12s ease, box-shadow .12s ease}
+    .action:hover{transform:translateY(-2px); box-shadow:0 8px 18px rgba(0,0,0,.08)}
+    .action i{width:28px; height:28px; display:grid; place-items:center; border-radius:8px; font-size:14px}
+    .i-gray{background:#eef2f7; color:#374151} .i-blue{background:#e7efff; color:#1d4ed8} .i-green{background:#e7f7ec; color:#15803d}
+    .i-orange{background:#fff1e6; color:#b45309} .i-red{background:#ffe8e8; color:#b91c1c} .i-cyan{background:#e6fbff; color:#0e7490}
 
-    /* Cards / sections */
-    .card-soft { background:#fff; border:1px solid rgba(0,0,0,.06); border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,.04); }
-    .card-title { font-weight:700; font-size:1rem; }
-
-    /* Filters row */
-    .filters .form-select{ min-width:180px; }
+    /* Filters / Chips */
+    .chipbar{display:flex; gap:.5rem; flex-wrap:wrap}
+    .chip input{display:none}
+    .chip label{cursor:pointer; padding:.45rem .7rem; border-radius:999px; border:1px solid rgba(0,0,0,.08); background:#fff; font-weight:600; font-size:.9rem}
+    .chip input:checked + label{background:#e9f6ee; border-color:var(--pc-brand); color:#0f5132}
 
     /* Table */
-    .table-wrap{ max-height:65vh; overflow:auto; }
-    .table thead th{ position:sticky; top:0; z-index:1; background:#fff; }
-    .table tbody tr:hover{ background:#fafafa; }
-    .badge-low{ background:#dc3545; }
-    .badge-ok{ background:#198754; }
+    .table-wrap{max-height:65vh; overflow:auto}
+    .table thead th{position:sticky; top:0; z-index:1; background:#fff}
+    .table tbody tr:hover{background:rgba(20,83,45,.03)}
+    .status-pill{padding:.25rem .5rem; border-radius:999px; font-weight:700; font-size:.8rem}
+    .pill-ok{background:#eaf7ef; color:#0f5132; border:1px solid rgba(16,81,50,.2)}
+    .pill-low{background:#fdecec; color:#b91c1c; border:1px solid rgba(185,28,28,.2)}
+    .pill-out{background:#2b0b0b; color:#fff}
 
-    /* Add product compact grid */
-    .grid-form{ display:grid; gap:.75rem; }
-    @media (min-width: 768px){
-      .grid-form{ grid-template-columns: 1.2fr 1fr 1fr 1fr 1fr .8fr .8fr 1fr auto; align-items:center; }
-    }
-
-    /* Sticky bottom actions on mobile */
-    .sticky-bottom-bar{
-      position: sticky; bottom:0; z-index:1030; background:rgba(255,255,255,.98);
-      border-top:1px solid rgba(0,0,0,.08); backdrop-filter: blur(6px);
-    }
+    /* Small helpers */
+    .form-control:focus, .form-select:focus, .btn:focus{box-shadow:0 0 0 .2rem var(--pc-ring)!important; outline:none!important}
+    .sticky-bottom-bar{position:sticky; bottom:0; z-index:1030; background:rgba(255,255,255,.98); border-top:1px solid rgba(0,0,0,.08); backdrop-filter:blur(6px)}
+    @media (prefers-reduced-motion: reduce){*{transition:none!important; animation:none!important; scroll-behavior:auto!important}}
   </style>
 </head>
 <body>
 
-  <div class="container py-4">
-
-    <!-- HERO -->
-    <section class="hero mb-4">
-      <div class="brand">
-        <img src="/static/LOGO.jpg" alt="Palm Coast">
-        <div>
-          <h1>Palm Coast Inventory</h1>
-          <small>Manage products, vehicles, and pricing in one place</small>
-        </div>
+  <!-- ===== Header ===== -->
+  <div class="app-header">
+    <div class="container py-2 d-flex align-items-center justify-content-between gap-2">
+      <div class="d-flex align-items-center gap-2">
+        <img src="/static/LOGO.jpg" alt="Palm Coast" class="brand-logo" />
+        <strong>Palm Coast Inventory</strong>
       </div>
-      <div class="stat">
+      <form method="get" action="/" class="d-none d-md-flex align-items-center gap-2">
+        <input name="q" value="{{ request.args.get('q','') }}" class="form-control form-control-sm" placeholder="Search products..." aria-label="Search products" />
+        <button class="btn btn-sm btn-outline-secondary">Search</button>
+      </form>
+      <div class="kpi">
+        <span class="text-muted small">Total Value</span>
+        <span class="fw-bold">${{ '%.2f' | format(total_value or 0.00) }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="container py-3">
+
+    <!-- ===== Hero ===== -->
+    <section class="hero mb-4">
+      <div>
+        <h1 class="m-0" style="font-size:clamp(1.1rem,1.2vw+1rem,1.6rem);">Inventory Dashboard</h1>
+        <small>Manage products, vehicles, scans & pricing</small>
+      </div>
+      <div class="text-end">
         <div class="value">${{ '%.2f' | format(total_value or 0.00) }}</div>
-        <small>
-          🌿 Lawn: {{ lawn_count }} &nbsp; • &nbsp; 🐜 Pest: {{ pest_count }} &nbsp; • &nbsp; 🦝 Wildlife: {{ wildlife_count }}
-        </small>
+        <small>🌿 Lawn {{ lawn_count }} • 🐜 Pest {{ pest_count }} • 🦝 Wildlife {{ wildlife_count }}</small>
       </div>
     </section>
 
-    <!-- ACTION GRID -->
-    <section class="actions mb-4">
+    <!-- ===== Actions ===== -->
+    <section class="actions mb-4" aria-label="Quick actions">
       <a href="/scan" class="action"><i class="i-green fa-solid fa-barcode"></i><span>Open Scanner</span></a>
       <a href="/history" class="action"><i class="i-gray fa-solid fa-receipt"></i><span>View History</span></a>
       <a href="/export-products" class="action"><i class="i-green fa-solid fa-file-export"></i><span>Export to Excel</span></a>
@@ -124,65 +122,94 @@
       <a href="/settings" class="action"><i class="i-gray fa-solid fa-gear"></i><span>Settings</span></a>
     </section>
 
-    <!-- FILTERS -->
-    <section class="card-soft p-3 mb-3 filters">
-      <form method="get" action="/" class="row g-2 align-items-center">
-        <div class="col-auto">
-          <label for="category" class="fw-semibold me-2">Filter by Category:</label>
+    <!-- ===== Filters ===== -->
+    <section class="card-soft p-3 mb-3">
+      <form method="get" action="/" class="d-flex flex-wrap align-items-center gap-2">
+        <span class="fw-semibold me-1">Category:</span>
+        <div class="chipbar">
+          {% set cat = category_filter or 'All' %}
+          <div class="chip">
+            <input type="radio" id="c-all" name="category" value="All" {% if cat=='All' %}checked{% endif %} onchange="this.form.submit()">
+            <label for="c-all">All</label>
+          </div>
+          <div class="chip">
+            <input type="radio" id="c-pest" name="category" value="Pest" {% if cat=='Pest' %}checked{% endif %} onchange="this.form.submit()">
+            <label for="c-pest">Pest</label>
+          </div>
+          <div class="chip">
+            <input type="radio" id="c-lawn" name="category" value="Lawn" {% if cat=='Lawn' %}checked{% endif %} onchange="this.form.submit()">
+            <label for="c-lawn">Lawn</label>
+          </div>
+          <div class="chip">
+            <input type="radio" id="c-wild" name="category" value="Wildlife" {% if cat=='Wildlife' %}checked{% endif %} onchange="this.form.submit()">
+            <label for="c-wild">Wildlife</label>
+          </div>
         </div>
-        <div class="col-auto">
-          <select class="form-select" name="category" onchange="this.form.submit()">
-            <option value="All" {% if category_filter == 'All' %}selected{% endif %}>All</option>
-            <option value="Pest" {% if category_filter == 'Pest' %}selected{% endif %}>Pest</option>
-            <option value="Lawn" {% if category_filter == 'Lawn' %}selected{% endif %}>Lawn</option>
-            <option value="Wildlife" {% if category_filter == 'Wildlife' %}selected{% endif %}>Wildlife</option>
-          </select>
+
+        <!-- NEW: Low stock first toggle -->
+        <div class="form-check form-switch ms-auto">
+          <input class="form-check-input" type="checkbox" id="lowFirstToggle" aria-label="Sort low stock first">
+          <label class="form-check-label" for="lowFirstToggle">Low stock first</label>
         </div>
       </form>
     </section>
 
-    <!-- ADD PRODUCT -->
+    <!-- ===== Add Product ===== -->
     <section class="card-soft p-3 mb-4">
       <div class="d-flex align-items-center justify-content-between mb-2">
-        <h5 class="card-title mb-0">Add Product</h5>
+        <h5 class="mb-0">Add Product</h5>
         <small class="text-muted">Barcodes scan straight into the field</small>
       </div>
-      <form method="POST" action="/add-product">
-        <div class="grid-form">
-          <input type="text" class="form-control" placeholder="Product Name" name="name" required>
-
-          <div class="position-relative">
-            <input type="text" class="form-control" placeholder="Barcode" name="barcode" id="barcode-field" required>
-            <button type="button" id="scan-btn" class="btn btn-sm btn-outline-secondary position-absolute top-0 end-0 mt-1 me-1">📷</button>
-          </div>
-
-          <input type="number" class="form-control" placeholder="Min Stock" name="min_stock" required>
-          <input type="number" step="0.01" class="form-control" placeholder="Cost per Item" name="cost_per_unit" required>
-          <input type="number" min="1" class="form-control" placeholder="Units per Item" name="units_per_item" value="1" required>
-          <input type="number" step="0.01" class="form-control" placeholder="Auto Unit Cost" name="unit_cost" readonly>
-
-          <input type="text" class="form-control" placeholder="SiteOne SKU (optional)" name="siteone_sku">
-
-          <select class="form-select" name="category">
+      <form method="POST" action="/add-product" class="row g-2">
+        <div class="col-12 col-md-4">
+          <input type="text" class="form-control" placeholder="Product Name" name="name" required aria-label="Product name">
+        </div>
+        <div class="col-12 col-md-3 position-relative">
+          <input type="text" class="form-control" placeholder="Barcode" name="barcode" id="barcode-field" required aria-label="Barcode">
+          <button type="button" id="scan-btn" class="btn btn-sm btn-outline-secondary position-absolute top-0 end-0 mt-1 me-1" aria-label="Scan barcode">📷</button>
+        </div>
+        <div class="col-6 col-md-2">
+          <input type="number" class="form-control" placeholder="Min Stock" name="min_stock" required aria-label="Minimum stock">
+        </div>
+        <div class="col-6 col-md-2">
+          <input type="number" step="0.01" class="form-control" placeholder="Cost per Item" name="cost_per_unit" required aria-label="Cost per item">
+        </div>
+        <div class="col-6 col-md-2">
+          <input type="number" min="1" class="form-control" placeholder="Units per Item" name="units_per_item" value="1" required aria-label="Units per item">
+        </div>
+        <div class="col-6 col-md-2">
+          <input type="number" step="0.01" class="form-control" placeholder="Auto Unit Cost" name="unit_cost" readonly aria-label="Auto-calculated unit cost">
+        </div>
+        <div class="col-12 col-md-3">
+          <input type="text" class="form-control" placeholder="SiteOne SKU (optional)" name="siteone_sku" aria-label="SiteOne SKU">
+        </div>
+        <div class="col-6 col-md-2">
+          <select class="form-select" name="category" aria-label="Category">
             <option value="Pest">Pest</option>
             <option value="Lawn">Lawn</option>
             <option value="Wildlife">Wildlife</option>
           </select>
-
-          <button type="submit" class="btn btn-success">➕ Add Product</button>
+        </div>
+        <div class="col-12 col-md-3 ms-auto">
+          <button type="submit" class="btn btn-success w-100">➕ Add Product</button>
         </div>
       </form>
     </section>
 
-    <!-- PRODUCTS TABLE -->
+    <!-- ===== Products ===== -->
     <section class="card-soft p-0">
-      <div class="p-3 pb-0 d-flex align-items-center justify-content-between">
-        <h5 class="card-title mb-0">Products</h5>
-        <small class="text-muted">Status badges: OK / Low / Out</small>
+      <div class="p-3 pb-0 d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <h5 class="mb-0">Products</h5>
+        <small class="text-muted">Status: OK / Low / Out</small>
+      </div>
+
+      <!-- NEW: Per-category totals (current table view) -->
+      <div class="px-3 pb-2">
+        <div id="catTotals" class="d-flex flex-wrap gap-2 small"></div>
       </div>
 
       <div class="table-wrap">
-        <table class="table table-striped align-middle mb-0">
+        <table id="productsTable" class="table table-striped align-middle mb-0">
           <thead class="table-light">
             <tr>
               <th>Product</th>
@@ -198,7 +225,7 @@
           </thead>
           <tbody>
             {% for product in products %}
-            <tr class="{% if product[3] == 0 %}table-danger{% endif %}" {% if product[3] == 0 %}title="Out of Stock"{% endif %}>
+            <tr data-category="{{ product[7] }}">
               <td class="fw-semibold">{{ product[1] }}</td>
               <td class="text-muted">{{ product[2] }}</td>
               <td>{{ product[3] }}</td>
@@ -206,11 +233,11 @@
               <td>{{ product[4] }}</td>
               <td>
                 {% if product[3] == 0 %}
-                  <span class="badge bg-danger">Out</span>
+                  <span class="status-pill pill-out">Out</span>
                 {% elif product[3] < product[4] %}
-                  <span class="badge badge-low">Low</span>
+                  <span class="status-pill pill-low">Low</span>
                 {% else %}
-                  <span class="badge badge-ok">OK</span>
+                  <span class="status-pill pill-ok">OK</span>
                 {% endif %}
               </td>
               <td>${{ '%.2f' | format(product[5] or 0.00) }}</td>
@@ -241,31 +268,31 @@
                       <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                      <div class="mb-3">
+                      <div class="mb-2">
                         <label class="form-label">Product Name</label>
                         <input type="text" name="name" class="form-control" value="{{ product[1] }}" required>
                       </div>
-                      <div class="mb-3">
+                      <div class="mb-2">
                         <label class="form-label">Barcode</label>
                         <input type="text" name="barcode" class="form-control" value="{{ product[2] }}" required>
                       </div>
-                      <div class="mb-3">
+                      <div class="mb-2">
                         <label class="form-label">Min Stock</label>
                         <input type="number" name="min_stock" class="form-control" value="{{ product[4] }}" required>
                       </div>
-                      <div class="mb-3">
+                      <div class="mb-2">
                         <label class="form-label">Cost per Item</label>
                         <input type="number" step="0.01" name="cost_per_unit" class="form-control" value="{{ product[5] or 0.00 }}" required>
                       </div>
-                      <div class="mb-3">
+                      <div class="mb-2">
                         <label class="form-label">Units per Item</label>
                         <input type="number" name="units_per_item" class="form-control" value="{{ product[8] or 1 }}" min="1" required>
                       </div>
-                      <div class="mb-3">
+                      <div class="mb-2">
                         <label class="form-label">Auto Unit Cost</label>
                         <input type="number" step="0.01" name="unit_cost" class="form-control" value="{{ product[9] or '' }}" readonly>
                       </div>
-                      <div class="mb-3">
+                      <div class="mb-2">
                         <label class="form-label">Category</label>
                         <select name="category" class="form-select">
                           <option value="Pest" {% if product[7] == 'Pest' %}selected{% endif %}>Pest</option>
@@ -273,7 +300,7 @@
                           <option value="Wildlife" {% if product[7] == 'Wildlife' %}selected{% endif %}>Wildlife</option>
                         </select>
                       </div>
-                      <div class="mb-3">
+                      <div class="mb-1">
                         <label class="form-label">SiteOne SKU</label>
                         <input type="text" name="siteone_sku" class="form-control" value="{{ product[6] or '' }}">
                       </div>
@@ -290,9 +317,10 @@
         </table>
       </div>
     </section>
+
   </div>
 
-  <!-- Sticky bottom bar on mobile -->
+  <!-- Sticky bottom (mobile) -->
   <div class="sticky-bottom-bar d-md-none">
     <div class="container py-2 d-flex gap-2">
       <a href="/scan" class="btn btn-success w-50">📦 Scan</a>
@@ -312,7 +340,7 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="closeModalBtn"></button>
         </div>
         <div class="modal-body text-center">
-          <video id="scannerPreview" autoplay muted playsinline style="width: 100%; border-radius: 12px;"></video>
+          <video id="scannerPreview" autoplay muted playsinline style="width:100%; border-radius:12px;"></video>
         </div>
       </div>
     </div>
@@ -320,8 +348,9 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- ZXing (scanner) -->
   <script type="module">
-    // ZXing barcode scanning
     import { BrowserMultiFormatReader } from 'https://cdn.jsdelivr.net/npm/@zxing/browser@latest/+esm';
     const barcodeField = document.getElementById("barcode-field");
     const scanBtn = document.getElementById("scan-btn");
@@ -329,59 +358,90 @@
     const modalElem = new bootstrap.Modal(document.getElementById("scannerModal"));
     const closeModalBtn = document.getElementById("closeModalBtn");
     const beep = document.getElementById("beep-sound");
+    const reader = new BrowserMultiFormatReader();
 
-    let codeReader = new BrowserMultiFormatReader();
-
-    scanBtn.addEventListener("click", async () => {
+    scanBtn?.addEventListener("click", async () => {
       modalElem.show();
       try {
-        const result = await codeReader.decodeOnceFromVideoDevice(undefined, videoElem);
+        const result = await reader.decodeOnceFromVideoDevice(undefined, videoElem);
         barcodeField.value = result.getText();
         beep?.play();
-      } catch (err) {
-        console.error("Scan failed:", err);
-      } finally {
-        modalElem.hide();
-        codeReader.reset();
-      }
+      } catch(e){ console.error(e); }
+      finally { modalElem.hide(); reader.reset(); }
     });
-    closeModalBtn.addEventListener("click", () => codeReader.reset());
+    closeModalBtn?.addEventListener("click", () => reader.reset());
   </script>
 
+  <!-- Low-first sorting + category totals -->
   <script>
-    // Service worker (optional PWA goodness)
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/static/service-worker.js').catch(()=>{});
-    }
+    document.addEventListener('DOMContentLoaded', () => {
+      const table = document.getElementById('productsTable');
+      const tbody = table?.querySelector('tbody');
+      const lowToggle = document.getElementById('lowFirstToggle');
+      const totalsBox = document.getElementById('catTotals');
 
-    // Auto-calc unit cost (Add form + Edit modals)
-    document.addEventListener("DOMContentLoaded", () => {
-      // Edit modals
-      document.querySelectorAll(".modal").forEach(modal => {
-        const cost = modal.querySelector("input[name='cost_per_unit']");
-        const units = modal.querySelector("input[name='units_per_item']");
-        const unitCost = modal.querySelector("input[name='unit_cost']");
-        const calc = () => {
-          const c = parseFloat(cost?.value), u = parseInt(units?.value);
-          if (!isNaN(c) && !isNaN(u) && u > 0 && unitCost) unitCost.value = (c/u).toFixed(2);
-        };
-        cost?.addEventListener("input", calc);
-        units?.addEventListener("input", calc);
-      });
-
-      // Add form
-      const addForm = document.querySelector("form[action='/add-product']");
-      if (addForm) {
-        const cost = addForm.querySelector("input[name='cost_per_unit']");
-        const units = addForm.querySelector("input[name='units_per_item']");
-        const unitCost = addForm.querySelector("input[name='unit_cost']");
-        const calc = () => {
-          const c = parseFloat(cost?.value), u = parseInt(units?.value);
-          if (!isNaN(c) && !isNaN(u) && u > 0) unitCost.value = (c/u).toFixed(2);
-        };
-        cost?.addEventListener("input", calc);
-        units?.addEventListener("input", calc);
+      function statusPriority(stock, min){
+        if (isNaN(stock) || isNaN(min)) return 0;
+        if (stock === 0) return 3;       // highest priority
+        if (stock < min) return 2;
+        return 1;                        // OK
       }
+
+      function sortLowFirst(on){
+        if (!tbody) return;
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        if (!on){
+          // restore to original DOM order (by original index)
+          rows.sort((a,b)=> (a._idx??0) - (b._idx??0));
+        }else{
+          rows.sort((a,b)=>{
+            const aStock = parseFloat(a.children[2]?.textContent) || 0;
+            const aMin   = parseFloat(a.children[4]?.textContent) || 0;
+            const bStock = parseFloat(b.children[2]?.textContent) || 0;
+            const bMin   = parseFloat(b.children[4]?.textContent) || 0;
+
+            const ap = statusPriority(aStock,aMin);
+            const bp = statusPriority(bStock,bMin);
+            if (bp !== ap) return bp - ap;    // Out/Low first
+
+            // tie-breaker: closer to zero (stock - min)
+            const ad = aStock - aMin;
+            const bd = bStock - bMin;
+            return ad - bd;
+          });
+        }
+        rows.forEach(r => tbody.appendChild(r));
+        updateTotals(); // totals unchanged, but cheap to recompute
+      }
+
+      function updateTotals(){
+        if (!totalsBox || !tbody) return;
+        const counts = {All:0, Pest:0, Lawn:0, Wildlife:0};
+        tbody.querySelectorAll('tr').forEach(tr=>{
+          counts.All++;
+          const cat = tr.dataset.category || tr.children[7]?.innerText.trim();
+          if (counts[cat] !== undefined) counts[cat]++; 
+        });
+        totalsBox.innerHTML = `
+          <span class="badge bg-secondary-subtle text-secondary-emphasis">All: ${counts.All}</span>
+          <span class="badge bg-info text-dark">Pest: ${counts.Pest}</span>
+          <span class="badge bg-success">Lawn: ${counts.Lawn}</span>
+          <span class="badge bg-warning text-dark">Wildlife: ${counts.Wildlife}</span>
+        `;
+      }
+
+      // store original order
+      tbody?.querySelectorAll('tr').forEach((tr,i)=> tr._idx = i);
+
+      // initialize from URL ?sort=low
+      const params = new URLSearchParams(location.search);
+      const startLow = params.get('sort') === 'low';
+      if (lowToggle) lowToggle.checked = startLow;
+
+      sortLowFirst(startLow);
+      updateTotals();
+
+      lowToggle?.addEventListener('change', e => sortLowFirst(e.target.checked));
     });
   </script>
 
