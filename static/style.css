@@ -1,239 +1,225 @@
-/* ===========================
-   Palm Coast – Global Styles
-   =========================== */
-
-/* ---- Design tokens (light) ---- */
-:root{
-  --bg:            #f6f7fa;   /* app background */
-  --surface-1:     #ffffff;   /* cards, panels */
-  --surface-2:     #f2f5f8;   /* table headers, subtle bars */
-
-  --text-1:        #0f172a;   /* primary text */
-  --text-2:        #475569;   /* secondary text / labels */
-
-  --border:        #e6eaf0;   /* neutral borders */
-
-  --primary:       #14532d;   /* brand green (used in pills/hero/etc.) */
-  --primary-ink:   #0e3d1f;   /* darker text on brand tints */
-
-  --accent:        #e7f4ec;   /* soft green tint */
-  --ring:          rgba(20,83,45,.28); /* focus ring */
-
-  --success:       #16a34a;
-  --danger:        #dc2626;
-  --warning:       #f59e0b;
-
-  /* Button blue for “generic action” buttons */
-  --btn-blue:      #1e40af;
-  --btn-blue-hover:#1a3a9e;
+:root { 
+  --primary: #146311;
+  --accent: #f1f5f9;
+  --text: #111827;
+  --success: #16a34a;
+  --danger: #dc2626;
+  --border: #e5e7eb;
+  --bg: #f9fafb;
 }
 
-/* ---- Auto dark mode (optional) ---- */
-@media (prefers-color-scheme: dark){
-  :root{
-    --bg:          #0c1117;
-    --surface-1:   #10161f;
-    --surface-2:   #0e141c;
-
-    --text-1:      #e6edf3;
-    --text-2:      #9aa4b2;
-
-    --border:      #263041;
-
-    --primary:     #23a461;
-    --primary-ink: #9df2c7;
-    --accent:      #0f1e18;
-    --ring:        rgba(35,164,97,.35);
-
-    --btn-blue:      #2d7dff;
-    --btn-blue-hover:#256ef0;
-  }
+body {
+  font-family: 'Segoe UI', sans-serif;
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  padding: 20px;
 }
 
-/* ---- Base ---- */
-*{ box-sizing:border-box }
-html{ -webkit-text-size-adjust:100%; text-size-adjust:100% }
-body{
-  font-family:'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif;
-  margin:0;
-  background:var(--bg);
-  color:var(--text-1);
-  padding:20px;
-  -webkit-font-smoothing:antialiased;
-  text-rendering:optimizeLegibility;
-}
-h1,h2,h3{ color:var(--primary); margin-top:0 }
-.small, .small-muted{ color:var(--text-2) }
-
-/* ---- Buttons ---- */
-button, .btn{
-  padding:10px 16px;
-  border:none;
-  font-size:14px;
-  border-radius:8px;
-  cursor:pointer;
-  transition:background .2s ease, box-shadow .15s ease, transform .12s ease;
-  background:var(--btn-blue);
-  color:#fff;
-}
-button:hover, .btn:hover{
-  background:var(--btn-blue-hover);
-}
-button:focus, .btn:focus{
-  outline:none;
-  box-shadow:0 0 0 .2rem var(--ring);
+h1, h2 {
+  color: var(--primary);
+  margin-top: 0;
 }
 
-/* Variant helpers you already use */
-.primary-btn{ background:var(--primary); color:#fff; font-weight:600 }
-.primary-btn:hover{ background:color-mix(in oklab, var(--primary), #000 12%) }
+button {
+  padding: 10px 16px;
+  border: none;
+  font-size: 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  background-color: #1e40af;
+  color: white;
+}
 
-.settings-btn{ background:var(--surface-2); color:var(--text-1) }
-.sync-btn{ background:#e7efff; color:#1d4ed8 }
-.manual-sync-btn{ background:#e6fbe6; color:#15803d }
+button:hover {
+  background-color: #1c3fa0;
+}
+
+input, select {
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 14px;
+  margin: 5px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  margin-top: 20px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+th, td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+th {
+  background: var(--accent);
+  font-weight: 600;
+}
+
+td:last-child {
+  white-space: nowrap;
+}
+
+form {
+  margin-top: 10px;
+}
+
+.status-ok {
+  color: var(--success);
+  font-weight: bold;
+}
+
+.status-low {
+  color: var(--danger);
+  font-weight: bold;
+}
+
+.settings-section {
+  margin: 20px 0;
+  padding: 15px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+
+.siteone-sync {
+  margin-top: 10px;
+}
+
+.action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  align-items: center;
+}
+
+.action-buttons button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 10px 18px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.settings-btn {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.sync-btn {
+  background-color: #e0edff;
+  color: #1d4ed8;
+}
+
+.manual-sync-btn {
+  background-color: #e6fbe6;
+  color: #15803d;
+}
+
+.primary-btn {
+  background-color: #14532d;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.photo-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.photo-gallery img {
+  width: 120px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 6px;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.15);
+  border: 1px solid #ccc;
+}
 
 .settings-btn:hover,
 .sync-btn:hover,
 .manual-sync-btn:hover,
-.primary-btn:hover{
-  box-shadow:0 2px 10px rgba(0,0,0,.08);
-  transform:translateY(-1px);
+.primary-btn:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
 }
 
-/* ---- Forms ---- */
-input, select, textarea{
-  width:100%;
-  padding:10px;
-  border:1px solid var(--border);
-  border-radius:8px;
-  font-size:14px;
-  color:var(--text-1);
-  background:var(--surface-1);
-}
-input::placeholder, textarea::placeholder{ color:var(--text-2) }
-input:focus, select:focus, textarea:focus{
-  outline:none;
-  border-color:color-mix(in oklab, var(--primary), var(--border) 50%);
-  box-shadow:0 0 0 .2rem var(--ring);
-}
-form{ margin-top:10px }
+/* ----------------- Scanner Page Enhancements ------------------ */
 
-/* ---- Status chips ---- */
-.status-ok{ color:var(--success); font-weight:700 }
-.status-low{ color:var(--danger);  font-weight:700 }
-
-/* ---- Cards / sections ---- */
-.settings-section,
-.card,
-.panel,
-.card-soft{
-  margin:20px 0;
-  padding:15px;
-  background:var(--surface-1);
-  border-radius:12px;
-  border:1px solid var(--border);
-  box-shadow:0 2px 14px rgba(0,0,0,.05);
+#scanner-container video {
+  width: 100% !important;
+  height: auto !important;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  margin-top: 10px;
 }
 
-/* ---- Tables ---- */
-table{
-  width:100%;
-  border-collapse:collapse;
-  background:var(--surface-1);
-  box-shadow:0 1px 4px rgba(0,0,0,.05);
-  margin-top:20px;
-  border-radius:10px;
-  overflow:hidden;
-}
-th, td{
-  padding:12px;
-  border-bottom:1px solid var(--border);
-  text-align:left;
-  color:var(--text-1);
-}
-th{
-  background:var(--surface-2);
-  font-weight:600;
-  color:var(--text-1);
-}
-tbody tr:hover{ background:color-mix(in oklab, var(--surface-1), var(--primary) 4%) }
-td:last-child{ white-space:nowrap }
-
-/* ---- Photo gallery ---- */
-.photo-gallery{
-  display:flex; flex-wrap:wrap; gap:10px; align-items:flex-start;
-}
-.photo-gallery img{
-  width:120px; height:90px; object-fit:cover;
-  border-radius:8px;
-  background:var(--surface-2);
-  border:1px solid var(--border);
-  box-shadow:0 0 4px rgba(0,0,0,.12);
+.scanner-panel {
+  padding: 1rem;
+  max-width: 500px;
+  margin: auto;
 }
 
-/* ---- Scanner page tweaks ---- */
-#scanner-container video{
-  width:100% !important; height:auto !important;
-  border-radius:12px;
-  box-shadow:0 2px 8px rgba(0,0,0,.12);
-  margin-top:10px;
-}
-.scanner-panel{ padding:1rem; max-width:500px; margin:auto }
-.toggle-log{
-  background:var(--surface-2);
-  color:var(--text-1);
-  padding:10px; width:100%; border-radius:10px; margin-top:1rem;
-  font-weight:500; border:1px solid var(--border);
-}
-.collapsible-log{
-  background:var(--surface-1); border-radius:12px; margin-top:1rem; padding:1rem;
-  box-shadow:0 2px 6px rgba(0,0,0,.06); border:1px solid var(--border);
-}
-.collapsible-log ul{ padding-left:1.2rem; list-style:disc }
-
-#status.success{ color:var(--success) }
-#status.error{ color:var(--danger) }
-#status.warning{ color:var(--warning) }
-
-/* ---- Dashboard hero title (scoped so it doesn't affect other small text) ---- */
-.hero h1{ color:#fff; }
-
-/* only the subtitle line next to the logo/title */
-.hero .brand small,
-.hero .subtitle{ color:#eaf4ee; }
-
-/* keep the KPI block on the right legible on the green bar */
-.hero .stat .value{ color:#fff; }
-.hero .stat small{ color:rgba(255,255,255,.9); }
-
-/* ---- Utility: soft chips, badges, etc. ---- */
-.badge-ok{ background:color-mix(in oklab, var(--success), #fff 85%); color:#065f46; border:1px solid color-mix(in oklab, var(--success), #000 12%) }
-.badge-low{ background:color-mix(in oklab, var(--danger), #fff 85%);  color:#7f1d1d; border:1px solid color-mix(in oklab, var(--danger), #000 12%) }
-
-/* ---- Mobile ---- */
-@media (max-width:480px){
-  body{ padding:10px }
-  .scanner-panel{ padding:.75rem }
-  select{ font-size:1rem; padding:10px }
+.toggle-log {
+  background-color: var(--accent);
+  color: var(--text);
+  padding: 10px;
+  width: 100%;
+  border-radius: 10px;
+  margin-top: 1rem;
+  font-weight: 500;
+  border: 1px solid var(--border);
 }
 
-/* ===========================
-   Optional App‑wide elements
-   (only used where present)
-   =========================== */
-
-/* Sticky bars (bottom actions / header films) */
-.sticky-actions{
-  position:sticky; bottom:0; z-index:1020;
-  background:color-mix(in oklab, var(--surface-2), transparent 6%);
-  border-top:1px solid var(--border);
-  backdrop-filter:blur(6px);
+.collapsible-log {
+  background: white;
+  border-radius: 12px;
+  margin-top: 1rem;
+  padding: 1rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
 }
 
-/* KPI chips */
-.kpi{
-  display:inline-flex; align-items:center; gap:.4rem;
-  padding:.4rem .6rem; border-radius:.6rem;
-  background:var(--accent); color:var(--primary-ink);
-  border:1px solid color-mix(in oklab, var(--primary), #000 15%);
+.collapsible-log ul {
+  padding-left: 1.2rem;
+  list-style-type: disc;
 }
+
+#status.success { color: var(--success); }
+#status.error { color: var(--danger); }
+#status.warning { color: orange; }
+
+/* Small screen optimization */
+@media screen and (max-width: 480px) {
+  body {
+    padding: 10px;
+  }
+
+  .scanner-panel {
+    padding: 0.75rem;
+  }
+
+  select {
+    font-size: 1rem;
+    padding: 10px;
+  }
+}
+/* Dashboard hero title (all screen sizes) */
+.hero h1 { color: #fff; }
+.hero small { color: #eaf4ee; }
