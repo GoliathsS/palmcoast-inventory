@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Palm Coast • Sign in</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <style>
+    :root{
+      --bg-1:#0b1220;
+      --bg-2:#0e1831;
+      --glass:#101827cc;
+      --card:#101827f2;
+      --text:#e5e7eb;
+      --muted:#94a3b8;
+      --accent:#38bdf8; /* cyan */
+      --accent-2:#22d3ee; /* teal */
+      --danger:#ef4444;
+      --shadow: 0 20px 50px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.04);
+      --radius:16px;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin:0; }
+    body{
+      color:var(--text);
+      background:
+        radial-gradient(1200px 800px at 10% -10%, #1b2650 0%, transparent 50%),
+        radial-gradient(1000px 800px at 100% 0%, #122240 0%, transparent 55%),
+        linear-gradient(180deg, var(--bg-1), var(--bg-2));
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, "Apple Color Emoji","Segoe UI Emoji";
+      display:grid;
+      place-items:center;
+      overflow:hidden;
+    }
+
+    /* Brand strip */
+    .brand {
+      position: fixed; top:24px; left: 24px;
+      display:flex; align-items:center; gap:10px;
+      font-weight:600; letter-spacing:.2px;
+      opacity:.95;
+    }
+    .brand .dot { width:10px; height:10px; border-radius:50%; background:var(--accent-2); box-shadow:0 0 16px var(--accent-2); }
+
+    /* Card */
+    .card{
+      width:min(460px, 92vw);
+      background: var(--card);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,.06);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding:28px 26px 26px;
+      position:relative;
+      z-index:2;
+      animation: rise .6s ease-out both;
+    }
+    @keyframes rise { from { transform: translateY(10px); opacity:.0 } to { transform: translateY(0); opacity:1 } }
+
+    h1{ font-size:1.25rem; margin:0 0 14px 0; }
+    p.sub{ color:var(--muted); margin:0 0 18px 0; font-size:.95rem; }
+
+    form { display:grid; gap:14px; }
+    label { font-size:.9rem; color:#cbd5e1; display:block; margin-bottom:6px; }
+    input[type="email"], input[type="password"]{
+      width:100%; padding:12px 14px; border-radius:12px;
+      background:#0b1220; color:var(--text);
+      border:1px solid #1f2937; outline:none;
+    }
+    input:focus{ border-color:#334155; box-shadow: 0 0 0 3px rgba(34,211,238,.15); }
+
+    .btn{
+      appearance:none; border:none; cursor:pointer;
+      padding:12px 16px; border-radius:12px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      color:#001018; font-weight:700; letter-spacing:.3px;
+      box-shadow: 0 10px 30px rgba(34,211,238,.25);
+    }
+    .btn:active{ transform: translateY(1px) }
+
+    .error{
+      margin:0 0 10px; padding:10px 12px;
+      border-radius:10px; background: #7f1d1d; color:#fecaca;
+      border:1px solid #b91c1c;
+      font-size:.9rem;
+    }
+
+    /* Footer */
+    .footer{ margin-top:14px; color:var(--muted); font-size:.85rem; text-align:center; }
+
+    /* Frog animation layer */
+    .frog-layer{
+      position: fixed; inset: 0; pointer-events:none; overflow:hidden; z-index:1;
+    }
+
+    /* SVG frog size/position */
+    .frog{
+      position:absolute; left:-140px; bottom: 60px;
+      width:120px; height:auto;
+      filter: drop-shadow(0 10px 20px rgba(0,0,0,.6));
+      animation: hop 9s cubic-bezier(.2,.8,.3,1) infinite;
+    }
+
+    /* Hopping path with small arcs + leg wiggle */
+    @keyframes hop {
+      0%   { transform: translateX(-10vw) translateY(0) rotate(0deg) }
+      10%  { transform: translateX(10vw)  translateY(-22px) rotate(-2deg) }
+      18%  { transform: translateX(19vw)  translateY(0)    rotate(0deg) }
+      28%  { transform: translateX(32vw)  translateY(-18px) rotate(2deg) }
+      38%  { transform: translateX(45vw)  translateY(0)      rotate(0deg) }
+      52%  { transform: translateX(62vw)  translateY(-24px) rotate(-3deg) }
+      66%  { transform: translateX(78vw)  translateY(0)      rotate(0deg) }
+      80%  { transform: translateX(95vw)  translateY(-18px) rotate(2deg) scale(.98) }
+      100% { transform: translateX(115vw) translateY(0)      rotate(0deg) }
+    }
+
+    /* Reduce motion for accessibility */
+    @media (prefers-reduced-motion: reduce) {
+      .frog { animation: none; left: 12px; bottom: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="brand"><span class="dot"></span> Palm Coast Inventory</div>
+
+  <!-- fun red‑eyed tree frog (pure SVG) -->
+  <div class="frog-layer" aria-hidden="true">
+    <svg class="frog" viewBox="0 0 180 120">
+      <!-- body -->
+      <ellipse cx="85" cy="70" rx="58" ry="28" fill="#1fbf66"/>
+      <ellipse cx="120" cy="60" rx="26" ry="18" fill="#21c173"/>
+      <!-- belly -->
+      <ellipse cx="75" cy="78" rx="40" ry="20" fill="#e6f5e9" opacity=".9"/>
+      <!-- legs -->
+      <path d="M35,80 C20,90 18,108 30,110" stroke="#1a9c55" stroke-width="10" fill="none" stroke-linecap="round"/>
+      <path d="M125,82 C140,92 142,110 130,112" stroke="#1a9c55" stroke-width="10" fill="none" stroke-linecap="round"/>
+      <!-- feet (orange) -->
+      <circle cx="28" cy="110" r="6" fill="#ff7a18"/>
+      <circle cx="132" cy="112" r="6" fill="#ff7a18"/>
+      <!-- head -->
+      <ellipse cx="130" cy="52" rx="30" ry="20" fill="#1fbf66"/>
+      <!-- eyes -->
+      <circle cx="143" cy="46" r="10" fill="#f43f5e"/>
+      <circle cx="117" cy="48" r="9" fill="#f43f5e"/>
+      <circle cx="143" cy="46" r="4.5" fill="#111827"/>
+      <circle cx="117" cy="48" r="4.2" fill="#111827"/>
+      <!-- smile -->
+      <path d="M118,60 C126,66 138,66 146,60" stroke="#0b1220" stroke-width="3" fill="none" stroke-linecap="round" opacity=".6"/>
+    </svg>
+  </div>
+
+  <main class="card" role="main" aria-labelledby="heading">
+    <h1 id="heading">Sign in</h1>
+    <p class="sub">Welcome back. Enter your email and password to continue.</p>
+
+    {% if error %}
+      <div class="error" role="alert">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('login') }}" autocomplete="on">
+      <div>
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" required autocomplete="username" inputmode="email">
+      </div>
+      <div>
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" required autocomplete="current-password">
+      </div>
+      <button class="btn" type="submit">Sign in</button>
+    </form>
+
+    <div class="footer">Need access? Contact an administrator.</div>
+  </main>
+</body>
+</html>
