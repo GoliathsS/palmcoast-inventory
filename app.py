@@ -578,43 +578,60 @@ def vehicle_profile(vehicle_id):
 
     # --- Reminder Generation Logic ---
     def get_next_due(service_type_exact, interval_miles):
-        # Pull the most recent completed OR upcoming reminder
+        """
+        Prefer newest pending reminder (received_at IS NULL) with highest odometer_due.
+        If none pending, fall back to last completed and add interval.
+        """
+        # 1) Try pending first
         cur.execute("""
             SELECT odometer_due, received_at
             FROM maintenance_reminders
-            WHERE vehicle_id = %s AND service_type = %s
-            ORDER BY 
-                CASE WHEN received_at IS NULL THEN 0 ELSE 1 END,  -- completed first
-                received_at DESC NULLS LAST
+            WHERE vehicle_id = %s AND service_type = %s AND received_at IS NULL
+            ORDER BY odometer_due DESC
             LIMIT 1
         """, (vehicle_id, service_type_exact))
+        row = cur.fetchone()
 
-        last = cur.fetchone()
-        if not last:
+        if row:
+            due_at = row['odometer_due']
+            miles_remaining = due_at - last_mileage
+            status = "overdue" if miles_remaining <= 0 else ("due_soon" if miles_remaining <= 500 else "ok")
+            return {
+                "service_type": service_type_exact,
+                "last_done": row['received_at'],   # None (pending)
+                "last_odometer": row['odometer_due'],
+                "due_at": due_at,
+                "status": status,
+                "miles_remaining": miles_remaining,
+                "is_pending": True
+            }
+
+        # 2) Fall back to most recent completed
+        cur.execute("""
+            SELECT odometer_due, received_at
+            FROM maintenance_reminders
+            WHERE vehicle_id = %s AND service_type = %s AND received_at IS NOT NULL
+            ORDER BY received_at DESC
+            LIMIT 1
+        """, (vehicle_id, service_type_exact))
+        row = cur.fetchone()
+
+        if not row:
             return None
 
-        last_odo = last['odometer_due']
-        due_at = last_odo
+        last_odo = row['odometer_due']
+        due_at = last_odo + interval_miles
         miles_remaining = due_at - last_mileage
-
-        if last['received_at'] is not None:
-            due_at = last_odo + interval_miles
-            miles_remaining = due_at - last_mileage
-
-        if miles_remaining <= 0:
-            status = "overdue"
-        elif miles_remaining <= 500:
-            status = "due_soon"
-        else:
-            status = "ok"
+        status = "overdue" if miles_remaining <= 0 else ("due_soon" if miles_remaining <= 500 else "ok")
 
         return {
             "service_type": service_type_exact,
-            "last_done": last['received_at'],
+            "last_done": row['received_at'],
             "last_odometer": last_odo,
             "due_at": due_at,
             "status": status,
-            "miles_remaining": miles_remaining
+            "miles_remaining": miles_remaining,
+            "is_pending": False  # computed from last completed
         }
 
     reminders = []
@@ -624,9 +641,8 @@ def vehicle_profile(vehicle_id):
             if result:
                 reminders.append(result)
 
-                # --- Email alert logic ---
-                if service == 'Oil Change':
-                    # Fetch current emailed status
+                # --- Email alert logic (only for a real pending reminder row) ---
+                if service == 'Oil Change' and result.get('is_pending'):
                     cur.execute("""
                         SELECT emailed_1000, emailed_500
                         FROM maintenance_reminders
@@ -649,7 +665,6 @@ def vehicle_profile(vehicle_id):
                                 last_mileage,
                                 vehicle['license_plate']
                             )
-
                             cur.execute("""
                                 UPDATE maintenance_reminders
                                 SET emailed_1000 = TRUE
@@ -667,7 +682,6 @@ def vehicle_profile(vehicle_id):
                                 last_mileage,
                                 vehicle['license_plate']
                             )
-                            
                             cur.execute("""
                                 UPDATE maintenance_reminders
                                 SET emailed_500 = TRUE
@@ -699,13 +713,7 @@ def vehicle_profile(vehicle_id):
         miles_remaining = m['odometer_due'] - last_mileage
         is_overdue = last_mileage >= m['odometer_due']
         is_approaching = 0 < miles_remaining <= 500
-
-        if is_overdue:
-            status = "overdue"
-        elif is_approaching:
-            status = "due_soon"
-        else:
-            status = "ok"
+        status = "overdue" if is_overdue else ("due_soon" if is_approaching else "ok")
 
         maintenance_logs.append({
             **m,
@@ -722,7 +730,7 @@ def vehicle_profile(vehicle_id):
     """, (vehicle_id,))
     service_logs = cur.fetchall()
 
-        # --- Fetch Permanent Equipment ---
+    # --- Fetch Permanent Equipment ---
     cur.execute("""
         SELECT * FROM vehicle_equipment
         WHERE vehicle_id = %s
@@ -840,7 +848,7 @@ def mark_maintenance_complete(vehicle_id):
         cur.execute("""
             DELETE FROM maintenance_reminders
             WHERE vehicle_id = %s AND service_type = %s
-            AND odometer_due > %s AND received_at IS NULL
+              AND received_at IS NULL
         """, (vehicle_id, service_type, current_odometer))
 
         # ✅ 2. Insert completed maintenance
