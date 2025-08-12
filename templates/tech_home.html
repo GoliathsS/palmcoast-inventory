@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>My Portal • Palm Coast</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root{
+      --bg:#0b1220;
+      --panel:#0f172a;
+      --panel-2:#0b1324;
+      --text:#e5e7eb;
+      --muted:#94a3b8;
+      --tile:#0e1a30;
+      --tile-border:#16233f;
+      --accent:#22d3ee;
+      --accent-2:#38bdf8;
+      --good:#10b981;
+      --shadow: 0 18px 50px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.04);
+      --radius: 16px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; color:var(--text); background:
+        radial-gradient(1200px 700px at 20% -10%, #122146 0%, transparent 60%),
+        radial-gradient(1000px 700px at 100% 0%, #0c1b34 0%, transparent 60%),
+        var(--bg);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial;
+      min-height:100vh;
+      display:flex; flex-direction:column;
+    }
+    header{
+      display:flex; align-items:center; justify-content:space-between;
+      padding:18px 22px;
+    }
+    .brand{ display:flex; align-items:center; gap:10px; font-weight:700; letter-spacing:.2px }
+    .brand .frog-dot{width:12px;height:12px;border-radius:50%;background:#f43f5e;box-shadow:0 0 14px #f43f5e}
+    .meta{ color:var(--muted); font-size:.9rem }
+
+    .wrap{ width:min(1100px, 94vw); margin: 0 auto 30px; flex:1; }
+
+    .panel{
+      background: linear-gradient(180deg, var(--panel), var(--panel-2));
+      border:1px solid rgba(255,255,255,.06);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding:18px;
+    }
+
+    .tiles{ display:grid; gap:16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+    .tile{
+      background: linear-gradient(180deg, var(--tile), #0b1426);
+      border:1px solid var(--tile-border); border-radius:14px;
+      padding:20px; min-height:140px;
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+      text-decoration:none; color:inherit;
+    }
+    .tile:hover{ transform: translateY(-2px); border-color:#2b3b62; box-shadow: 0 14px 30px rgba(0,0,0,.35); }
+    .tile h3{ margin:0 0 6px; font-size:1.15rem }
+    .tile p{ margin:0; color:var(--muted); font-size:.95rem }
+    .cta{
+      margin-top: 4px;
+      display:inline-block; font-weight:700; letter-spacing:.3px; font-size:.9rem;
+      color:#001018; background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      padding:9px 12px; border-radius:10px;
+    }
+
+    .logout{ color:#93c5fd; text-decoration:none; border:1px solid rgba(147,197,253,.25); padding:8px 10px; border-radius:10px }
+    .logout:hover{ background:#0c1630 }
+
+    .footer{ color:var(--muted); font-size:.85rem; text-align:center; padding:18px 0 28px }
+
+    /* Status pill (optional if you pass data later) */
+    .pill{ display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border:1px solid #214a3f; color:#bbf7d0; background:#0a1e1b; border-radius: 999px; font-size:.85rem }
+    .dot{ width:8px; height:8px; border-radius:50%; background: var(--good); box-shadow:0 0 10px var(--good) }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand"><span class="frog-dot"></span> Palm Coast • Tech Portal</div>
+    <div class="meta">
+      {% if current_user.is_authenticated %}{{ current_user.email }}{% endif %}
+      &nbsp;•&nbsp;
+      <a class="logout" href="{{ url_for('logout') }}">Sign out</a>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <div class="panel" role="region" aria-label="Quick actions">
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:14px;">
+        <h2 style="margin:0; font-size:1.2rem;">Welcome{% if current_user.is_authenticated %}, {{ current_user.email.split('@')[0] | capitalize }}{% endif %}</h2>
+        {% if vehicle_id %}
+          <span class="pill"><span class="dot"></span> Vehicle assigned</span>
+        {% else %}
+          <span class="pill" style="opacity:.7; border-color:#444; color:#ddd; background:#141a27"><span class="dot" style="background:#64748b; box-shadow:none"></span> No vehicle assigned</span>
+        {% endif %}
+      </div>
+
+      <div class="tiles">
+        <!-- SDS -->
+        <a href="{{ url_for('sds_portal') }}" class="tile" aria-label="Open Safety Data Sheets and Labels">
+          <div>
+            <h3>SDS &amp; Labels</h3>
+            <p>Quick access to product safety docs &amp; labels.</p>
+            <span class="cta">Open</span>
+          </div>
+          <!-- simple inline icon -->
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M7 3h7l4 4v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" stroke="#60a5fa" stroke-width="1.5"/>
+            <path d="M14 3v4h4" stroke="#93c5fd" stroke-width="1.5"/>
+            <path d="M8 12h8M8 16h8M8 8h4" stroke="#bae6fd" stroke-width="1.5"/>
+          </svg>
+        </a>
+
+        <!-- My Vehicle -->
+        {% if vehicle_id %}
+        <a href="{{ url_for('vehicle_profile', vehicle_id=vehicle_id) }}" class="tile" aria-label="Open My Vehicle Profile">
+          <div>
+            <h3>My Vehicle</h3>
+            <p>Inventory, inspections, reminders &amp; services.</p>
+            <span class="cta">Open</span>
+          </div>
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M3 13h15l3 3v3H3v-6z" stroke="#34d399" stroke-width="1.5"/>
+            <circle cx="7" cy="19" r="2" stroke="#a7f3d0" stroke-width="1.5"/>
+            <circle cx="17" cy="19" r="2" stroke="#a7f3d0" stroke-width="1.5"/>
+            <path d="M6 13l2-5h8l2 5" stroke="#10b981" stroke-width="1.5"/>
+          </svg>
+        </a>
+        {% else %}
+        <div class="tile" aria-label="No vehicle assigned">
+          <div>
+            <h3>My Vehicle</h3>
+            <p>No vehicle assigned yet. Contact your manager.</p>
+            <span class="cta" style="opacity:.5; pointer-events:none;">Unavailable</span>
+          </div>
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" aria-hidden="true" opacity=".4">
+            <path d="M3 13h15l3 3v3H3v-6z" stroke="#94a3b8" stroke-width="1.5"/>
+            <circle cx="7" cy="19" r="2" stroke="#cbd5e1" stroke-width="1.5"/>
+            <circle cx="17" cy="19" r="2" stroke="#cbd5e1" stroke-width="1.5"/>
+            <path d="M6 13l2-5h8l2 5" stroke="#94a3b8" stroke-width="1.5"/>
+          </svg>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">© {{  (now() if false else '')  }} Palm Coast • All rights reserved</div>
+</body>
+</html>
