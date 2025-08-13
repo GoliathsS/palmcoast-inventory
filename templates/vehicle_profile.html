@@ -8,7 +8,7 @@
   <meta property="og:title" content="Vehicle Profile · Palm Coast Fleet" />
   <meta property="og:description" content="Track inventory, inspections, and maintenance in one clean view." />
   <meta property="og:type" content="website" />
-  <meta name="theme-color" content="#0f5132" />
+  <meta name="theme-color" content="#198754" />
 
   <!-- Bootstrap 5 -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -17,149 +17,108 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 
   <style>
-    /* ============ Design Tokens ============ */
+    /* ===== Design Tokens (Light Only) ===== */
     :root{
-      --brand:#198754;        /* Bootstrap 'success' as brand */
-      --brand-ink:#0f5132;    /* darker for text/borders */
-      --ink:#111;
-      --muted:#6c757d;
-      --bg:#f6f7f8;
-      --card:#ffffff;
-      --ring:rgba(25,135,84,.35);
+      --brand:#198754;          /* Bootstrap success as brand */
+      --ink:#0b1220;            /* Primary text */
+      --muted:#6b7280;          /* Secondary text */
+      --bg:#f7f8fa;             /* Page background */
+      --card:#ffffff;           /* Panels/cards */
+      --border:#e6e7eb;         /* Strokes */
+      --ring:rgba(25,135,84,.25);
+      --radius:14px;
+      --shadow:0 8px 24px rgba(17,24,39,.06), 0 2px 6px rgba(17,24,39,.04);
     }
 
-    /* ---------- COLOR / THEME FIXES ---------- */
-    @media (prefers-color-scheme: dark){
-      :root{
-        --bg:#0d1117;
-        --card:#0f141c;
-        --ink:#e6edf3;
-        --muted:#9aa4b2;
-        --brand-ink:#88f0be;
-      }
-      body{background:var(--bg); color:var(--ink);}
-      .app-header{background:rgba(15,20,28,.9); border-bottom:1px solid rgba(255,255,255,.06);}
-      .sticky-actions{background:rgba(15,20,28,.92); border-top:1px solid rgba(255,255,255,.08);}
-      .card-lite{background:var(--card); border:1px solid rgba(255,255,255,.06); box-shadow:0 2px 16px rgba(0,0,0,.35);} 
-      .bg-white{ background:var(--card)!important; } 
-      .table{color:var(--ink);} 
-      .table-bordered{border-color:rgba(255,255,255,.08);} 
-      .table thead th,
-      .table-light{background:#111923!important; color:var(--ink); border-color:rgba(255,255,255,.08);} 
-      .table tbody tr:hover{background:rgba(136,240,190,.08);} 
-      .accordion-button{background:var(--card); color:var(--ink); border-bottom:1px solid rgba(255,255,255,.06);} 
-      .accordion-button:not(.collapsed){box-shadow:none;} 
-      .accordion-item{background:var(--card); border-color:rgba(255,255,255,.08);} 
-      .top-tabs .btn{
-        --bs-btn-color: var(--ink);
-        --bs-btn-border-color: rgba(255,255,255,.18);
-        --bs-btn-hover-bg: rgba(255,255,255,.06);
-        --bs-btn-hover-border-color: rgba(255,255,255,.28);
-      }
-      .kpi{
-        background:rgba(25,135,84,.15);
-        color:var(--brand-ink);
-        border:1px solid rgba(136,240,190,.30);
-      }
-      .due-bar{background:rgba(255,255,255,.12);} 
-      .due-bar > span{background:var(--brand);} 
-      a.link-primary{color:#6ab7ff;} 
-      a.link-primary:hover{color:#9bcdff;} 
-    }
-
-    /* ============ Base / Type ============ */
     html{scroll-behavior:smooth;}
     body{background:var(--bg); color:var(--ink); -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;}
-    h1,h2,h3,h4{line-height:1.25; letter-spacing:.2px;}
-    h1{font-size:clamp(1.4rem,2.2vw+1rem,2rem)}
-    h2{font-size:clamp(1.2rem,1.4vw+1rem,1.5rem)}
+
+    h1,h2,h3{line-height:1.25; letter-spacing:.2px}
+    h1{font-size:clamp(1.4rem,1.8vw+1rem,2rem)}
+    h2{font-size:clamp(1.2rem,1.2vw+1rem,1.4rem)}
     .lead{color:var(--muted)}
-    .small-muted{color:var(--muted); font-size:.9rem}
+    .small-muted{color:var(--muted); font-size:.95rem}
 
-    /* ============ Header / Nav ============ */
+    /* ===== Header / Top Nav ===== */
     .app-header{
-      position:sticky; top:0; z-index:1030; background:rgba(255,255,255,.9);
-      backdrop-filter:saturate(1.2) blur(6px); border-bottom:1px solid rgba(0,0,0,.06);
-      transition:all .25s ease;
+      position:sticky; top:0; z-index:1030;
+      background:rgba(255,255,255,.9);
+      backdrop-filter:saturate(1.2) blur(6px);
+      border-bottom:1px solid var(--border);
+      transition:padding .2s ease;
     }
+    .app-header .brand{
+      display:flex; align-items:center; gap:.6rem; font-weight:700;
+    }
+    .brand-dot{width:.55rem; height:.55rem; border-radius:50%; background:var(--brand)}
     .app-header.shrink{padding-block:.25rem}
-    .brand-dot{width:.5rem; height:.5rem; border-radius:50%; background:var(--brand)}
-    .top-tabs{
-      overflow-x:auto; -webkit-overflow-scrolling:touch; white-space:nowrap; gap:.5rem;
+
+    /* Top section pills */
+    .top-tabs{overflow-x:auto; white-space:nowrap; -webkit-overflow-scrolling:touch}
+    .top-tabs .nav-link{
+      border:1px solid var(--border);
+      border-radius:999px;
+      padding:.4rem .9rem;
+      margin-right:.5rem;
+      color:#111;
+      background:#fff;
     }
-    .top-tabs .btn{--bs-btn-border-color:rgba(0,0,0,.08)}
-    .nav-kpi{
-      display:flex; gap:1rem; align-items:center; flex-wrap:wrap;
-    }
-    .kpi{
-      padding:.4rem .6rem; border-radius:.6rem; background:#f0faf4; color:#0f5132; border:1px solid rgba(25,135,84,.2);
+    .top-tabs .nav-link:hover{background:#f5f7f6}
+    .top-tabs .nav-link.active{
+      color:#fff; background:var(--brand); border-color:var(--brand);
     }
 
-    /* ============ Cards / Surfaces ============ */
+    /* ===== Surfaces ===== */
     .card-lite{
       background:var(--card);
-      border:1px solid rgba(0,0,0,.06);
-      border-radius:12px;
-      box-shadow:0 2px 16px rgba(0,0,0,.04);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
     }
 
-    /* Light-mode fix for forced whites */
-    .bg-white{ background:var(--card)!important; }
+    /* ===== KPI chips ===== */
+    .kpi{
+      display:inline-flex; align-items:center; gap:.5rem;
+      padding:.35rem .6rem; border-radius:999px; border:1px solid #cfe7db;
+      background:#f1fbf5; color:#0f5132; font-weight:600; font-size:.95rem;
+    }
 
-    /* ============ Photo Grid ============ */
+    /* ===== Photo Grid ===== */
     .photo-gallery{
-      display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:.75rem;
+      display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:.75rem;
     }
     .photo-gallery img{
-      width:100%; height:110px; object-fit:cover; border-radius:.5rem; border:1px solid rgba(0,0,0,.08);
-      background:#e9ecef;
+      width:100%; height:120px; object-fit:cover;
+      border-radius:.6rem; border:1px solid var(--border); background:#eef1f4;
     }
 
-    /* ============ Tables ============ */
-    .table thead th{background:#f3f7f4}
-    .table tbody tr:hover{background:rgba(25,135,84,.03)}
+    /* ===== Tables ===== */
+    .table thead th{background:#f3f7f4; border-bottom:1px solid var(--border)}
+    .table-bordered{border-color:var(--border)}
     .table>:not(caption)>*>*{vertical-align:middle}
+    .table-hover tbody tr:hover{background:rgba(25,135,84,.04)}
 
-    /* ============ Sticky Footer Actions ============ */
+    /* ===== Progress ===== */
+    .due-wrap{min-width:220px}
+    .due-bar{height:.6rem; background:#eef1f4; border-radius:999px; overflow:hidden}
+    .due-bar>span{display:block; height:100%; background:var(--brand); transition:width .25s ease}
+
+    /* ===== Forms / Focus ===== */
+    .form-control:focus,.form-select:focus,.btn:focus{
+      box-shadow:0 0 0 .2rem var(--ring)!important; outline:none!important;
+    }
+
+    /* ===== Sticky bottom actions ===== */
     .sticky-actions{
       position:sticky; bottom:0; z-index:1020;
       background:rgba(255,255,255,.92); backdrop-filter:blur(6px);
-      border-top:1px solid rgba(0,0,0,.08);
+      border-top:1px solid var(--border);
     }
 
-    /* ============ Progress / Status ============ */
-    .due-wrap{min-width:220px}
-    .due-bar{height:.6rem; background:#e9ecef; border-radius:999px; overflow:hidden}
-    .due-bar > span{display:block; height:100%; background:var(--brand); transition:width .3s ease}
-
-    /* ============ Forms / Focus ============ */
-    .form-control:focus, .form-select:focus, .btn:focus{
-      box-shadow:0 0 0 .2rem var(--ring) !important; outline:none !important;
-    }
-
-    /* ============ Accessibility / Motion ============ */
-    @media (prefers-reduced-motion: reduce){
-      *{animation:none!important; transition:none!important; scroll-behavior:auto!important}
-    }
-
-    /* Tighten on small screens */
+    /* Spacing tweaks */
     @media (max-width:576px){
-      .table td, .table th{padding:.55rem .5rem; font-size:.95rem}
-      .accordion-button{padding:.8rem 1rem}
-    }
-
-    /* === Recent Inspections readability (dark mode) === */
-    @media (prefers-color-scheme: dark){
-      /* meta labels and values */
-      #inspections .accordion-body,
-      #inspections .card-lite,
-      #inspections .row { color: #fff !important; }
-      #inspections strong { 
-        color: #fff !important; 
-        font-weight: 700;
-      }
-      /* photo captions */
-      #inspections figcaption { color: #fff !important; font-weight: 500; }
+      .table td,.table th{padding:.6rem .5rem; font-size:.95rem}
+      .accordion-button{padding:.85rem 1rem}
     }
   </style>
 </head>
@@ -171,45 +130,40 @@
   <!-- ===== Header ===== -->
   <header class="app-header py-2">
     <div class="container d-flex align-items-center justify-content-between gap-2">
-      <div class="d-flex align-items-center gap-2">
+      <div class="brand">
         <span class="brand-dot" aria-hidden="true"></span>
-        <strong class="text-body-emphasis">Palm Coast Fleet</strong>
+        <span>Palm Coast Fleet</span>
         <span class="small-muted">/ Vehicle</span>
       </div>
-
-      <!-- KPIs / Quick glance -->
-      <div class="nav-kpi">
+      <div class="d-flex align-items-center gap-2 flex-wrap">
         {% if reminders and reminders|length > 0 %}
           {% set overdue = reminders|selectattr('status','equalto','overdue')|list|length %}
-          {% set dueSoon = reminders|selectattr('status','equalto','due_soon')|list|length %}
-          <span class="kpi" aria-label="Maintenance status">
-            🔧 {{ overdue }} overdue · {{ reminders|length }} total
-          </span>
+          <span class="kpi" aria-label="Maintenance status">Overdue: {{ overdue }} · Total: {{ reminders|length }}</span>
         {% endif %}
         {% if inventory %}
-          <span class="kpi" aria-label="Inventory items">📦 {{ inventory|length }} items</span>
+          <span class="kpi" aria-label="Inventory items">Inventory Items: {{ inventory|length }}</span>
         {% endif %}
       </div>
     </div>
 
-    <!-- Sticky tab bar -->
     <div class="border-top mt-2">
-      <div class="container py-2 top-tabs d-flex">
-        <a class="btn btn-sm btn-outline-dark" href="#profile">Vehicle</a>
-        <a class="btn btn-sm btn-outline-dark" href="#inventory">Inventory</a>
-        <a class="btn btn-sm btn-outline-dark" href="#inspections">Inspections</a>
-        <a class="btn btn-sm btn-outline-dark" href="#upcoming">Upcoming</a>
-        <a class="btn btn-sm btn-outline-dark" href="#history">History</a>
-        <a class="btn btn-sm btn-outline-dark" href="#services">Services</a>
-      </div>
+      <nav class="container py-2 top-tabs">
+        <ul class="nav">
+          <li class="nav-item"><a class="nav-link active" href="#profile">Vehicle</a></li>
+          <li class="nav-item"><a class="nav-link" href="#inventory">Inventory</a></li>
+          <li class="nav-item"><a class="nav-link" href="#inspections">Inspections</a></li>
+          <li class="nav-item"><a class="nav-link" href="#upcoming">Upcoming</a></li>
+          <li class="nav-item"><a class="nav-link" href="#history">History</a></li>
+          <li class="nav-item"><a class="nav-link" href="#services">Services</a></li>
+        </ul>
+      </nav>
     </div>
   </header>
 
   <!-- ===== Main ===== -->
   <main id="content" class="container py-3" role="main">
-    <!-- Back to Tech Home for techs -->
     {% if is_tech %}
-      <p class="mb-2"><a href="{{ url_for('tech_home') }}">← Back to Tech Home</a></p>
+      <p class="mb-2"><a href="{{ url_for('tech_home') }}" class="link-secondary">← Back to Tech Home</a></p>
     {% endif %}
 
     <!-- Vehicle Summary -->
@@ -222,7 +176,8 @@
         {% set hero = (inspections[0].photo_front if inspections and inspections[0].photo_front else None) %}
         <div class="ms-auto">
           {% if hero %}
-            <img src="{{ hero }}" alt="Latest front photo of vehicle" width="360" height="200" style="object-fit:cover; border-radius:12px; border:1px solid rgba(0,0,0,.08)" loading="lazy" decoding="async" />
+            <img src="{{ hero }}" alt="Latest front photo of vehicle" width="360" height="200"
+                 style="object-fit:cover; border-radius:12px; border:1px solid var(--border)" loading="lazy" decoding="async" />
           {% endif %}
         </div>
       </div>
@@ -258,7 +213,7 @@
       <section class="accordion-item">
         <h2 class="accordion-header" id="headingEquipment">
           <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEquipment" aria-expanded="false" aria-controls="collapseEquipment">
-            📦 Permanent Equipment
+            Permanent Equipment
           </button>
         </h2>
         <div id="collapseEquipment" class="accordion-collapse collapse" aria-labelledby="headingEquipment" data-bs-parent="#vehicleAccordion">
@@ -307,7 +262,7 @@
                           <a href="{{ url_for('delete_equipment', vehicle_id=vehicle[0], equipment_id=item.id) }}"
                              class="btn btn-sm btn-outline-danger ms-1"
                              onclick="return confirm('Remove this tool?')"
-                             aria-label="Delete {{ item.item_name }}">🗑️</a>
+                             aria-label="Delete {{ item.item_name }}">Delete</a>
                           </form>
                         {% else %}
                           —
@@ -343,7 +298,7 @@
                   <input id="notes_new" type="text" name="notes" class="form-control" placeholder="Optional Notes">
                 </div>
                 <div class="col-6 col-sm-2 col-md-2">
-                  <button class="btn btn-success w-100">➕ Add</button>
+                  <button class="btn btn-success w-100">Add</button>
                 </div>
               </form>
             {% endif %}
@@ -355,7 +310,7 @@
       <section class="accordion-item" id="inventory">
         <h2 class="accordion-header" id="headingInventory">
           <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseInventory" aria-expanded="true" aria-controls="collapseInventory">
-            📦 Truck Inventory
+            Truck Inventory
           </button>
         </h2>
         <div id="collapseInventory" class="accordion-collapse collapse show" data-bs-parent="#vehicleAccordion">
@@ -394,7 +349,7 @@
       <section class="accordion-item" id="inspections">
         <h2 class="accordion-header" id="headingInspections">
           <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseInspections" aria-expanded="false" aria-controls="collapseInspections">
-            🧾 Recent Inspections
+            Recent Inspections
           </button>
         </h2>
         <div id="collapseInspections" class="accordion-collapse collapse" data-bs-parent="#vehicleAccordion">
@@ -417,7 +372,7 @@
                     ] %}
                       {% if path %}
                         <figure class="text-center small m-0">
-                          <img src="{{ path }}" alt="{{ label }} photo" loading="lazy" decoding="async" width="220" height="110">
+                          <img src="{{ path }}" alt="{{ label }} photo" loading="lazy" decoding="async" width="220" height="120">
                           <figcaption class="mt-1">{{ label }}</figcaption>
                         </figure>
                       {% endif %}
@@ -436,7 +391,7 @@
       <section class="accordion-item" id="upcoming">
         <h2 class="accordion-header" id="headingUpcoming">
           <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseUpcoming" aria-expanded="false" aria-controls="collapseUpcoming">
-            ⏱ Upcoming Maintenance
+            Upcoming Maintenance
           </button>
         </h2>
         <div id="collapseUpcoming" class="accordion-collapse collapse" data-bs-parent="#vehicleAccordion">
@@ -483,16 +438,16 @@
                       </td>
                       <td>
                         {% if r.status == 'overdue' %}
-                          <span class="badge bg-danger">🔴 Overdue</span>
+                          <span class="badge bg-danger">Overdue</span>
                         {% elif r.status == 'due_soon' %}
-                          <span class="badge bg-warning text-dark">⚠ Due in {{ r.miles_remaining }} mi</span>
+                          <span class="badge bg-warning text-dark">Due in {{ r.miles_remaining }} mi</span>
                         {% else %}
-                          <span class="badge bg-success">🟢 OK</span>
+                          <span class="badge bg-success">OK</span>
                         {% endif %}
                       </td>
                       <td>
                         {% if is_admin %}
-                          <button type="submit" class="btn btn-sm btn-outline-primary">✔ Complete</button>
+                          <button type="submit" class="btn btn-sm btn-outline-primary">Mark Complete</button>
                           </form>
                         {% else %}
                           —
@@ -514,7 +469,7 @@
       <section class="accordion-item" id="history">
         <h2 class="accordion-header" id="headingHistory">
           <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseHistory" aria-expanded="false" aria-controls="collapseHistory">
-            🛠 Maintenance History
+            Maintenance History
           </button>
         </h2>
         <div id="collapseHistory" class="accordion-collapse collapse" data-bs-parent="#vehicleAccordion">
@@ -539,7 +494,7 @@
                       <td>{{ m.received_at.strftime('%Y-%m-%d') }}</td>
                       <td style="min-width: 180px;">
                         {% if m.invoice_url %}
-                          <a href="{{ m.invoice_url }}" target="_blank" class="link-primary">📎 View</a>
+                          <a href="{{ m.invoice_url }}" target="_blank" class="link-primary">View</a>
                         {% else %}
                           {% if is_admin %}
                             <form action="{{ url_for('upload_vehicle_invoice', maintenance_id=m.id) }}" method="POST" enctype="multipart/form-data" class="d-flex gap-1">
@@ -552,7 +507,7 @@
                           {% endif %}
                         {% endif %}
                       </td>
-                      <td><span class="badge bg-success">✅ Completed</span></td>
+                      <td><span class="badge bg-success">Completed</span></td>
                     </tr>
                   {% endfor %}
                   </tbody>
@@ -569,7 +524,7 @@
       <section class="accordion-item" id="services">
         <h2 class="accordion-header" id="headingServices">
           <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseServices" aria-expanded="false" aria-controls="collapseServices">
-            📋 General Service History + Add New
+            General Service History & Add New
           </button>
         </h2>
         <div id="collapseServices" class="accordion-collapse collapse" data-bs-parent="#vehicleAccordion">
@@ -593,7 +548,7 @@
                       <td class="fw-semibold">{{ svc.service_type }}</td>
                       <td>{{ svc.odometer }} mi</td>
                       <td>{{ svc.notes or '' }}</td>
-                      <td>{% if svc.invoice_url %}<a href="{{ svc.invoice_url }}" target="_blank" class="link-primary">📎 View</a>{% else %}—{% endif %}</td>
+                      <td>{% if svc.invoice_url %}<a href="{{ svc.invoice_url }}" target="_blank" class="link-primary">View</a>{% else %}—{% endif %}</td>
                     </tr>
                   {% endfor %}
                   </tbody>
@@ -624,7 +579,7 @@
                     <input id="svc_invoice" type="file" name="invoice_file" accept="application/pdf,image/*" class="form-control">
                   </div>
                   <div class="col-12 col-md-6 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary w-100">➕ Add Service</button>
+                    <button type="submit" class="btn btn-primary w-100">Add Service</button>
                   </div>
                 </div>
               </form>
@@ -641,7 +596,7 @@
     <div class="container py-2 d-flex gap-2 justify-content-between">
       <a href="/vehicles" class="btn btn-outline-secondary w-50" aria-label="Back to vehicles">← Vehicles</a>
       {% if is_admin %}
-        <a href="/vehicle-inspection/{{ vehicle[0] }}" class="btn btn-success w-50" aria-label="Start a new inspection">📝 Start Inspection</a>
+        <a href="/vehicle-inspection/{{ vehicle[0] }}" class="btn btn-success w-50" aria-label="Start a new inspection">Start Inspection</a>
       {% endif %}
     </div>
   </div>
