@@ -69,12 +69,15 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "YOUR_RENDER_POSTGRES_CONNECTION_S
 
 def get_db_connection():
     return psycopg2.connect(DATABASE_URL)
-    class LoginUser(UserMixin):
+
+
+class LoginUser(UserMixin):
     def __init__(self, row):
         self.id = row["id"]
         self.email = row["email"]
         self.role = row["role"]
         self._active = row["is_active"]
+
     def is_active(self):
         return self._active
 
