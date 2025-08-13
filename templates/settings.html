@@ -3,56 +3,216 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Settings | Palm Coast Inventory</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <title>Settings • Palm Coast Inventory</title>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="color-scheme" content="light" />
   <style>
-    body {
-      background-color: #f8f9fa;
-      font-family: 'Inter', sans-serif;
+    :root{
+      --page:#f7f7f9;
+      --card:#ffffff;
+      --border:#e6e7eb;
+      --text:#0b1220;
+      --muted:#6b7280;
+      --brand:#0ea5e9;
+      --brand-2:#10b981;
+      --danger:#ef4444;
+      --ring:0 0 0 4px rgba(14,165,233,.15);
+      --radius:16px;
+      --shadow:0 8px 24px rgba(17,24,39,.08), 0 2px 6px rgba(17,24,39,.06);
     }
-    .container {
-      max-width: 720px;
-    }
-    h3 {
-      font-weight: 600;
-    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0}
+    body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter,"Helvetica Neue",Arial;background:var(--page);color:var(--text);}
+
+    /* Header / crumbs */
+    .shell{max-width:min(920px,94vw);margin:22px auto 40px;padding-bottom:20px}
+    .crumbs{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:.95rem;margin-bottom:12px}
+    .crumbs a{color:#2563eb;text-decoration:none}
+    .crumbs a:hover{text-decoration:underline}
+
+    .page-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+    h1{margin:0;font-size:1.6rem;letter-spacing:-.01em}
+    .actions{display:flex;gap:8px;align-items:center}
+    .btn{appearance:none;border:none;border-radius:12px;padding:10px 14px;cursor:pointer;font-weight:700}
+    .btn.outline{border:1px solid var(--border);background:#fff}
+    .btn.brand{color:#fff;background:linear-gradient(90deg,var(--brand),var(--brand-2));box-shadow:0 10px 24px rgba(16,185,129,.18)}
+    .btn.danger{color:#fff;background:var(--danger)}
+    .btn:focus-visible{outline:none;box-shadow:var(--ring)}
+    .link{color:#2563eb;text-decoration:none}
+
+    /* Tabs */
+    .tabs{display:flex;gap:8px;border-bottom:1px solid var(--border);margin-bottom:14px}
+    .tab{padding:10px 12px;border-radius:12px 12px 0 0;color:var(--muted);cursor:pointer}
+    .tab[aria-selected="true"]{background:#fff;border:1px solid var(--border);border-bottom-color:#fff;color:var(--text)}
+
+    /* Cards */
+    .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;margin-bottom:16px}
+    .card h2{margin:0 0 8px;font-size:1.15rem}
+    .sub{color:var(--muted);margin:0 0 12px}
+
+    .row{display:flex;gap:10px;align-items:center}
+    .field{flex:1}
+    label{display:block;font-size:.92rem;margin:0 0 6px;color:#374151}
+    input, select{width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:#fff;color:var(--text);outline:none;transition:border .16s ease, box-shadow .16s ease}
+    input:focus, select:focus{border-color:#b7c2cf;box-shadow:var(--ring)}
+
+    /* Technicians list */
+    table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--border);border-radius:14px;overflow:hidden}
+    th,td{padding:12px 14px;text-align:left}
+    th{background:#fafafa;color:#334155;font-weight:700}
+    tr+tr td{border-top:1px solid var(--border)}
+
+    .badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid #cdebd8;background:#ecfdf5;color:#065f46;border-radius:999px;font-size:.85rem}
+
+    .footer{color:var(--muted);font-size:.9rem;text-align:center;margin-top:18px}
+
+    /* Modal */
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;place-items:center;z-index:50}
+    .modal .box{width:min(460px,92vw);background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:18px}
+    .modal .box h3{margin:0 0 8px}
+    .modal .box p{margin:0 0 14px;color:#374151}
+    .modal .actions{display:flex;justify-content:flex-end;gap:8px}
   </style>
 </head>
 <body>
-  <div class="container py-4">
-    <a href="/" class="btn btn-sm btn-outline-secondary mb-3">← Back to Dashboard</a>
-    <a href="{{ url_for('admin_users_list') }}">Manage Users</a>
-    <h3 class="mb-4">⚙️ Settings</h3>
+  <div class="shell">
+    <div class="crumbs"><a href="{{ url_for('index') }}">Dashboard</a> / Settings</div>
 
-    <!-- Section: Add Technician -->
-    <div class="card mb-4 shadow-sm">
-      <div class="card-body">
-        <h5 class="card-title mb-3">➕ Add Technician</h5>
-        <form method="POST" action="/add-technician" class="d-flex gap-2">
-          <input type="text" name="tech_name" class="form-control" placeholder="Technician name" required>
-          <button type="submit" class="btn btn-success">Add</button>
-        </form>
+    <div class="page-head">
+      <h1>Settings</h1>
+      <div class="actions">
+        <a class="btn outline" href="{{ url_for('admin_users_list') }}">Manage users</a>
+        <a class="btn outline" href="{{ url_for('sds_portal') }}">SDS & Labels</a>
       </div>
     </div>
 
-    <!-- Section: Remove Technician -->
-    <div class="card mb-4 shadow-sm">
-      <div class="card-body">
-        <h5 class="card-title mb-3">🗑 Remove Technician</h5>
+    <!-- Tabs (for future expansion) -->
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" aria-selected="true" aria-controls="tab-tech">Technicians</button>
+      <button class="tab" role="tab" aria-selected="false" aria-controls="tab-general">General</button>
+    </div>
+
+    <section id="tab-tech" role="tabpanel" aria-labelledby="Technicians">
+      <!-- Add Technician -->
+      <div class="card">
+        <h2>➕ Add technician</h2>
+        <p class="sub">Create a technician for scan‑outs, vehicle assignment and reporting.</p>
+        <form method="POST" action="{{ url_for('add_technician') }}" class="row" novalidate>
+          {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+          <div class="field">
+            <label for="tech_name">Technician name</label>
+            <input id="tech_name" name="tech_name" type="text" placeholder="e.g. Jordin" required />
+          </div>
+          <button type="submit" class="btn brand">Add</button>
+        </form>
+      </div>
+
+      <!-- Remove Technician -->
+      <div class="card">
+        <h2>🗑 Remove technician</h2>
+        <p class="sub">This detaches any vehicle assignment but keeps historical scan logs.</p>
         {% if technicians %}
-        <form method="POST" action="/remove-technician" class="d-flex gap-2">
-          <select name="tech_name" class="form-select" required>
-            <option value="">-- Select Technician --</option>
-            {% for tech in technicians %}
+        <form id="removeForm" method="POST" action="{{ url_for('remove_technician') }}" class="row" novalidate>
+          {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+          <div class="field">
+            <label for="tech_select">Select technician</label>
+            <select id="tech_select" name="tech_name" required>
+              <option value="">— Select technician —</option>
+              {% for tech in technicians %}
               <option value="{{ tech }}">{{ tech }}</option>
-            {% endfor %}
-          </select>
-          <button type="submit" class="btn btn-danger">Remove</button>
+              {% endfor %}
+            </select>
+          </div>
+          <button type="button" id="askRemove" class="btn danger">Remove</button>
         </form>
         {% else %}
-          <p class="text-muted mb-0">No technicians available to remove.</p>
+          <p class="sub">No technicians available to remove.</p>
         {% endif %}
       </div>
+
+      <!-- Current list -->
+      <div class="card">
+        <h2>Team</h2>
+        <p class="sub">Overview of technicians currently enabled.</p>
+        {% if technicians %}
+        <table aria-label="Technicians list">
+          <thead>
+            <tr><th>Name</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            {% for tech in technicians %}
+            <tr>
+              <td>{{ tech }}</td>
+              <td><span class="badge"><span class="dot"></span> Active</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+          <p class="sub">No technicians yet. Add your first technician above.</p>
+        {% endif %}
+      </div>
+    </section>
+
+    <section id="tab-general" role="tabpanel" hidden>
+      <div class="card">
+        <h2>General</h2>
+        <p class="sub">Organization‑wide preferences. (Placeholder for future settings.)</p>
+        <div class="row">
+          <div class="field">
+            <label for="org_name">Organization name</label>
+            <input id="org_name" type="text" placeholder="Palm Coast Pest Control"/>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="footer">Need help? Contact an administrator.</div>
+  </div>
+
+  <!-- Confirm modal -->
+  <div class="modal" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" aria-hidden="true">
+    <div class="box">
+      <h3 id="confirmTitle">Remove technician?</h3>
+      <p>This will remove the technician from active use and unassign any vehicles. Historical logs remain intact.</p>
+      <div class="actions">
+        <button class="btn outline" id="cancelRemove">Cancel</button>
+        <button class="btn danger" id="confirmRemove">Remove</button>
+      </div>
     </div>
+  </div>
+
+  <script>
+    // Tabs (simple, no URL state)
+    (function(){
+      const tabs = document.querySelectorAll('.tab');
+      const panels = [document.getElementById('tab-tech'), document.getElementById('tab-general')];
+      tabs.forEach((t,i)=>{
+        t.addEventListener('click',()=>{
+          tabs.forEach(x=>x.setAttribute('aria-selected','false'));
+          t.setAttribute('aria-selected','true');
+          panels.forEach((p,j)=>{ p.hidden = (i!==j); });
+        });
+      });
+    })();
+
+    // Remove confirmation
+    (function(){
+      const modal = document.getElementById('confirmModal');
+      const ask = document.getElementById('askRemove');
+      const cancel = document.getElementById('cancelRemove');
+      const confirmBtn = document.getElementById('confirmRemove');
+      const form = document.getElementById('removeForm');
+      const select = document.getElementById('tech_select');
+
+      function open(){ modal.style.display='grid'; }
+      function close(){ modal.style.display='none'; }
+
+      ask?.addEventListener('click',()=>{ if(select?.value){ open(); } else { select?.focus(); } });
+      cancel?.addEventListener('click', close);
+      modal?.addEventListener('click',(e)=>{ if(e.target===modal) close(); });
+      confirmBtn?.addEventListener('click',()=>{ close(); form?.submit(); });
+    })();
+  </script>
 </body>
 </html>
