@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Manage Users • Palm Coast</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body{margin:0; font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter; background:#0b1220; color:#e5e7eb}
+    .wrap{width:min(1100px,94vw); margin:24px auto}
+    h1{margin:4px 0 16px}
+    a,button{cursor:pointer}
+    .bar{display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px}
+    .btn{background:#22d3ee; color:#001018; padding:10px 12px; border:none; border-radius:10px; font-weight:700}
+    table{width:100%; border-collapse:collapse; background:#0f172a; border:1px solid #1f2a44; border-radius:12px; overflow:hidden}
+    th,td{padding:10px 12px; border-bottom:1px solid #1f2a44; font-size:.95rem}
+    th{background:#0c1426; text-align:left}
+    tr:hover td{background:#0c1324}
+    .muted{color:#9fb2aa}
+    .pill{display:inline-block; padding:4px 8px; border-radius:999px; font-size:.8rem}
+    .green{background:#0a1e1b; color:#bbf7d0; border:1px solid #214a3f}
+    .red{background:#2a1111; color:#fecaca; border:1px solid #7f1d1d}
+    form.inline{display:inline}
+    .link{color:#93c5fd; text-decoration:none}
+    .link:hover{text-decoration:underline}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="bar">
+      <h1>Manage Users</h1>
+      <a class="btn" href="{{ url_for('admin_users_new') }}">+ New User</a>
+    </div>
+
+    <table role="table" aria-label="Users">
+      <thead>
+        <tr>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Linked Tech</th>
+          <th>Vehicle</th>
+          <th>Status</th>
+          <th>Created</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for u in users %}
+        <tr>
+          <td>{{ u.email }}</td>
+          <td>{{ u.role }}</td>
+          <td>{% if u.tech_id %}#{{ u.tech_id }} — {{ u.tech_name }}{% else %}<span class="muted">—</span>{% endif %}</td>
+          <td>{% if u.vehicle_id %}{{ u.vehicle_id }}{% else %}<span class="muted">—</span>{% endif %}</td>
+          <td>
+            {% if u.is_active %}
+              <span class="pill green">Active</span>
+            {% else %}
+              <span class="pill red">Inactive</span>
+            {% endif %}
+          </td>
+          <td class="muted">{{ u.created_at.strftime('%Y-%m-%d') if u.created_at else '' }}</td>
+          <td>
+            <a class="link" href="{{ url_for('admin_users_edit', user_id=u.id) }}">Edit</a>
+            &nbsp;|&nbsp;
+            <form class="inline" method="POST" action="{{ url_for('admin_users_toggle_active', user_id=u.id) }}">
+              <input type="hidden" name="to_state" value="{{ 'off' if u.is_active else 'on' }}">
+              <button style="background:none;border:none;color:#93c5fd;padding:0;">{{ 'Deactivate' if u.is_active else 'Activate' }}</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+
+    <p class="muted" style="margin-top:12px">
+      Quick tip: link a Tech user to a Technician to control access to their assigned vehicle.
+    </p>
+  </div>
+</body>
+</html>
