@@ -7,151 +7,160 @@
   <meta name="color-scheme" content="dark light">
   <style>
     :root{
-      --bg-1:#0b1220;
-      --bg-2:#0e1831;
-      --glass:#101827cc;
-      --card:#101827f2;
-      --text:#e5e7eb;
-      --muted:#94a3b8;
-      --accent:#38bdf8; /* cyan */
-      --accent-2:#22d3ee; /* teal */
+      --bg-deep:#08130e;         /* jungle night */
+      --bg-emerald:#0c271c;      /* deep foliage */
+      --leaf-1:#103523;
+      --leaf-2:#0b2b1b;
+      --leaf-3:#15492f;
+      --glass:#0b1420cc;
+      --panel:#0c1526f2;
+      --text:#e6f1ea;
+      --muted:#9fb2aa;
+      --accent:#38e2a1;          /* tropical mint */
+      --accent-2:#22d3ee;        /* aqua */
       --danger:#ef4444;
-      --shadow: 0 20px 50px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.04);
-      --radius:16px;
+      --radius:18px;
+      --shadow:0 24px 60px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.04);
     }
-    * { box-sizing: border-box; }
-    html, body { height: 100%; margin:0; }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0}
     body{
       color:var(--text);
       background:
-        radial-gradient(1200px 800px at 10% -10%, #1b2650 0%, transparent 50%),
-        radial-gradient(1000px 800px at 100% 0%, #122240 0%, transparent 55%),
-        linear-gradient(180deg, var(--bg-1), var(--bg-2));
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, "Apple Color Emoji","Segoe UI Emoji";
-      display:grid;
-      place-items:center;
-      overflow:hidden;
+        radial-gradient(1200px 800px at 15% -10%, #102c20 0%, transparent 55%),
+        radial-gradient(900px 600px at 100% 0%, #0c2218 0%, transparent 60%),
+        linear-gradient(180deg, var(--bg-emerald), var(--bg-deep));
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial;
+      overflow:hidden; display:grid; place-items:center;
     }
 
-    /* Brand strip */
-    .brand {
-      position: fixed; top:24px; left: 24px;
-      display:flex; align-items:center; gap:10px;
-      font-weight:600; letter-spacing:.2px;
-      opacity:.95;
+    /* Layered jungle silhouettes */
+    .foliage{
+      position:fixed; inset:-10% -10% 0 -10%; pointer-events:none; z-index:0;
+      background:
+        radial-gradient(1200px 400px at -5% 105%, var(--leaf-1) 0%, transparent 60%),
+        radial-gradient(900px 300px at 105% 110%, var(--leaf-2) 0%, transparent 65%),
+        radial-gradient(700px 240px at 70% 115%, var(--leaf-3) 0%, transparent 65%),
+        radial-gradient(600px 220px at 30% 118%, var(--leaf-2) 0%, transparent 65%);
+      mask-image: linear-gradient(#000, rgba(0,0,0,.8) 40%, rgba(0,0,0,.2));
+      opacity:.85;
     }
-    .brand .dot { width:10px; height:10px; border-radius:50%; background:var(--accent-2); box-shadow:0 0 16px var(--accent-2); }
+
+    /* Brand */
+    .brand{
+      position:fixed; top:22px; left:24px; z-index:3;
+      display:flex; align-items:center; gap:10px; font-weight:700; letter-spacing:.2px;
+      color:#d9f99d;
+      text-shadow:0 2px 8px rgba(0,0,0,.4);
+    }
+    .brand .dot{ width:12px; height:12px; border-radius:50%; background:#f43f5e; box-shadow:0 0 16px #f43f5e }
 
     /* Card */
     .card{
-      width:min(460px, 92vw);
-      background: var(--card);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255,255,255,.06);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
+      position:relative; z-index:2;
+      width:min(480px, 94vw);
+      background:var(--glass);
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
       padding:28px 26px 26px;
-      position:relative;
-      z-index:2;
+      backdrop-filter: blur(10px);
       animation: rise .6s ease-out both;
     }
-    @keyframes rise { from { transform: translateY(10px); opacity:.0 } to { transform: translateY(0); opacity:1 } }
+    @keyframes rise{from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:translateY(0)}}
+    h1{margin:0 0 6px;font-size:1.35rem}
+    p.sub{margin:0 0 18px; color:var(--muted); font-size:.95rem}
 
-    h1{ font-size:1.25rem; margin:0 0 14px 0; }
-    p.sub{ color:var(--muted); margin:0 0 18px 0; font-size:.95rem; }
-
-    form { display:grid; gap:14px; }
-    label { font-size:.9rem; color:#cbd5e1; display:block; margin-bottom:6px; }
-    input[type="email"], input[type="password"]{
-      width:100%; padding:12px 14px; border-radius:12px;
-      background:#0b1220; color:var(--text);
-      border:1px solid #1f2937; outline:none;
+    label{display:block; font-size:.9rem; margin:0 0 6px; color:#cfe7db}
+    input{
+      width:100%; padding:12px 14px; border-radius:12px; border:1px solid #1f2e3b;
+      background:#0a1821; color:var(--text); outline:none;
     }
-    input:focus{ border-color:#334155; box-shadow: 0 0 0 3px rgba(34,211,238,.15); }
+    input:focus{ border-color:#2f4857; box-shadow:0 0 0 3px rgba(56,226,161,.20) }
 
     .btn{
+      margin-top:6px; width:100%;
       appearance:none; border:none; cursor:pointer;
-      padding:12px 16px; border-radius:12px;
-      background: linear-gradient(90deg, var(--accent), var(--accent-2));
-      color:#001018; font-weight:700; letter-spacing:.3px;
-      box-shadow: 0 10px 30px rgba(34,211,238,.25);
+      padding:13px 16px; border-radius:12px;
+      background:linear-gradient(90deg, var(--accent), var(--accent-2));
+      color:#001316; font-weight:800; letter-spacing:.3px;
+      box-shadow: 0 14px 34px rgba(34,211,238,.28);
     }
-    .btn:active{ transform: translateY(1px) }
+    .btn:active{ transform:translateY(1px) }
 
     .error{
-      margin:0 0 10px; padding:10px 12px;
-      border-radius:10px; background: #7f1d1d; color:#fecaca;
-      border:1px solid #b91c1c;
+      margin:0 0 12px; padding:10px 12px;
+      border-radius:12px; background:#7f1d1d; color:#fecaca; border:1px solid #b91c1c;
       font-size:.9rem;
     }
 
-    /* Footer */
-    .footer{ margin-top:14px; color:var(--muted); font-size:.85rem; text-align:center; }
+    .footer{ margin-top:12px; text-align:center; color:var(--muted); font-size:.85rem }
 
     /* Frog animation layer */
-    .frog-layer{
-      position: fixed; inset: 0; pointer-events:none; overflow:hidden; z-index:1;
-    }
+    .frog-layer{ position:fixed; inset:0; pointer-events:none; z-index:1; overflow:hidden }
 
-    /* SVG frog size/position */
     .frog{
-      position:absolute; left:-140px; bottom: 60px;
-      width:120px; height:auto;
-      filter: drop-shadow(0 10px 20px rgba(0,0,0,.6));
-      animation: hop 9s cubic-bezier(.2,.8,.3,1) infinite;
+      position:absolute; left:-140px; bottom: 64px; width:120px; height:auto;
+      filter: drop-shadow(0 16px 28px rgba(0,0,0,.55));
+      animation: hop 8.5s cubic-bezier(.2,.8,.3,1) infinite;
+    }
+    /* gentle hop path */
+    @keyframes hop{
+      0%   { transform: translateX(-12vw) translateY(0) rotate(0deg) }
+      12%  { transform: translateX(10vw)  translateY(-20px) rotate(-2deg) }
+      22%  { transform: translateX(20vw)  translateY(0)    rotate(0deg) }
+      36%  { transform: translateX(36vw)  translateY(-18px) rotate(2deg) }
+      48%  { transform: translateX(52vw)  translateY(0)     rotate(0deg) }
+      64%  { transform: translateX(72vw)  translateY(-22px) rotate(-2deg) }
+      80%  { transform: translateX(92vw)  translateY(0)     rotate(0deg) }
+      100% { transform: translateX(115vw) translateY(0)     rotate(0deg) }
     }
 
-    /* Hopping path with small arcs + leg wiggle */
-    @keyframes hop {
-      0%   { transform: translateX(-10vw) translateY(0) rotate(0deg) }
-      10%  { transform: translateX(10vw)  translateY(-22px) rotate(-2deg) }
-      18%  { transform: translateX(19vw)  translateY(0)    rotate(0deg) }
-      28%  { transform: translateX(32vw)  translateY(-18px) rotate(2deg) }
-      38%  { transform: translateX(45vw)  translateY(0)      rotate(0deg) }
-      52%  { transform: translateX(62vw)  translateY(-24px) rotate(-3deg) }
-      66%  { transform: translateX(78vw)  translateY(0)      rotate(0deg) }
-      80%  { transform: translateX(95vw)  translateY(-18px) rotate(2deg) scale(.98) }
-      100% { transform: translateX(115vw) translateY(0)      rotate(0deg) }
-    }
+    /* occasional leaf sway (subtle) */
+    .sway { animation: sway 6s ease-in-out infinite alternate; transform-origin: 50% 100% }
+    @keyframes sway { from{ transform: rotate(-1deg) } to{ transform: rotate(1deg) } }
 
-    /* Reduce motion for accessibility */
-    @media (prefers-reduced-motion: reduce) {
-      .frog { animation: none; left: 12px; bottom: 12px; }
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce){
+      .frog{ animation:none; left:12px; bottom:12px }
+      .sway{ animation:none }
     }
   </style>
 </head>
 <body>
+  <div class="foliage" aria-hidden="true"></div>
+
   <div class="brand"><span class="dot"></span> Palm Coast Inventory</div>
 
-  <!-- fun red‑eyed tree frog (pure SVG) -->
+  <!-- Frog (pure SVG) -->
   <div class="frog-layer" aria-hidden="true">
-    <svg class="frog" viewBox="0 0 180 120">
+    <svg class="frog" viewBox="0 0 180 120" role="img" aria-label="Red-eyed tree frog">
       <!-- body -->
-      <ellipse cx="85" cy="70" rx="58" ry="28" fill="#1fbf66"/>
-      <ellipse cx="120" cy="60" rx="26" ry="18" fill="#21c173"/>
+      <ellipse cx="85" cy="70" rx="58" ry="28" fill="#23c26f"/>
+      <ellipse cx="120" cy="60" rx="26" ry="18" fill="#25cc78"/>
       <!-- belly -->
-      <ellipse cx="75" cy="78" rx="40" ry="20" fill="#e6f5e9" opacity=".9"/>
+      <ellipse cx="75" cy="78" rx="40" ry="20" fill="#e8f9f0" opacity=".92"/>
       <!-- legs -->
-      <path d="M35,80 C20,90 18,108 30,110" stroke="#1a9c55" stroke-width="10" fill="none" stroke-linecap="round"/>
-      <path d="M125,82 C140,92 142,110 130,112" stroke="#1a9c55" stroke-width="10" fill="none" stroke-linecap="round"/>
-      <!-- feet (orange) -->
+      <path d="M35,80 C20,90 18,108 30,110" stroke="#1aa45a" stroke-width="10" fill="none" stroke-linecap="round" class="sway"/>
+      <path d="M125,82 C140,92 142,110 130,112" stroke="#1aa45a" stroke-width="10" fill="none" stroke-linecap="round" class="sway"/>
+      <!-- feet -->
       <circle cx="28" cy="110" r="6" fill="#ff7a18"/>
       <circle cx="132" cy="112" r="6" fill="#ff7a18"/>
       <!-- head -->
-      <ellipse cx="130" cy="52" rx="30" ry="20" fill="#1fbf66"/>
+      <ellipse cx="130" cy="52" rx="30" ry="20" fill="#23c26f"/>
       <!-- eyes -->
       <circle cx="143" cy="46" r="10" fill="#f43f5e"/>
-      <circle cx="117" cy="48" r="9" fill="#f43f5e"/>
-      <circle cx="143" cy="46" r="4.5" fill="#111827"/>
-      <circle cx="117" cy="48" r="4.2" fill="#111827"/>
+      <circle cx="117" cy="48" r="9"  fill="#f43f5e"/>
+      <circle cx="143" cy="46" r="4.6" fill="#0b0f12"/>
+      <circle cx="117" cy="48" r="4.4" fill="#0b0f12"/>
       <!-- smile -->
-      <path d="M118,60 C126,66 138,66 146,60" stroke="#0b1220" stroke-width="3" fill="none" stroke-linecap="round" opacity=".6"/>
+      <path d="M118,60 C126,66 138,66 146,60" stroke="#07110c" stroke-width="3" fill="none" stroke-linecap="round" opacity=".6"/>
     </svg>
   </div>
 
   <main class="card" role="main" aria-labelledby="heading">
     <h1 id="heading">Sign in</h1>
-    <p class="sub">Welcome back. Enter your email and password to continue.</p>
+    <p class="sub">Welcome back to the jungle. Let’s get to work.</p>
 
     {% if error %}
       <div class="error" role="alert">{{ error }}</div>
@@ -171,5 +180,17 @@
 
     <div class="footer">Need access? Contact an administrator.</div>
   </main>
+
+  <script>
+    // tiny script to occasionally randomize frog timing so hops feel organic
+    (function(){
+      const frog = document.querySelector('.frog');
+      if (!frog) return;
+      const rand = () => (6 + Math.random()*4).toFixed(2) + 's';
+      setInterval(() => {
+        frog.style.animationDuration = rand();
+      }, 9000);
+    })();
+  </script>
 </body>
 </html>
