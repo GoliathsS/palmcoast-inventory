@@ -1,99 +1,88 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>My Portal • Palm Coast</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf-8" />
+  <title>Palm Coast • Tech Portal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="color-scheme" content="light" />
   <style>
     :root{
-      --bg:#0b1220;
-      --panel:#0f172a;
-      --panel-2:#0b1324;
-      --text:#e5e7eb;
-      --muted:#94a3b8;
-      --tile:#0e1a30;
-      --tile-border:#16233f;
-      --accent:#22d3ee;
-      --accent-2:#38bdf8;
-      --good:#10b981;
-      --shadow: 0 18px 50px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.04);
-      --radius: 16px;
+      --page:#f7f7f9;        /* background */
+      --card:#ffffff;        /* panels */
+      --border:#e6e7eb;      /* strokes */
+      --text:#0b1220;        /* primary */
+      --muted:#6b7280;       /* secondary */
+      --brand:#0ea5e9;       /* blue */
+      --brand-2:#10b981;     /* green */
+      --good:#16a34a;        /* status */
+      --shadow:0 8px 24px rgba(17,24,39,.08), 0 2px 6px rgba(17,24,39,.06);
+      --radius:16px;
+      --ring:0 0 0 4px rgba(14,165,233,.15);
     }
     *{box-sizing:border-box}
-    body{
-      margin:0; color:var(--text); background:
-        radial-gradient(1200px 700px at 20% -10%, #122146 0%, transparent 60%),
-        radial-gradient(1000px 700px at 100% 0%, #0c1b34 0%, transparent 60%),
-        var(--bg);
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial;
-      min-height:100vh;
-      display:flex; flex-direction:column;
-    }
-    header{
-      display:flex; align-items:center; justify-content:space-between;
-      padding:18px 22px;
-    }
-    .brand{ display:flex; align-items:center; gap:10px; font-weight:700; letter-spacing:.2px }
-    .brand .frog-dot{width:12px;height:12px;border-radius:50%;background:#f43f5e;box-shadow:0 0 14px #f43f5e}
-    .meta{ color:var(--muted); font-size:.9rem }
+    html,body{height:100%;margin:0}
+    body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter,"Helvetica Neue",Arial;background:var(--page);color:var(--text);display:flex;flex-direction:column}
 
-    .wrap{ width:min(1100px, 94vw); margin: 0 auto 30px; flex:1; }
+    /* Header */
+    header{position:sticky;top:0;z-index:10;background:rgba(255,255,255,.8);backdrop-filter:saturate(1.2) blur(8px);border-bottom:1px solid var(--border);}
+    .bar{max-width:min(1100px,94vw);margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:16px 0}
+    .brand{display:flex;align-items:center;gap:12px;font-weight:800;letter-spacing:.2px}
+    .brand img{height:22px;width:auto;display:block}
 
-    .panel{
-      background: linear-gradient(180deg, var(--panel), var(--panel-2));
-      border:1px solid rgba(255,255,255,.06);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding:18px;
-    }
+    .meta{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:.95rem}
+    .logout{color:#2563eb;text-decoration:none;border:1px solid #dbe4ff;padding:8px 12px;border-radius:12px}
+    .logout:hover{background:#eef2ff}
 
-    .tiles{ display:grid; gap:16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
-    .tile{
-      background: linear-gradient(180deg, var(--tile), #0b1426);
-      border:1px solid var(--tile-border); border-radius:14px;
-      padding:20px; min-height:140px;
-      display:flex; align-items:center; justify-content:space-between; gap:12px;
-      transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
-      text-decoration:none; color:inherit;
-    }
-    .tile:hover{ transform: translateY(-2px); border-color:#2b3b62; box-shadow: 0 14px 30px rgba(0,0,0,.35); }
-    .tile h3{ margin:0 0 6px; font-size:1.15rem }
-    .tile p{ margin:0; color:var(--muted); font-size:.95rem }
-    .cta{
-      margin-top: 4px;
-      display:inline-block; font-weight:700; letter-spacing:.3px; font-size:.9rem;
-      color:#001018; background: linear-gradient(90deg, var(--accent), var(--accent-2));
-      padding:9px 12px; border-radius:10px;
-    }
+    /* Layout */
+    .wrap{width:min(1100px,94vw);margin:20px auto 40px;flex:1;display:grid;gap:18px}
 
-    .logout{ color:#93c5fd; text-decoration:none; border:1px solid rgba(147,197,253,.25); padding:8px 10px; border-radius:10px }
-    .logout:hover{ background:#0c1630 }
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
 
-    .footer{ color:var(--muted); font-size:.85rem; text-align:center; padding:18px 0 28px }
+    h2{margin:0 0 12px;font-size:1.2rem;letter-spacing:-.01em}
+    .subtle{color:var(--muted)}
 
-    /* Status pill (optional if you pass data later) */
-    .pill{ display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border:1px solid #214a3f; color:#bbf7d0; background:#0a1e1b; border-radius: 999px; font-size:.85rem }
-    .dot{ width:8px; height:8px; border-radius:50%; background: var(--good); box-shadow:0 0 10px var(--good) }
+    .tiles{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+    .tile{display:flex;align-items:center;justify-content:space-between;gap:12px;text-decoration:none;color:inherit;background:linear-gradient(180deg,#fff,#fafafa);border:1px solid var(--border);border-radius:14px;padding:18px;min-height:140px;transition:transform .12s ease, box-shadow .15s ease, border-color .15s ease}
+    .tile:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(16,24,40,.06);border-color:#d6d9df}
+    .tile h3{margin:0 0 6px;font-size:1.1rem}
+    .tile p{margin:0;color:var(--muted);font-size:.95rem}
+
+    .cta{margin-top:6px;display:inline-block;font-weight:700;letter-spacing:.3px;font-size:.9rem;color:white;background:linear-gradient(90deg,var(--brand),var(--brand-2));padding:9px 12px;border-radius:10px;box-shadow:0 8px 20px rgba(16,185,129,.18)}
+
+    .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid #cdebd8;color:#065f46;background:#ecfdf5;border-radius:999px;font-size:.88rem}
+    .dot{width:8px;height:8px;border-radius:50%;background:var(--good)}
+
+    .footer{color:var(--muted);font-size:.9rem;text-align:center;padding:24px 0 34px}
+
+    /* Accessibility */
+    a:focus-visible, .tile:focus-visible, .logout:focus-visible{outline:none;box-shadow:var(--ring)}
   </style>
 </head>
 <body>
   <header>
-    <div class="brand"><span class="frog-dot"></span> Palm Coast • Tech Portal</div>
-    <div class="meta">
-      {% if current_user.is_authenticated %}{{ current_user.email }}{% endif %}
-      &nbsp;•&nbsp;
-      <a class="logout" href="{{ url_for('logout') }}">Sign out</a>
+    <div class="bar">
+      <div class="brand" aria-label="Palm Coast Tech Portal">
+        <!-- Optional brand image -->
+        <!-- <img src="{{ url_for('static', filename='LOGO.jpg') }}" alt="Palm Coast" /> -->
+        Palm Coast • Tech Portal
+      </div>
+      <div class="meta">
+        {% if current_user.is_authenticated %}{{ current_user.email }}{% endif %}
+        •
+        <a class="logout" href="{{ url_for('logout') }}">Sign out</a>
+      </div>
     </div>
   </header>
 
   <div class="wrap">
-    <div class="panel" role="region" aria-label="Quick actions">
-      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:14px;">
-        <h2 style="margin:0; font-size:1.2rem;">Welcome{% if current_user.is_authenticated %}, {{ current_user.email.split('@')[0] | capitalize }}{% endif %}</h2>
+    <section class="panel" role="region" aria-label="Quick actions">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:10px">
+        <h2>Welcome{% if current_user.is_authenticated %}, {{ current_user.email.split('@')[0] | capitalize }}{% endif %}</h2>
         {% if vehicle_id %}
           <span class="pill"><span class="dot"></span> Vehicle assigned</span>
         {% else %}
-          <span class="pill" style="opacity:.7; border-color:#444; color:#ddd; background:#141a27"><span class="dot" style="background:#64748b; box-shadow:none"></span> No vehicle assigned</span>
+          <span class="pill" style="opacity:.8;border-color:#e5e7eb;background:#f9fafb;color:#6b7280"><span class="dot" style="background:#9ca3af"></span> No vehicle assigned</span>
         {% endif %}
       </div>
 
@@ -105,7 +94,6 @@
             <p>Quick access to product safety docs &amp; labels.</p>
             <span class="cta">Open</span>
           </div>
-          <!-- simple inline icon -->
           <svg width="64" height="64" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M7 3h7l4 4v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" stroke="#60a5fa" stroke-width="1.5"/>
             <path d="M14 3v4h4" stroke="#93c5fd" stroke-width="1.5"/>
@@ -133,9 +121,9 @@
           <div>
             <h3>My Vehicle</h3>
             <p>No vehicle assigned yet. Contact your manager.</p>
-            <span class="cta" style="opacity:.5; pointer-events:none;">Unavailable</span>
+            <span class="cta" style="opacity:.55;pointer-events:none">Unavailable</span>
           </div>
-          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" aria-hidden="true" opacity=".4">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" aria-hidden="true" opacity=".45">
             <path d="M3 13h15l3 3v3H3v-6z" stroke="#94a3b8" stroke-width="1.5"/>
             <circle cx="7" cy="19" r="2" stroke="#cbd5e1" stroke-width="1.5"/>
             <circle cx="17" cy="19" r="2" stroke="#cbd5e1" stroke-width="1.5"/>
@@ -144,9 +132,9 @@
         </div>
         {% endif %}
       </div>
-    </div>
+    </section>
   </div>
 
-  <div class="footer">© {{  (now() if false else '')  }} Palm Coast • All rights reserved</div>
+  <div class="footer">© {{ current_year or '' }} Palm Coast • All rights reserved</div>
 </body>
 </html>
