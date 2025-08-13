@@ -97,7 +97,7 @@
       <div class="card">
         <h2>➕ Add technician</h2>
         <p class="sub">Create a technician for scan‑outs, vehicle assignment and reporting.</p>
-        <form method="POST" action="{{ url_for('add_technician') }}" class="row" novalidate>
+        <form method="POST" action="{{ url_for('add_technician_route') }}" class="row" novalidate>
           {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
           <div class="field">
             <label for="tech_name">Technician name</label>
@@ -112,7 +112,7 @@
         <h2>🗑 Remove technician</h2>
         <p class="sub">This detaches any vehicle assignment but keeps historical scan logs.</p>
         {% if technicians %}
-        <form id="removeForm" method="POST" action="{{ url_for('remove_technician') }}" class="row" novalidate>
+        <form id="removeForm" method="POST" action="{{ url_for('remove_technician_route') }}" class="row" novalidate>
           {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
           <div class="field">
             <label for="tech_select">Select technician</label>
