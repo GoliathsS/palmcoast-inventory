@@ -5,25 +5,63 @@
   <title>{{ 'Edit User' if user else 'New User' }} • Palm Coast</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body{margin:0; font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter; background:#0b1220; color:#e5e7eb}
+    :root{
+      --bg:#0b1220; --panel:#0f172a; --border:#1f2a44;
+      --input:#0b1626; --text:#e5e7eb; --muted:#9fb2aa;
+      --primary:#22d3ee; --primaryText:#001018; --danger:#b91c1c; --dangerBg:#7f1d1d;
+      --radius:14px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0; font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter; background:var(--bg); color:var(--text)}
     .wrap{width:min(800px,94vw); margin:24px auto}
-    .card{background:#0f172a; border:1px solid #1f2a44; border-radius:14px; padding:18px}
+    .card{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:18px}
     h1{margin:0 0 16px}
+    h2{margin:0 0 12px; font-size:1.1rem}
     label{display:block; margin:10px 0 6px; color:#cfe7db}
-    input,select{width:100%; padding:10px 12px; border-radius:10px; border:1px solid #1f2a44; background:#0b1626; color:#e5e7eb}
+    input,select{
+      width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--border);
+      background:var(--input); color:var(--text); outline:none;
+    }
+    input:focus,select:focus{ border-color:#2b3c5f; box-shadow:0 0 0 3px rgba(34,211,238,.18) }
     .row{display:grid; grid-template-columns: 1fr 1fr; gap:14px}
     .actions{display:flex; gap:10px; margin-top:14px}
-    .btn{background:#22d3ee; color:#001018; padding:10px 12px; border:none; border-radius:10px; font-weight:700}
+    .btn{background:var(--primary); color:var(--primaryText); padding:10px 12px; border:none; border-radius:10px; font-weight:700; cursor:pointer}
     .btn.gray{background:#1f2a44; color:#cbd5e1}
-    .error{margin:0 0 12px; padding:10px 12px; border-radius:10px; background:#7f1d1d; color:#fecaca; border:1px solid #b91c1c}
-    .muted{color:#9fb2aa}
+    .error{margin:0 0 12px; padding:10px 12px; border-radius:10px; background:var(--dangerBg); color:#fecaca; border:1px solid var(--danger)}
+    .muted{color:var(--muted)}
     form.inline{display:inline}
+    .pw-wrap{position:relative}
+    .pw-toggle{
+      position:absolute; right:10px; top:50%; transform:translateY(-50%);
+      background:none; border:none; color:#a7b4c7; cursor:pointer; font-size:.9rem; padding:2px 6px;
+    }
+    .note{font-size:.85rem; color:var(--muted); margin-top:6px}
   </style>
   <script>
     function toggleTechSelect(){
       const role = document.getElementById('role').value;
       const techBlock = document.getElementById('tech-block');
       techBlock.style.display = (role === 'TECH') ? 'block' : 'none';
+    }
+    function togglePw(id){
+      const el = document.getElementById(id);
+      el.type = (el.type === 'password') ? 'text' : 'password';
+    }
+    function validateCreateForm(e){
+      const pw = document.getElementById('password');
+      const pc = document.getElementById('password_confirm');
+      const msg = document.getElementById('pwmsg');
+      if(!pw || !pc) return true;
+      msg.textContent = '';
+      if(pw.value.length < 8){
+        msg.textContent = 'Password must be at least 8 characters.';
+        e.preventDefault(); return false;
+      }
+      if(pw.value !== pc.value){
+        msg.textContent = 'Passwords do not match.';
+        e.preventDefault(); return false;
+      }
+      return true;
     }
   </script>
 </head>
@@ -34,7 +72,7 @@
     {% if error %}<div class="error">{{ error }}</div>{% endif %}
 
     <div class="card">
-      <form method="POST">
+      <form method="POST" onsubmit="return validateCreateForm(event)">
         <label for="email">Email</label>
         <input id="email" name="email" type="email" value="{{ user.email if user else '' }}" required>
 
@@ -58,6 +96,7 @@
           {% endif %}
         </div>
 
+        <!-- Only show technician link selector if role is TECH -->
         <div id="tech-block" style="display:none">
           <label for="technician_id">Link to Technician</label>
           <select id="technician_id" name="technician_id">
@@ -76,6 +115,11 @@
           {% endif %}
         </div>
 
+        {% if not user %}
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" minlength="8" required>
+        {% endif %}  
+
         <div class="actions">
           <button class="btn" type="submit">{{ 'Save Changes' if user else 'Create User' }}</button>
           <a class="btn gray" href="{{ url_for('admin_users_list') }}">Cancel</a>
@@ -85,10 +129,13 @@
 
     {% if user %}
     <div class="card" style="margin-top:16px">
-      <h2 style="margin:0 0 12px; font-size:1.1rem">Reset Password</h2>
+      <h2>Reset Password</h2>
       <form class="inline" method="POST" action="{{ url_for('admin_users_reset_password', user_id=user.id) }}">
         <label for="new_password">New Password</label>
-        <input id="new_password" name="new_password" type="password" minlength="8" required>
+        <div class="pw-wrap">
+          <input id="new_password" name="new_password" type="password" minlength="8" required>
+          <button class="pw-toggle" type="button" onclick="togglePw('new_password')">Show</button>
+        </div>
         <div class="actions">
           <button class="btn" type="submit">Set Password</button>
         </div>
