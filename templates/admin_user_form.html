@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ 'Edit User' if user else 'New User' }} • Palm Coast</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body{margin:0; font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter; background:#0b1220; color:#e5e7eb}
+    .wrap{width:min(800px,94vw); margin:24px auto}
+    .card{background:#0f172a; border:1px solid #1f2a44; border-radius:14px; padding:18px}
+    h1{margin:0 0 16px}
+    label{display:block; margin:10px 0 6px; color:#cfe7db}
+    input,select{width:100%; padding:10px 12px; border-radius:10px; border:1px solid #1f2a44; background:#0b1626; color:#e5e7eb}
+    .row{display:grid; grid-template-columns: 1fr 1fr; gap:14px}
+    .actions{display:flex; gap:10px; margin-top:14px}
+    .btn{background:#22d3ee; color:#001018; padding:10px 12px; border:none; border-radius:10px; font-weight:700}
+    .btn.gray{background:#1f2a44; color:#cbd5e1}
+    .error{margin:0 0 12px; padding:10px 12px; border-radius:10px; background:#7f1d1d; color:#fecaca; border:1px solid #b91c1c}
+    .muted{color:#9fb2aa}
+    form.inline{display:inline}
+  </style>
+  <script>
+    function toggleTechSelect(){
+      const role = document.getElementById('role').value;
+      const techBlock = document.getElementById('tech-block');
+      techBlock.style.display = (role === 'TECH') ? 'block' : 'none';
+    }
+  </script>
+</head>
+<body onload="toggleTechSelect()">
+  <div class="wrap">
+    <h1>{{ 'Edit User' if user else 'New User' }}</h1>
+
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+    <div class="card">
+      <form method="POST">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" value="{{ user.email if user else '' }}" required>
+
+        <div class="row">
+          <div>
+            <label for="role">Role</label>
+            <select id="role" name="role" onchange="toggleTechSelect()">
+              <option value="ADMIN" {% if user and user.role=='ADMIN' %}selected{% endif %}>ADMIN</option>
+              <option value="TECH"  {% if (user and user.role=='TECH') or not user %}selected{% endif %}>TECH</option>
+            </select>
+          </div>
+
+          {% if user %}
+          <div>
+            <label for="is_active">Active</label>
+            <div>
+              <input type="checkbox" id="is_active" name="is_active" {% if user.is_active %}checked{% endif %}>
+              <label for="is_active" class="muted">Allow login</label>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+
+        <div id="tech-block" style="display:none">
+          <label for="technician_id">Link to Technician</label>
+          <select id="technician_id" name="technician_id">
+            <option value="">— None —</option>
+            {% for t in technicians %}
+              <option value="{{ t.id }}"
+                {% if linked and linked.id == t.id %}selected{% endif %}>
+                #{{ t.id }} — {{ t.name }}
+              </option>
+            {% endfor %}
+          </select>
+          {% if linked %}
+            <div class="muted" style="margin-top:8px">
+              Currently linked: #{{ linked.id }} — {{ linked.name }}
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="actions">
+          <button class="btn" type="submit">{{ 'Save Changes' if user else 'Create User' }}</button>
+          <a class="btn gray" href="{{ url_for('admin_users_list') }}">Cancel</a>
+        </div>
+      </form>
+    </div>
+
+    {% if user %}
+    <div class="card" style="margin-top:16px">
+      <h2 style="margin:0 0 12px; font-size:1.1rem">Reset Password</h2>
+      <form class="inline" method="POST" action="{{ url_for('admin_users_reset_password', user_id=user.id) }}">
+        <label for="new_password">New Password</label>
+        <input id="new_password" name="new_password" type="password" minlength="8" required>
+        <div class="actions">
+          <button class="btn" type="submit">Set Password</button>
+        </div>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+</body>
+</html>
