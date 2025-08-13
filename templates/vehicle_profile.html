@@ -40,16 +40,16 @@
       body{background:var(--bg); color:var(--ink);}
       .app-header{background:rgba(15,20,28,.9); border-bottom:1px solid rgba(255,255,255,.06);}
       .sticky-actions{background:rgba(15,20,28,.92); border-top:1px solid rgba(255,255,255,.08);}
-      .card-lite{background:var(--card); border:1px solid rgba(255,255,255,.06); box-shadow:0 2px 16px rgba(0,0,0,.35);}
-      .bg-white{ background:var(--card)!important; }
-      .table{color:var(--ink);}
-      .table-bordered{border-color:rgba(255,255,255,.08);}
+      .card-lite{background:var(--card); border:1px solid rgba(255,255,255,.06); box-shadow:0 2px 16px rgba(0,0,0,.35);} 
+      .bg-white{ background:var(--card)!important; } 
+      .table{color:var(--ink);} 
+      .table-bordered{border-color:rgba(255,255,255,.08);} 
       .table thead th,
-      .table-light{background:#111923!important; color:var(--ink); border-color:rgba(255,255,255,.08);}
-      .table tbody tr:hover{background:rgba(136,240,190,.08);}
-      .accordion-button{background:var(--card); color:var(--ink); border-bottom:1px solid rgba(255,255,255,.06);}
-      .accordion-button:not(.collapsed){box-shadow:none;}
-      .accordion-item{background:var(--card); border-color:rgba(255,255,255,.08);}
+      .table-light{background:#111923!important; color:var(--ink); border-color:rgba(255,255,255,.08);} 
+      .table tbody tr:hover{background:rgba(136,240,190,.08);} 
+      .accordion-button{background:var(--card); color:var(--ink); border-bottom:1px solid rgba(255,255,255,.06);} 
+      .accordion-button:not(.collapsed){box-shadow:none;} 
+      .accordion-item{background:var(--card); border-color:rgba(255,255,255,.08);} 
       .top-tabs .btn{
         --bs-btn-color: var(--ink);
         --bs-btn-border-color: rgba(255,255,255,.18);
@@ -61,10 +61,10 @@
         color:var(--brand-ink);
         border:1px solid rgba(136,240,190,.30);
       }
-      .due-bar{background:rgba(255,255,255,.12);}
-      .due-bar > span{background:var(--brand);}
-      a.link-primary{color:#6ab7ff;}
-      a.link-primary:hover{color:#9bcdff;}
+      .due-bar{background:rgba(255,255,255,.12);} 
+      .due-bar > span{background:var(--brand);} 
+      a.link-primary{color:#6ab7ff;} 
+      a.link-primary:hover{color:#9bcdff;} 
     }
 
     /* ============ Base / Type ============ */
@@ -147,26 +147,27 @@
       .table td, .table th{padding:.55rem .5rem; font-size:.95rem}
       .accordion-button{padding:.8rem 1rem}
     }
+
     /* === Recent Inspections readability (dark mode) === */
-  @media (prefers-color-scheme: dark){
-    /* meta labels and values */
-    #inspections .accordion-body,
-    #inspections .card-lite,
-    #inspections .row { color: #fff !important; }
-
-    #inspections strong { 
-      color: #fff !important; 
-      font-weight: 700;
-    }
-
-    /* photo captions */
-    #inspections figcaption {
-      color: #fff !important;
-      font-weight: 500;
+    @media (prefers-color-scheme: dark){
+      /* meta labels and values */
+      #inspections .accordion-body,
+      #inspections .card-lite,
+      #inspections .row { color: #fff !important; }
+      #inspections strong { 
+        color: #fff !important; 
+        font-weight: 700;
+      }
+      /* photo captions */
+      #inspections figcaption { color: #fff !important; font-weight: 500; }
     }
   </style>
 </head>
 <body>
+  {# ===== Role helpers ===== #}
+  {% set is_admin = current_user.is_authenticated and current_user.role == 'ADMIN' %}
+  {% set is_tech  = current_user.is_authenticated and current_user.role == 'TECH' %}
+
   <!-- ===== Header ===== -->
   <header class="app-header py-2">
     <div class="container d-flex align-items-center justify-content-between gap-2">
@@ -206,6 +207,11 @@
 
   <!-- ===== Main ===== -->
   <main id="content" class="container py-3" role="main">
+    <!-- Back to Tech Home for techs -->
+    {% if is_tech %}
+      <p class="mb-2"><a href="{{ url_for('tech_home') }}">← Back to Tech Home</a></p>
+    {% endif %}
+
     <!-- Vehicle Summary -->
     <section id="profile" class="card-lite p-3 p-md-4 mb-3" aria-labelledby="veh-title">
       <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
@@ -274,26 +280,38 @@
                     <tr>
                       <td class="fw-semibold">{{ item.item_name }}</td>
                       <td style="min-width:150px">
-                        <form class="d-flex align-items-center gap-2" action="{{ url_for('update_single_equipment', vehicle_id=vehicle[0], equipment_id=item.id) }}" method="POST">
-                          <label for="status_{{ item.id }}" class="visually-hidden">Status</label>
-                          <select id="status_{{ item.id }}" name="status" class="form-select form-select-sm">
-                            <option value="Assigned" {% if item.status == 'Assigned' %}selected{% endif %}>Assigned</option>
-                            <option value="Missing" {% if item.status == 'Missing' %}selected{% endif %}>Missing</option>
-                            <option value="Needs Repair" {% if item.status == 'Needs Repair' %}selected{% endif %}>Needs Repair</option>
-                          </select>
+                        {% if is_admin %}
+                          <form class="d-flex align-items-center gap-2" action="{{ url_for('update_single_equipment', vehicle_id=vehicle[0], equipment_id=item.id) }}" method="POST">
+                            <label for="status_{{ item.id }}" class="visually-hidden">Status</label>
+                            <select id="status_{{ item.id }}" name="status" class="form-select form-select-sm">
+                              <option value="Assigned" {% if item.status == 'Assigned' %}selected{% endif %}>Assigned</option>
+                              <option value="Missing" {% if item.status == 'Missing' %}selected{% endif %}>Missing</option>
+                              <option value="Needs Repair" {% if item.status == 'Needs Repair' %}selected{% endif %}>Needs Repair</option>
+                            </select>
+                        {% else %}
+                          {{ item.status or '—' }}
+                        {% endif %}
                       </td>
                       <td>{{ item.last_verified.strftime('%Y-%m-%d') if item.last_verified else '—' }}</td>
                       <td style="min-width:220px">
+                        {% if is_admin %}
                           <label for="notes_{{ item.id }}" class="visually-hidden">Notes</label>
                           <input id="notes_{{ item.id }}" type="text" name="notes" value="{{ item.notes or '' }}" class="form-control form-control-sm" placeholder="Optional notes" />
+                        {% else %}
+                          {{ item.notes or '—' }}
+                        {% endif %}
                       </td>
                       <td class="text-end">
+                        {% if is_admin %}
                           <button class="btn btn-sm btn-primary">Save</button>
                           <a href="{{ url_for('delete_equipment', vehicle_id=vehicle[0], equipment_id=item.id) }}"
                              class="btn btn-sm btn-outline-danger ms-1"
                              onclick="return confirm('Remove this tool?')"
                              aria-label="Delete {{ item.item_name }}">🗑️</a>
-                        </form>
+                          </form>
+                        {% else %}
+                          —
+                        {% endif %}
                       </td>
                     </tr>
                   {% endfor %}
@@ -305,28 +323,30 @@
             {% endif %}
 
             <hr class="my-3">
-            <h3 class="h5 mb-3">Add Custom Tool</h3>
-            <form method="POST" action="{{ url_for('add_equipment', vehicle_id=vehicle[0]) }}" class="row g-2" aria-label="Add tool">
-              <div class="col-12 col-sm-5 col-md-4">
-                <label for="item_name" class="form-label visually-hidden">Item Name</label>
-                <input id="item_name" type="text" name="item_name" class="form-control" placeholder="Item Name" required>
-              </div>
-              <div class="col-6 col-sm-3 col-md-3">
-                <label for="status_new" class="form-label visually-hidden">Status</label>
-                <select id="status_new" name="status" class="form-select">
-                  <option value="Assigned">Assigned</option>
-                  <option value="Missing">Missing</option>
-                  <option value="Needs Repair">Needs Repair</option>
-                </select>
-              </div>
-              <div class="col-12 col-sm-4 col-md-3">
-                <label for="notes_new" class="form-label visually-hidden">Notes</label>
-                <input id="notes_new" type="text" name="notes" class="form-control" placeholder="Optional Notes">
-              </div>
-              <div class="col-6 col-sm-2 col-md-2">
-                <button class="btn btn-success w-100">➕ Add</button>
-              </div>
-            </form>
+            {% if is_admin %}
+              <h3 class="h5 mb-3">Add Custom Tool</h3>
+              <form method="POST" action="{{ url_for('add_equipment', vehicle_id=vehicle[0]) }}" class="row g-2" aria-label="Add tool">
+                <div class="col-12 col-sm-5 col-md-4">
+                  <label for="item_name" class="form-label visually-hidden">Item Name</label>
+                  <input id="item_name" type="text" name="item_name" class="form-control" placeholder="Item Name" required>
+                </div>
+                <div class="col-6 col-sm-3 col-md-3">
+                  <label for="status_new" class="form-label visually-hidden">Status</label>
+                  <select id="status_new" name="status" class="form-select">
+                    <option value="Assigned">Assigned</option>
+                    <option value="Missing">Missing</option>
+                    <option value="Needs Repair">Needs Repair</option>
+                  </select>
+                </div>
+                <div class="col-12 col-sm-4 col-md-3">
+                  <label for="notes_new" class="form-label visually-hidden">Notes</label>
+                  <input id="notes_new" type="text" name="notes" class="form-control" placeholder="Optional Notes">
+                </div>
+                <div class="col-6 col-sm-2 col-md-2">
+                  <button class="btn btn-success w-100">➕ Add</button>
+                </div>
+              </form>
+            {% endif %}
           </div>
         </div>
       </section>
@@ -452,10 +472,14 @@
                         </div>
                       </td>
                       <td style="min-width: 160px;">
-                        <form class="d-flex align-items-center gap-2" action="/mark-maintenance-complete/{{ vehicle[0] }}" method="POST">
-                          <input type="hidden" name="service_type" value="{{ r.service_type }}">
-                          <label for="odo_{{ loop.index }}" class="visually-hidden">Odometer</label>
-                          <input id="odo_{{ loop.index }}" type="number" inputmode="numeric" pattern="[0-9]*" name="odometer" class="form-control form-control-sm" required placeholder="Enter miles">
+                        {% if is_admin %}
+                          <form class="d-flex align-items-center gap-2" action="/mark-maintenance-complete/{{ vehicle[0] }}" method="POST">
+                            <input type="hidden" name="service_type" value="{{ r.service_type }}">
+                            <label for="odo_{{ loop.index }}" class="visually-hidden">Odometer</label>
+                            <input id="odo_{{ loop.index }}" type="number" inputmode="numeric" pattern="[0-9]*" name="odometer" class="form-control form-control-sm" required placeholder="Enter miles">
+                        {% else %}
+                          {{ vehicle[4] or '—' }}
+                        {% endif %}
                       </td>
                       <td>
                         {% if r.status == 'overdue' %}
@@ -467,8 +491,12 @@
                         {% endif %}
                       </td>
                       <td>
+                        {% if is_admin %}
                           <button type="submit" class="btn btn-sm btn-outline-primary">✔ Complete</button>
-                        </form>
+                          </form>
+                        {% else %}
+                          —
+                        {% endif %}
                       </td>
                     </tr>
                   {% endfor %}
@@ -513,11 +541,15 @@
                         {% if m.invoice_url %}
                           <a href="{{ m.invoice_url }}" target="_blank" class="link-primary">📎 View</a>
                         {% else %}
-                          <form action="{{ url_for('upload_vehicle_invoice', maintenance_id=m.id) }}" method="POST" enctype="multipart/form-data" class="d-flex gap-1">
-                            <label for="inv_{{ m.id }}" class="visually-hidden">Invoice</label>
-                            <input id="inv_{{ m.id }}" type="file" name="invoice" accept="application/pdf" class="form-control form-control-sm" required>
-                            <button type="submit" class="btn btn-sm btn-secondary">Upload</button>
-                          </form>
+                          {% if is_admin %}
+                            <form action="{{ url_for('upload_vehicle_invoice', maintenance_id=m.id) }}" method="POST" enctype="multipart/form-data" class="d-flex gap-1">
+                              <label for="inv_{{ m.id }}" class="visually-hidden">Invoice</label>
+                              <input id="inv_{{ m.id }}" type="file" name="invoice" accept="application/pdf" class="form-control form-control-sm" required>
+                              <button type="submit" class="btn btn-sm btn-secondary">Upload</button>
+                            </form>
+                          {% else %}
+                            —
+                          {% endif %}
                         {% endif %}
                       </td>
                       <td><span class="badge bg-success">✅ Completed</span></td>
@@ -571,30 +603,32 @@
               <p class="small-muted">No general services logged yet.</p>
             {% endif %}
 
-            <form action="/add-vehicle-service" method="POST" enctype="multipart/form-data" class="card-lite p-3">
-              <input type="hidden" name="vehicle_id" value="{{ vehicle[0] }}">
-              <div class="row g-3">
-                <div class="col-12 col-md-4">
-                  <label class="form-label" for="svc_type">Service Type</label>
-                  <input id="svc_type" type="text" name="service_type" class="form-control" required>
+            {% if is_admin %}
+              <form action="/add-vehicle-service" method="POST" enctype="multipart/form-data" class="card-lite p-3">
+                <input type="hidden" name="vehicle_id" value="{{ vehicle[0] }}">
+                <div class="row g-3">
+                  <div class="col-12 col-md-4">
+                    <label class="form-label" for="svc_type">Service Type</label>
+                    <input id="svc_type" type="text" name="service_type" class="form-control" required>
+                  </div>
+                  <div class="col-12 col-md-3">
+                    <label class="form-label" for="svc_odometer">Odometer</label>
+                    <input id="svc_odometer" type="number" inputmode="numeric" pattern="[0-9]*" name="odometer" class="form-control" required>
+                  </div>
+                  <div class="col-12 col-md-5">
+                    <label class="form-label" for="svc_notes">Notes</label>
+                    <textarea id="svc_notes" name="notes" class="form-control" rows="1" placeholder="Optional"></textarea>
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <label class="form-label" for="svc_invoice">Invoice File (PDF or Image)</label>
+                    <input id="svc_invoice" type="file" name="invoice_file" accept="application/pdf,image/*" class="form-control">
+                  </div>
+                  <div class="col-12 col-md-6 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">➕ Add Service</button>
+                  </div>
                 </div>
-                <div class="col-12 col-md-3">
-                  <label class="form-label" for="svc_odometer">Odometer</label>
-                  <input id="svc_odometer" type="number" inputmode="numeric" pattern="[0-9]*" name="odometer" class="form-control" required>
-                </div>
-                <div class="col-12 col-md-5">
-                  <label class="form-label" for="svc_notes">Notes</label>
-                  <textarea id="svc_notes" name="notes" class="form-control" rows="1" placeholder="Optional"></textarea>
-                </div>
-                <div class="col-12 col-md-6">
-                  <label class="form-label" for="svc_invoice">Invoice File (PDF or Image)</label>
-                  <input id="svc_invoice" type="file" name="invoice_file" accept="application/pdf,image/*" class="form-control">
-                </div>
-                <div class="col-12 col-md-6 d-flex align-items-end">
-                  <button type="submit" class="btn btn-primary w-100">➕ Add Service</button>
-                </div>
-              </div>
-            </form>
+              </form>
+            {% endif %}
           </div>
         </div>
       </section>
@@ -606,7 +640,9 @@
   <div class="sticky-actions">
     <div class="container py-2 d-flex gap-2 justify-content-between">
       <a href="/vehicles" class="btn btn-outline-secondary w-50" aria-label="Back to vehicles">← Vehicles</a>
-      <a href="/vehicle-inspection/{{ vehicle[0] }}" class="btn btn-success w-50" aria-label="Start a new inspection">📝 Start Inspection</a>
+      {% if is_admin %}
+        <a href="/vehicle-inspection/{{ vehicle[0] }}" class="btn btn-success w-50" aria-label="Start a new inspection">📝 Start Inspection</a>
+      {% endif %}
     </div>
   </div>
 
