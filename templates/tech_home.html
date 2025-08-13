@@ -55,15 +55,34 @@
 
     .footer{color:var(--muted);font-size:.9rem;text-align:center;padding:24px 0 34px}
 
+    /* Utility */
+    .grid{display:grid;gap:16px}
+    .grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .btn{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--border);background:#fff;border-radius:10px;padding:8px 12px;text-decoration:none;color:#111;font-weight:600}
+    .btn:hover{box-shadow:var(--shadow)}
+    .btn-primary{background:linear-gradient(90deg,var(--brand),var(--brand-2));color:#fff;border:none}
+    .btn-danger{border-color:#fecaca;background:#fee2e2}
+    .badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:.8rem}
+    .badge-ok{background:#dcfce7;color:#065f46}
+    .badge-warn{background:#fef3c7;color:#92400e}
+    .badge-crit{background:#fee2e2;color:#991b1b}
+    .list{list-style:none;padding:0;margin:0}
+    .list li{border-top:1px dashed #e5e7eb;padding:10px 0}
+    .list li:first-child{border-top:none}
+
     /* Accessibility */
     a:focus-visible, .tile:focus-visible, .logout:focus-visible{outline:none;box-shadow:var(--ring)}
   </style>
 </head>
 <body>
+  {% set is_admin = current_user.is_authenticated and current_user.role == 'ADMIN' %}
+  {% set is_tech  = current_user.is_authenticated and current_user.role == 'TECH' %}
+
   <header>
     <div class="bar">
       <div class="brand" aria-label="Palm Coast Tech Portal">
-        <!-- Optional brand image -->
         <!-- <img src="{{ url_for('static', filename='LOGO.jpg') }}" alt="Palm Coast" /> -->
         Palm Coast • Tech Portal
       </div>
@@ -76,6 +95,8 @@
   </header>
 
   <div class="wrap">
+
+    <!-- Quick actions / tiles -->
     <section class="panel" role="region" aria-label="Quick actions">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:10px">
         <h2>Welcome{% if current_user.is_authenticated %}, {{ current_user.email.split('@')[0] | capitalize }}{% endif %}</h2>
@@ -131,6 +152,222 @@
           </svg>
         </div>
         {% endif %}
+
+        <!-- Emergency (global) -->
+        <a href="#emergency" class="tile" aria-label="Emergency info">
+          <div>
+            <h3>Emergency</h3>
+            <p>Spill procedures, poison control, nearest hospitals.</p>
+            <span class="cta">Open</span>
+          </div>
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" stroke="#fb7185" stroke-width="1.5"/>
+            <path d="M12 7v6M12 16.5v.5" stroke="#fecaca" stroke-width="1.5"/>
+          </svg>
+        </a>
+      </div>
+    </section>
+
+    <!-- Main grid: left (notifications + checklist), right (requests + docs + vehicle status) -->
+    <section class="grid grid-2">
+      <!-- Left Column -->
+      <div class="grid" style="gap:18px">
+        <!-- Notifications -->
+        <div class="panel" role="region" aria-label="Notifications">
+          <h2>Notifications</h2>
+          {% if notifications %}
+            <ul class="list">
+              {% for n in notifications %}
+              <li class="row" style="justify-content:space-between;align-items:flex-start">
+                <div>
+                  <div style="font-weight:700">
+                    {% if n.severity == 'critical' %}
+                      <span class="badge badge-crit">Critical</span>
+                    {% elif n.severity == 'high' %}
+                      <span class="badge badge-warn">High</span>
+                    {% else %}
+                      <span class="badge badge-ok">Normal</span>
+                    {% endif %}
+                    {{ n.title }}
+                  </div>
+                  {% if n.body %}<div class="subtle" style="margin-top:4px">{{ n.body }}</div>{% endif %}
+                  {% if n.due_at %}<div class="subtle" style="margin-top:4px">Due: {{ n.due_at.strftime('%Y-%m-%d') }}</div>{% endif %}
+                </div>
+                <div>
+                  {% if not n.is_read %}
+                  <form method="POST" action="{{ url_for('ack_notification', nid=n.id) }}">
+                    <button class="btn">Mark Read</button>
+                  </form>
+                  {% else %}
+                  <span class="badge badge-ok">Done</span>
+                  {% endif %}
+                </div>
+              </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <div class="subtle">No notifications.</div>
+          {% endif %}
+        </div>
+
+        <!-- Pre-Inspection Checklist -->
+        <div class="panel" role="region" aria-label="Pre-Inspection Checklist">
+          <h2>Pre‑Inspection Checklist</h2>
+          <form method="POST" action="{{ url_for('checklist_add') }}" class="row" style="gap:10px;margin-top:6px;margin-bottom:10px">
+            <input class="btn" style="flex:1;text-align:left" type="text" name="label" placeholder="Add item (e.g., Wash vehicle)" required>
+            <input class="btn" style="width:200px" type="date" name="due_at">
+            <button class="btn btn-primary">Add</button>
+          </form>
+
+          {% if checklist %}
+            <ul class="list">
+              {% for c in checklist %}
+              <li class="row" style="justify-content:space-between;align-items:center">
+                <div class="row" style="align-items:center;gap:10px">
+                  <form method="POST" action="{{ url_for('checklist_toggle', item_id=c.id) }}">
+                    <button class="btn" title="Toggle" aria-label="Toggle">{{ '☑' if c.is_done else '☐' }}</button>
+                  </form>
+                  <div>
+                    <div{% if c.is_done %} class="subtle" style="text-decoration:line-through"{% endif %}>
+                      {{ c.label }}
+                    </div>
+                    {% if c.due_at %}<div class="subtle">Due {{ c.due_at.strftime('%Y-%m-%d') }}</div>{% endif %}
+                  </div>
+                </div>
+              </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <div class="subtle">No checklist items yet.</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Right Column -->
+      <div class="grid" style="gap:18px">
+        <!-- Technician Requests -->
+        <div class="panel" role="region" aria-label="Technician Requests">
+          <h2>Technician Requests</h2>
+          <form method="POST" action="{{ url_for('tech_request_new') }}" class="grid" style="gap:10px;margin-bottom:10px">
+            <select class="btn" name="request_type" aria-label="Request type">
+              <option value="new_chemical">Request to Try New Chemical</option>
+              <option value="equipment">Request Equipment / Something Needed</option>
+              <option value="other">Other</option>
+            </select>
+            <textarea class="btn" name="description" rows="2" placeholder="Describe what you need…" required></textarea>
+            <button class="btn btn-primary">Submit Request</button>
+          </form>
+
+          {% if requests_rows %}
+            <ul class="list">
+              {% for r in requests_rows %}
+              <li class="row" style="justify-content:space-between;align-items:center">
+                <div>
+                  <div style="font-weight:700;text-transform:capitalize">
+                    {{ r.request_type.replace('_',' ') }}
+                    {% if r.tech_name %}<span class="subtle">· {{ r.tech_name }}</span>{% endif %}
+                  </div>
+                  <div class="subtle">{{ r.description }}</div>
+                  {% if r.created_at %}<div class="subtle">Opened {{ r.created_at.strftime('%Y-%m-%d') }}</div>{% endif %}
+                </div>
+                <div>
+                  {% if r.status == 'open' %}
+                    {% if is_admin %}
+                      <form method="POST" action="{{ url_for('tech_request_close', req_id=r.id) }}">
+                        <button class="btn">Close</button>
+                      </form>
+                    {% else %}
+                      <span class="badge badge-warn">Open</span>
+                    {% endif %}
+                  {% else %}
+                    <span class="badge badge-ok">Closed</span>
+                  {% endif %}
+                </div>
+              </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <div class="subtle">No requests yet.</div>
+          {% endif %}
+        </div>
+
+        <!-- CEU & Training Records -->
+        <div class="panel" role="region" aria-label="CEU & Training">
+          <h2>CEU &amp; Training Records</h2>
+          {% if training %}
+            <ul class="list">
+              {% for t in training %}
+              <li class="row" style="justify-content:space-between;align-items:center">
+                <div>
+                  <a href="{{ t.url }}" target="_blank" style="font-weight:700;text-decoration:none">{{ t.title }}</a>
+                  {% if t.ceu_hours %}<span class="subtle"> · {{ t.ceu_hours }} CEU</span>{% endif %}
+                  {% if t.expires_on %}<div class="subtle">Expires {{ t.expires_on.strftime('%Y-%m-%d') }}</div>{% endif %}
+                </div>
+                <a class="btn" href="{{ t.url }}" target="_blank">Open</a>
+              </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <div class="subtle">No records available.</div>
+          {% endif %}
+        </div>
+
+        <!-- Emergency -->
+        <div id="emergency" class="panel" role="region" aria-label="Emergency">
+          <h2>Emergency</h2>
+          <div class="subtle" style="margin-bottom:8px">Spill procedures, poison control, nearest hospitals.</div>
+          {% if emergency %}
+            <ul class="list">
+              {% for e in emergency %}
+              <li>
+                <div style="font-weight:700;text-transform:uppercase">{{ e.kind }}</div>
+                <div>{{ e.name }}{% if e.phone %} · <a href="tel:{{ e.phone }}">{{ e.phone }}</a>{% endif %}</div>
+                {% if e.notes %}<div class="subtle">{{ e.notes }}</div>{% endif %}
+              </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <div class="subtle">No emergency contacts configured.</div>
+          {% endif %}
+        </div>
+
+        <!-- Vehicle Inspection & Maintenance Status -->
+        <div class="panel" role="region" aria-label="Vehicle Inspection & Maintenance Status">
+          <h2>Vehicle Inspection &amp; Maintenance Status</h2>
+          {% if vehicles %}
+            <ul class="list">
+              {% for v in vehicles %}
+              <li class="row" style="justify-content:space-between;align-items:flex-start">
+                <div>
+                  <div style="font-weight:700">{{ v.license_plate }} <span class="subtle">({{ v.vehicle_type }})</span></div>
+                  {% set rows = maint_by_vehicle.get(v.vehicle_id, []) %}
+                  {% if rows %}
+                    <ul class="list" style="margin-top:6px">
+                      {% for r in rows %}
+                      <li style="padding:4px 0;border-top:none">
+                        {{ r.service_type }} — due at {{ r.due_at }} mi
+                        {% if r.status == 'overdue' %}
+                          <span class="badge badge-crit">Overdue</span>
+                        {% elif r.status == 'due_soon' %}
+                          <span class="badge badge-warn">Due Soon</span>
+                        {% else %}
+                          <span class="badge badge-ok">OK</span>
+                        {% endif %}
+                      </li>
+                      {% endfor %}
+                    </ul>
+                  {% else %}
+                    <div class="subtle">No reminders on file.</div>
+                  {% endif %}
+                </div>
+                <a class="btn" href="/vehicles/{{ v.vehicle_id }}">Open</a>
+              </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <div class="subtle">No vehicles assigned.</div>
+          {% endif %}
+        </div>
       </div>
     </section>
   </div>
