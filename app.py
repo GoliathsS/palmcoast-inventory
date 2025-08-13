@@ -182,21 +182,238 @@ def logout():
 @login_required
 @role_required("TECH","ADMIN")
 def tech_home():
+    # keep your existing "assigned vehicle" lookup, but we’ll expand the data pulled
     vehicle_id = None
     if current_user.role == "TECH":
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("""
             SELECT v.vehicle_id
-            FROM vehicles v
-            JOIN technicians t ON v.technician_id = t.id
-            WHERE t.user_id = %s
-            LIMIT 1
+              FROM vehicles v
+              JOIN technicians t ON v.technician_id = t.id
+             WHERE t.user_id = %s
+             LIMIT 1
         """, (current_user.id,))
         row = cur.fetchone()
         vehicle_id = row[0] if row else None
         cur.close(); conn.close()
-    return render_template("tech_home.html", vehicle_id=vehicle_id)
+
+    # open a DictCursor for the rest of the page data
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+    # --- who is the current tech? (id) ---
+    tech_id = None
+    if current_user.role == "TECH":
+        cur.execute("SELECT id FROM technicians WHERE user_id = %s", (current_user.id,))
+        trow = cur.fetchone()
+        tech_id = trow["id"] if trow else None
+
+    # --- notifications (tech-specific or global) ---
+    cur.execute("""
+        SELECT id, title, body, severity, due_at, is_read, created_at
+          FROM notifications
+         WHERE (%s IS NOT NULL AND tech_id = %s) OR tech_id IS NULL
+         ORDER BY
+              CASE WHEN severity='critical' THEN 0
+                   WHEN severity='high'     THEN 1
+                   WHEN severity='normal'   THEN 2
+                   ELSE 3 END,
+              COALESCE(due_at, created_at) ASC
+    """, (tech_id, tech_id))
+    notifications = cur.fetchall()
+
+    # --- checklist (per tech) ---
+    cur.execute("""
+        SELECT id, label, is_done, due_at
+          FROM tech_checklist_items
+         WHERE tech_id = %s
+         ORDER BY COALESCE(due_at, now()) ASC, id ASC
+    """, (tech_id,))
+    checklist = cur.fetchall()
+
+    # --- requests (tech sees their own; admin sees queue) ---
+    if current_user.role == "ADMIN":
+        cur.execute("""
+            SELECT r.id, r.tech_id, t.name AS tech_name, r.request_type, r.description,
+                   r.status, r.created_at, r.closed_at
+              FROM tech_requests r
+              LEFT JOIN technicians t ON t.id = r.tech_id
+             ORDER BY (r.status='open') DESC, r.created_at DESC
+        """)
+    else:
+        cur.execute("""
+            SELECT id, tech_id, request_type, description, status, created_at, closed_at
+              FROM tech_requests
+             WHERE tech_id = %s
+             ORDER BY (status='open') DESC, created_at DESC
+        """, (tech_id,))
+    requests_rows = cur.fetchall()
+
+    # --- training / CEU (global or tech-specific) ---
+    cur.execute("""
+        SELECT id, title, url, ceu_hours, expires_on
+          FROM training_records
+         WHERE (tech_id = %s OR tech_id IS NULL)
+         ORDER BY COALESCE(expires_on, now()) ASC, title
+    """, (tech_id,))
+    training = cur.fetchall()
+
+    # --- emergency contacts (global) ---
+    cur.execute("""
+        SELECT id, name, phone, kind, notes
+          FROM emergency_contacts
+         ORDER BY kind, name
+    """)
+    emergency = cur.fetchall()
+
+    # --- vehicle(s) for this tech (you currently assign 1; we still structure as a list) ---
+    vehicles = []
+    if vehicle_id:
+        cur.execute("""
+            SELECT vehicle_id, license_plate, vehicle_type,
+                   COALESCE(mileage, current_mileage, 0) AS vehicle_miles
+              FROM vehicles
+             WHERE vehicle_id = %s
+        """, (vehicle_id,))
+        v = cur.fetchone()
+        if v:
+            vehicles = [v]
+
+    # --- build maintenance status per vehicle (derive status from odometer_due vs current miles) ---
+    maint_by_vehicle = {}
+    for v in vehicles:
+        vid = v["vehicle_id"]
+        current_miles = int(v["vehicle_miles"] or 0)
+
+        cur.execute("""
+            SELECT service_type, odometer_due, received_at
+              FROM maintenance_reminders
+             WHERE vehicle_id = %s
+             ORDER BY received_at DESC NULLS LAST, odometer_due ASC
+        """, (vid,))
+        rows = cur.fetchall()
+
+        # derive a compact status list (group by service_type → next due)
+        by_service = {}
+        for r in rows:
+            s = r["service_type"].strip() if r["service_type"] else ""
+            due = int(r["odometer_due"] or 0)
+            # keep the nearest future/pending or latest record per service
+            if s not in by_service:
+                by_service[s] = due
+            else:
+                # prefer the larger due if it's in the future; otherwise keep max
+                by_service[s] = max(by_service[s], due)
+
+        summary = []
+        for s, due in by_service.items():
+            miles_remaining = due - current_miles
+            if miles_remaining <= 0:
+                status = "overdue"
+            elif miles_remaining <= 500:
+                status = "due_soon"
+            else:
+                status = "ok"
+            summary.append({
+                "service_type": s,
+                "due_at": due,
+                "miles_remaining": miles_remaining,
+                "status": status
+            })
+
+        maint_by_vehicle[vid] = summary
+
+    cur.close(); conn.close()
+
+    return render_template(
+        "tech_home.html",
+        vehicle_id=vehicle_id,
+        notifications=notifications,
+        checklist=checklist,
+        requests_rows=requests_rows,
+        training=training,
+        emergency=emergency,
+        vehicles=vehicles,
+        maint_by_vehicle=maint_by_vehicle,
+        current_year=date.today().year
+    )
+
+@app.post("/my/notification/<int:nid>/ack")
+@login_required
+@role_required("TECH","ADMIN")
+def ack_notification(nid):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("UPDATE notifications SET is_read = TRUE WHERE id = %s", (nid,))
+    conn.commit()
+    cur.close(); conn.close()
+    return redirect(url_for("tech_home"))
+
+@app.post("/my/checklist/add")
+@login_required
+@role_required("TECH","ADMIN")
+def checklist_add():
+    label = (request.form.get("label") or "").strip()
+    due_at = request.form.get("due_at") or None
+    if not label:
+        return redirect(url_for("tech_home"))
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    # resolve current tech_id
+    cur.execute("SELECT id FROM technicians WHERE user_id = %s", (current_user.id,))
+    trow = cur.fetchone()
+    tech_id = trow["id"] if trow else None
+    cur.execute("""
+        INSERT INTO tech_checklist_items (tech_id, label, is_done, due_at)
+        VALUES (%s, %s, FALSE, %s)
+    """, (tech_id, label, due_at))
+    conn.commit(); cur.close(); conn.close()
+    return redirect(url_for("tech_home"))
+
+@app.post("/my/checklist/<int:item_id>/toggle")
+@login_required
+@role_required("TECH","ADMIN")
+def checklist_toggle(item_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("UPDATE tech_checklist_items SET is_done = NOT is_done WHERE id = %s", (item_id,))
+    conn.commit(); cur.close(); conn.close()
+    return redirect(url_for("tech_home"))
+
+@app.post("/my/request/new")
+@login_required
+@role_required("TECH","ADMIN")
+def tech_request_new():
+    req_type = request.form.get("request_type") or "other"
+    desc = (request.form.get("description") or "").strip()
+    if not desc:
+        return redirect(url_for("tech_home"))
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cur.execute("SELECT id FROM technicians WHERE user_id = %s", (current_user.id,))
+    trow = cur.fetchone()
+    tech_id = trow["id"] if trow else None
+    cur.execute("""
+        INSERT INTO tech_requests (tech_id, request_type, description, status, created_at)
+        VALUES (%s, %s, %s, 'open', NOW())
+    """, (tech_id, req_type, desc))
+    conn.commit(); cur.close(); conn.close()
+    return redirect(url_for("tech_home"))
+
+@app.post("/my/request/<int:req_id>/close")
+@login_required
+@role_required("ADMIN")
+def tech_request_close(req_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        UPDATE tech_requests
+           SET status = 'closed', closed_at = NOW()
+         WHERE id = %s AND status = 'open'
+    """, (req_id,))
+    conn.commit(); cur.close(); conn.close()
+    return redirect(url_for("tech_home"))
 
 @app.route('/')
 @login_required
