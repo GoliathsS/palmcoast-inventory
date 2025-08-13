@@ -119,7 +119,7 @@ def role_required(*roles):
         def wrapper(*args, **kwargs):
             if not current_user.is_authenticated:
                 return login_manager.unauthorized()
-            if current_user.role not in roles:
+            if current_user.role.upper() not in (r.upper() for r in roles):
                 abort(403)
             return fn(*args, **kwargs)
         return wrapper
