@@ -152,6 +152,9 @@ def require_vehicle_access(fn):
         return fn(vehicle_id, *args, **kwargs)
     return wrapper
 
+def normalize_email(email: str) -> str:
+    return (email or "").strip().lower()
+
 @app.get("/login")
 def login():
     if current_user.is_authenticated:
@@ -251,6 +254,223 @@ def index():
 def test_email():
     send_maintenance_email("Test Vehicle", 500)
     return "✅ Test email sent!"
+
+# ----------------------
+# Admin: Manage Users
+# ----------------------
+
+@app.route("/admin/users")
+@login_required
+@role_required("ADMIN")
+def admin_users_list():
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cur.execute("""
+        SELECT u.id, u.email, u.role, u.is_active, u.created_at,
+               t.id AS tech_id, t.name AS tech_name, v.vehicle_id
+          FROM users u
+     LEFT JOIN technicians t ON t.user_id = u.id
+     LEFT JOIN vehicles v ON v.technician_id = t.id
+      ORDER BY u.created_at DESC, u.id DESC
+    """)
+    users = cur.fetchall()
+
+    # for quick create modal: list technicians without a linked user
+    cur.execute("""
+        SELECT t.id, t.name
+          FROM technicians t
+     LEFT JOIN users u ON u.id = t.user_id
+         WHERE t.user_id IS NULL
+      ORDER BY t.name
+    """)
+    free_techs = cur.fetchall()
+
+    conn.close()
+    return render_template("admin_users_list.html", users=users, free_techs=free_techs)
+
+
+@app.route("/admin/users/new", methods=["GET", "POST"])
+@login_required
+@role_required("ADMIN")
+def admin_users_new():
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+    # technicians for dropdown (unlinked only)
+    cur.execute("""
+        SELECT t.id, t.name
+          FROM technicians t
+     LEFT JOIN users u ON u.id = t.user_id
+         WHERE t.user_id IS NULL
+      ORDER BY t.name
+    """)
+    technicians = cur.fetchall()
+
+    if request.method == "POST":
+        email = normalize_email(request.form.get("email"))
+        password = request.form.get("password") or ""
+        role = (request.form.get("role") or "TECH").upper()
+        tech_id = request.form.get("technician_id")  # optional; only for TECH role
+
+        if not email or not password or role not in ("ADMIN", "TECH"):
+            cur.close(); conn.close()
+            return render_template("admin_user_form.html", technicians=technicians,
+                                   error="Email, password, and role are required.", user=None)
+
+        # create user
+        uid = None
+        try:
+            # unique by LOWER(email) enforced app-side (you can add a DB unique index on lower(email) later)
+            existing = None
+            cur.execute("SELECT id FROM users WHERE LOWER(email) = LOWER(%s)", (email,))
+            existing = cur.fetchone()
+            if existing:
+                raise ValueError("A user with that email already exists.")
+
+            cur.execute("""
+                INSERT INTO users (email, password_hash, role, is_active)
+                VALUES (%s, %s, %s, TRUE) RETURNING id
+            """, (email, generate_password_hash(password), role))
+            uid = cur.fetchone()["id"]
+
+            # link to technician if TECH + tech selected
+            if role == "TECH" and tech_id:
+                cur.execute("UPDATE technicians SET user_id = %s WHERE id = %s AND user_id IS NULL", (uid, tech_id))
+
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            cur.close(); conn.close()
+            return render_template("admin_user_form.html", technicians=technicians,
+                                   error=f"Error: {e}", user=None)
+
+        cur.close(); conn.close()
+        return redirect(url_for("admin_users_list"))
+
+    # GET
+    cur.close(); conn.close()
+    return render_template("admin_user_form.html", technicians=technicians, user=None)
+
+
+@app.route("/admin/users/<int:user_id>/edit", methods=["GET", "POST"])
+@login_required
+@role_required("ADMIN")
+def admin_users_edit(user_id):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+    # load user
+    cur.execute("SELECT id, email, role, is_active FROM users WHERE id = %s", (user_id,))
+    user = cur.fetchone()
+    if not user:
+        cur.close(); conn.close()
+        return "User not found", 404
+
+    # which tech is currently linked?
+    cur.execute("""
+        SELECT t.id, t.name FROM technicians t WHERE t.user_id = %s
+    """, (user_id,))
+    linked = cur.fetchone()
+
+    # technicians available for selection: either unlinked, or the currently linked one
+    cur.execute("""
+        SELECT t.id, t.name
+          FROM technicians t
+     LEFT JOIN users u ON u.id = t.user_id
+         WHERE t.user_id IS NULL OR t.user_id = %s
+      ORDER BY t.name
+    """, (user_id,))
+    technicians = cur.fetchall()
+
+    if request.method == "POST":
+        email = normalize_email(request.form.get("email"))
+        role = (request.form.get("role") or "TECH").upper()
+        is_active = True if request.form.get("is_active") == "on" else False
+        tech_id = request.form.get("technician_id")  # may be empty
+
+        if not email or role not in ("ADMIN", "TECH"):
+            cur.close(); conn.close()
+            return render_template("admin_user_form.html", user=user, technicians=technicians, linked=linked,
+                                   error="Email and valid role are required.")
+
+        try:
+            # ensure email uniqueness (excluding myself)
+            cur.execute("SELECT id FROM users WHERE LOWER(email)=LOWER(%s) AND id<>%s", (email, user_id))
+            if cur.fetchone():
+                raise ValueError("Another user already has that email.")
+
+            # update base fields
+            cur.execute("""
+                UPDATE users SET email=%s, role=%s, is_active=%s WHERE id=%s
+            """, (email, role, is_active, user_id))
+
+            # manage tech link
+            if role == "TECH":
+                if tech_id:
+                    # unlink any tech currently pointing to this user (if changing links)
+                    cur.execute("UPDATE technicians SET user_id = NULL WHERE user_id = %s AND id <> %s", (user_id, tech_id))
+                    # link selected tech
+                    cur.execute("UPDATE technicians SET user_id = %s WHERE id = %s", (user_id, tech_id))
+                else:
+                    # tech role but no tech selected: leave as-is (or unlink if you prefer)
+                    pass
+            else:
+                # role changed to ADMIN → unlink any tech
+                cur.execute("UPDATE technicians SET user_id = NULL WHERE user_id = %s", (user_id,))
+
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            cur.close(); conn.close()
+            return render_template("admin_user_form.html", user=user, technicians=technicians, linked=linked,
+                                   error=f"Error: {e}")
+
+        cur.close(); conn.close()
+        return redirect(url_for("admin_users_list"))
+
+    # GET
+    cur.close(); conn.close()
+    return render_template("admin_user_form.html", user=user, technicians=technicians, linked=linked)
+
+
+@app.route("/admin/users/<int:user_id>/reset-password", methods=["POST"])
+@login_required
+@role_required("ADMIN")
+def admin_users_reset_password(user_id):
+    new_pw = request.form.get("new_password") or ""
+    if len(new_pw) < 8:
+        return "Password must be at least 8 characters.", 400
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("UPDATE users SET password_hash=%s WHERE id=%s",
+                    (generate_password_hash(new_pw), user_id))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        cur.close(); conn.close()
+        return f"Error: {e}", 500
+    cur.close(); conn.close()
+    return redirect(url_for("admin_users_list"))
+
+
+@app.route("/admin/users/<int:user_id>/toggle", methods=["POST"])
+@login_required
+@role_required("ADMIN")
+def admin_users_toggle_active(user_id):
+    to_state = request.form.get("to_state", "off") == "on"
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("UPDATE users SET is_active=%s WHERE id=%s", (to_state, user_id))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        cur.close(); conn.close()
+        return f"Error: {e}", 500
+    cur.close(); conn.close()
+    return redirect(url_for("admin_users_list"))
 
 @app.route("/scan")
 @login_required
