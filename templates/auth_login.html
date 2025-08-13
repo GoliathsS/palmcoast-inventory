@@ -5,106 +5,110 @@
   <title>Palm Coast • Sign in</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#0b1a14">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <style>
     :root{
-      --bg-deep:#08130e;         /* jungle night */
-      --bg-emerald:#0c271c;      /* deep foliage */
-      --leaf-1:#103523;
-      --leaf-2:#0b2b1b;
-      --leaf-3:#15492f;
-      --glass:#0b1420cc;
-      --panel:#0c1526f2;
-      --text:#e6f1ea;
-      --muted:#9fb2aa;
-      --accent:#38e2a1;          /* tropical mint */
-      --accent-2:#22d3ee;        /* aqua */
+      /* --- Theme --- */
+      --bg-deep:#07130e;             /* jungle night */
+      --bg-emerald:#0b2219;          /* deep foliage */
+      --leaf-1:#0e3a27;              /* layered canopy shades */
+      --leaf-2:#0a2f1f;
+      --leaf-3:#16513a;
+      --glass:rgba(10,20,28,.82);
+      --panel:rgba(9,16,27,.92);
+      --text:#e7f6ee;
+      --muted:#a7beb4;
+      --accent:#38e2a1;              /* tropical mint */
+      --accent-2:#22d3ee;            /* aqua */
       --danger:#ef4444;
       --radius:18px;
       --shadow:0 24px 60px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.04);
+      --outline:0 0 0 3px rgba(56,226,161,.20);
     }
+    @media (prefers-color-scheme: light){
+      :root{
+        --bg-deep:#e9f5ef; --bg-emerald:#dff3ea; --glass:rgba(255,255,255,.78); --panel:rgba(255,255,255,.92); --text:#0a1a14; --muted:#47665a; --shadow:0 10px 40px rgba(17,29,23,.15), inset 0 1px 0 rgba(255,255,255,.6);
+      }
+    }
+
     *{box-sizing:border-box}
     html,body{height:100%;margin:0}
     body{
       color:var(--text);
       background:
-        radial-gradient(1200px 800px at 15% -10%, #102c20 0%, transparent 55%),
-        radial-gradient(900px 600px at 100% 0%, #0c2218 0%, transparent 60%),
+        radial-gradient(1200px 820px at 10% -15%, #103425 0%, transparent 55%),
+        radial-gradient(900px 620px at 110% -10%, #0e2b1f 0%, transparent 60%),
         linear-gradient(180deg, var(--bg-emerald), var(--bg-deep));
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial;
       overflow:hidden; display:grid; place-items:center;
     }
 
-    /* Layered jungle silhouettes */
-    .foliage{
-      position:fixed; inset:-10% -10% 0 -10%; pointer-events:none; z-index:0;
-      background:
-        radial-gradient(1200px 400px at -5% 105%, var(--leaf-1) 0%, transparent 60%),
-        radial-gradient(900px 300px at 105% 110%, var(--leaf-2) 0%, transparent 65%),
-        radial-gradient(700px 240px at 70% 115%, var(--leaf-3) 0%, transparent 65%),
-        radial-gradient(600px 220px at 30% 118%, var(--leaf-2) 0%, transparent 65%);
-      mask-image: linear-gradient(#000, rgba(0,0,0,.8) 40%, rgba(0,0,0,.2));
-      opacity:.85;
-    }
-
-    /* Brand */
+    /* — Brand — */
     .brand{
-      position:fixed; top:22px; left:24px; z-index:3;
-      display:flex; align-items:center; gap:10px; font-weight:700; letter-spacing:.2px;
-      color:#d9f99d;
-      text-shadow:0 2px 8px rgba(0,0,0,.4);
+      position:fixed; top:22px; left:24px; z-index:4; display:flex; align-items:center; gap:10px;
+      font-weight:800; letter-spacing:.2px; color:#d9f99d; text-shadow:0 2px 8px rgba(0,0,0,.4);
     }
     .brand .dot{ width:12px; height:12px; border-radius:50%; background:#f43f5e; box-shadow:0 0 16px #f43f5e }
+    .brand img{height:22px; width:auto; display:block}
 
-    /* Card */
+    /* — Ambient layers — */
+    .foliage{ position:fixed; inset:-10% -10% 0 -10%; pointer-events:none; z-index:0;
+      background:
+        radial-gradient(1200px 420px at -5% 105%, var(--leaf-1) 0%, transparent 60%),
+        radial-gradient(900px 320px at 105% 110%, var(--leaf-2) 0%, transparent 65%),
+        radial-gradient(700px 240px at 70% 115%, var(--leaf-3) 0%, transparent 65%),
+        radial-gradient(600px 220px at 30% 118%, var(--leaf-2) 0%, transparent 65%);
+      mask-image: linear-gradient(#000, rgba(0,0,0,.8) 45%, rgba(0,0,0,.2));
+      opacity:.9
+    }
+
+    /* Subtle particle glow */
+    .particles{ position:fixed; inset:0; overflow:hidden; z-index:1; pointer-events:none }
+    .particles i{ position:absolute; width:2px; height:2px; border-radius:50%; background:rgba(56,226,161,.9); filter:blur(.5px); opacity:.35; animation: drift linear infinite }
+    @keyframes drift{ to{ transform: translateY(-120vh) translateX(8vw) } }
+
+    /* — Card — */
     .card{
-      position:relative; z-index:2;
-      width:min(480px, 94vw);
-      background:var(--glass);
-      border:1px solid rgba(255,255,255,.06);
-      border-radius:var(--radius);
-      box-shadow:var(--shadow);
-      padding:28px 26px 26px;
-      backdrop-filter: blur(10px);
-      animation: rise .6s ease-out both;
+      position:relative; z-index:3; width:min(520px, 94vw); background:var(--glass);
+      border:1px solid rgba(255,255,255,.06); border-radius:var(--radius); box-shadow:var(--shadow);
+      padding:28px 26px 24px; backdrop-filter: blur(12px); animation: rise .6s ease-out both;
     }
     @keyframes rise{from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:translateY(0)}}
-    h1{margin:0 0 6px;font-size:1.35rem}
-    p.sub{margin:0 0 18px; color:var(--muted); font-size:.95rem}
 
-    label{display:block; font-size:.9rem; margin:0 0 6px; color:#cfe7db}
+    .card .header{ display:flex; align-items:start; gap:12px; margin-bottom:10px }
+    .heading{ margin:0; font-size:1.45rem }
+    .sub{ margin:.25rem 0 18px; color:var(--muted); font-size:.95rem }
+
+    label{ display:block; font-size:.9rem; margin:0 0 6px; color:#cfe7db }
+    .field{ position:relative; margin:0 0 14px }
     input{
-      width:100%; padding:12px 14px; border-radius:12px; border:1px solid #1f2e3b;
-      background:#0a1821; color:var(--text); outline:none;
+      width:100%; padding:12px 42px 12px 14px; border-radius:12px; border:1px solid #1f2e3b; background:#0a1821; color:var(--text); outline:none; transition:border .16s ease, box-shadow .16s ease;
     }
-    input:focus{ border-color:#2f4857; box-shadow:0 0 0 3px rgba(56,226,161,.20) }
+    input:focus{ border-color:#2f4857; box-shadow:var(--outline) }
+    input[aria-invalid="true"]{ border-color:#c24141; box-shadow:0 0 0 3px rgba(239,68,68,.18) }
+
+    .icon-right{ position:absolute; right:10px; top:50%; transform:translateY(-50%); display:inline-flex; gap:6px; align-items:center }
+    .icon-btn{ width:36px; height:36px; border-radius:10px; display:grid; place-items:center; cursor:pointer; border:1px solid rgba(255,255,255,.08); background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02)); }
+    .icon-btn:focus-visible{ outline:none; box-shadow:var(--outline) }
+
+    .row{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin:2px 0 4px }
+    .row .link{ font-size:.88rem; color:#9be6cc; text-decoration:none }
+    .row .link:hover{ text-decoration:underline }
 
     .btn{
-      margin-top:6px; width:100%;
-      appearance:none; border:none; cursor:pointer;
-      padding:13px 16px; border-radius:12px;
-      background:linear-gradient(90deg, var(--accent), var(--accent-2));
-      color:#001316; font-weight:800; letter-spacing:.3px;
-      box-shadow: 0 14px 34px rgba(34,211,238,.28);
+      margin-top:8px; width:100%; appearance:none; border:none; cursor:pointer; padding:13px 16px; border-radius:12px;
+      background:linear-gradient(90deg, var(--accent), var(--accent-2)); color:#001316; font-weight:800; letter-spacing:.3px; box-shadow: 0 14px 34px rgba(34,211,238,.28); transition:transform .05s ease, opacity .2s ease;
     }
     .btn:active{ transform:translateY(1px) }
+    .btn[disabled]{ opacity:.6; cursor:not-allowed }
 
-    .error{
-      margin:0 0 12px; padding:10px 12px;
-      border-radius:12px; background:#7f1d1d; color:#fecaca; border:1px solid #b91c1c;
-      font-size:.9rem;
-    }
-
+    .error{ margin:0 0 12px; padding:10px 12px; border-radius:12px; background:#7f1d1d; color:#fecaca; border:1px solid #b91c1c; font-size:.9rem }
     .footer{ margin-top:12px; text-align:center; color:var(--muted); font-size:.85rem }
 
-    /* Frog animation layer */
-    .frog-layer{ position:fixed; inset:0; pointer-events:none; z-index:1; overflow:hidden }
-
-    .frog{
-      position:absolute; left:-140px; bottom: 64px; width:120px; height:auto;
-      filter: drop-shadow(0 16px 28px rgba(0,0,0,.55));
-      animation: hop 8.5s cubic-bezier(.2,.8,.3,1) infinite;
-    }
-    /* gentle hop path */
+    /* — Frog layer — */
+    .frog-layer{ position:fixed; inset:0; pointer-events:none; z-index:2; overflow:hidden }
+    .frog{ position:absolute; left:-140px; bottom:64px; width:120px; height:auto; filter: drop-shadow(0 16px 28px rgba(0,0,0,.55)); animation: hop 8.5s cubic-bezier(.2,.8,.3,1) infinite }
     @keyframes hop{
       0%   { transform: translateX(-12vw) translateY(0) rotate(0deg) }
       12%  { transform: translateX(10vw)  translateY(-20px) rotate(-2deg) }
@@ -115,81 +119,156 @@
       80%  { transform: translateX(92vw)  translateY(0)     rotate(0deg) }
       100% { transform: translateX(115vw) translateY(0)     rotate(0deg) }
     }
-
-    /* occasional leaf sway (subtle) */
     .sway { animation: sway 6s ease-in-out infinite alternate; transform-origin: 50% 100% }
     @keyframes sway { from{ transform: rotate(-1deg) } to{ transform: rotate(1deg) } }
 
-    /* Reduced motion */
-    @media (prefers-reduced-motion: reduce){
-      .frog{ animation:none; left:12px; bottom:12px }
-      .sway{ animation:none }
-    }
+    /* Reduced motion & narrow heights */
+    @media (prefers-reduced-motion: reduce){ .frog{ animation:none; left:12px; bottom:12px } .sway{ animation:none } .particles i{ display:none } }
+    @media (max-height: 640px){ .frog{ display:none } body{ place-items:start } .card{ margin:20px auto } }
   </style>
 </head>
 <body>
   <div class="foliage" aria-hidden="true"></div>
+  <div class="particles" aria-hidden="true"></div>
 
-  <div class="brand"><span class="dot"></span> Palm Coast Inventory</div>
+  <div class="brand" aria-label="Palm Coast Inventory">
+    <span class="dot" aria-hidden="true"></span>
+    Palm Coast Inventory
+    <!-- Optional: swap dot for logo -->
+    <!-- <img src="{{ url_for('static', filename:'LOGO.jpg') }}" alt="Palm Coast"/> -->
+  </div>
 
   <!-- Frog (pure SVG) -->
   <div class="frog-layer" aria-hidden="true">
     <svg class="frog" viewBox="0 0 180 120" role="img" aria-label="Red-eyed tree frog">
-      <!-- body -->
       <ellipse cx="85" cy="70" rx="58" ry="28" fill="#23c26f"/>
       <ellipse cx="120" cy="60" rx="26" ry="18" fill="#25cc78"/>
-      <!-- belly -->
       <ellipse cx="75" cy="78" rx="40" ry="20" fill="#e8f9f0" opacity=".92"/>
-      <!-- legs -->
       <path d="M35,80 C20,90 18,108 30,110" stroke="#1aa45a" stroke-width="10" fill="none" stroke-linecap="round" class="sway"/>
       <path d="M125,82 C140,92 142,110 130,112" stroke="#1aa45a" stroke-width="10" fill="none" stroke-linecap="round" class="sway"/>
-      <!-- feet -->
       <circle cx="28" cy="110" r="6" fill="#ff7a18"/>
       <circle cx="132" cy="112" r="6" fill="#ff7a18"/>
-      <!-- head -->
       <ellipse cx="130" cy="52" rx="30" ry="20" fill="#23c26f"/>
-      <!-- eyes -->
       <circle cx="143" cy="46" r="10" fill="#f43f5e"/>
       <circle cx="117" cy="48" r="9"  fill="#f43f5e"/>
       <circle cx="143" cy="46" r="4.6" fill="#0b0f12"/>
       <circle cx="117" cy="48" r="4.4" fill="#0b0f12"/>
-      <!-- smile -->
       <path d="M118,60 C126,66 138,66 146,60" stroke="#07110c" stroke-width="3" fill="none" stroke-linecap="round" opacity=".6"/>
     </svg>
   </div>
 
   <main class="card" role="main" aria-labelledby="heading">
-    <h1 id="heading">Sign in</h1>
-    <p class="sub">Welcome back to the jungle. Let’s get to work.</p>
+    <div class="header">
+      <div>
+        <h1 id="heading" class="heading">Sign in</h1>
+        <p class="sub">Welcome back to the jungle. Let’s get to work.</p>
+      </div>
+    </div>
 
     {% if error %}
       <div class="error" role="alert">{{ error }}</div>
     {% endif %}
 
-    <form method="POST" action="{{ url_for('login') }}" autocomplete="on">
-      <div>
-        <label for="email">Email</label>
-        <input id="email" name="email" type="email" required autocomplete="username" inputmode="email">
-      </div>
-      <div>
-        <label for="password">Password</label>
-        <input id="password" name="password" type="password" required autocomplete="current-password">
-      </div>
-      <button class="btn" type="submit">Sign in</button>
-    </form>
+    <form method="POST" action="{{ url_for('login') }}" autocomplete="on" novalidate id="loginForm">
+      {% if csrf_token %} <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"> {% endif %}
 
-    <div class="footer">Need access? Contact an administrator.</div>
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" required autocomplete="username" inputmode="email" aria-describedby="emailHelp">
+        <div id="emailHelp" class="sr-only">Enter your work email address.</div>
+      </div>
+
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" required autocomplete="current-password" minlength="6" aria-describedby="pwdHelp">
+        <div class="icon-right">
+          <button type="button" class="icon-btn" id="togglePwd" aria-label="Show password" title="Show/Hide">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </button>
+        </div>
+        <div id="pwdHelp" class="sr-only">Minimum 6 characters.</div>
+      </div>
+
+      <div class="row">
+        <label style="display:flex; align-items:center; gap:8px; font-size:.9rem; color:#cfe7db">
+          <input type="checkbox" name="remember" value="1" style="accent-color:#22d3ee; width:16px; height:16px"> Remember me
+        </label>
+        <a href="#" class="link" tabindex="0">Forgot password?</a>
+      </div>
+
+      <button class="btn" id="submitBtn" type="submit">Sign in</button>
+
+      <div class="footer">Need access? Contact an administrator.</div>
+    </form>
   </main>
 
   <script>
-    // tiny script to occasionally randomize frog timing so hops feel organic
+    // Utility: visually-hidden class for screen-reader only text
+    (function(){
+      var style = document.createElement('style');
+      style.innerHTML = '.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}';
+      document.head.appendChild(style);
+    })();
+
+    // Organic frog timing & particle drizzle
     (function(){
       const frog = document.querySelector('.frog');
-      if (!frog) return;
-      const rand = () => (6 + Math.random()*4).toFixed(2) + 's';
-      setInterval(() => {
-        frog.style.animationDuration = rand();
-      }, 9000);
+      const randDur = () => (6 + Math.random()*4).toFixed(2) + 's';
+      if (frog){ setInterval(() => { frog.style.animationDuration = randDur(); }, 9000); }
+
+      const wrap = document.querySelector('.particles');
+      if (wrap){
+        const N = 38; // tiny and cheap
+        for(let i=0;i<N;i++){
+          const p = document.createElement('i');
+          p.style.left = Math.random()*100 + 'vw';
+          p.style.bottom = (-10 + Math.random()*110) + 'vh';
+          p.style.animationDuration = (24 + Math.random()*28) + 's';
+          p.style.animationDelay = (-Math.random()*28) + 's';
+          wrap.appendChild(p);
+        }
+      }
+    })();
+
+    // UX niceties: pwd toggle, disable button while submitting, simple client validation
+    (function(){
+      const form = document.getElementById('loginForm');
+      const submitBtn = document.getElementById('submitBtn');
+      const email = document.getElementById('email');
+      const pwd = document.getElementById('password');
+      const toggle = document.getElementById('togglePwd');
+
+      // Password show/hide
+      toggle?.addEventListener('click', () => {
+        const isPw = pwd.getAttribute('type') === 'password';
+        pwd.setAttribute('type', isPw ? 'text' : 'password');
+        toggle.setAttribute('aria-label', isPw ? 'Hide password' : 'Show password');
+      });
+
+      // Basic live validity styling
+      function markValidity(el){ el.setAttribute('aria-invalid', el.validity.valid ? 'false' : 'true'); }
+      ['input','blur'].forEach(ev => {
+        email.addEventListener(ev, () => markValidity(email));
+        pwd.addEventListener(ev, () => markValidity(pwd));
+      });
+
+      // Submit lock + minimal spinner
+      form?.addEventListener('submit', function(){
+        submitBtn.disabled = true;
+        const orig = submitBtn.textContent;
+        submitBtn.textContent = 'Signing in…';
+        submitBtn.insertAdjacentHTML('afterbegin', '<span class="spin" aria-hidden="true" style="display:inline-block; width:14px; height:14px; margin-right:8px; border:2px solid rgba(0,0,0,.2); border-top-color:#001316; border-radius:50%; animation: r .6s linear infinite"></span>');
+        const style = document.createElement('style'); style.innerHTML='@keyframes r{to{transform:rotate(360deg)}}'; document.head.appendChild(style);
+        setTimeout(()=>{ submitBtn.disabled=false; submitBtn.textContent = orig; }, 12000); // safety unlock in case of network issue
+      });
+
+      // Autofocus email (respects user preference)
+      if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        setTimeout(() => email?.focus({preventScroll:true}), 250);
+      }
     })();
   </script>
 </body>
