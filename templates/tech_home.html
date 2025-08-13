@@ -19,31 +19,56 @@
       --shadow:0 8px 24px rgba(17,24,39,.08), 0 2px 6px rgba(17,24,39,.06);
       --radius:16px;
       --ring:0 0 0 4px rgba(14,165,233,.15);
+      --header-h:64px;
     }
     *{box-sizing:border-box}
     html,body{height:100%;margin:0}
-    body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter,"Helvetica Neue",Arial;background:var(--page);color:var(--text);display:flex;flex-direction:column}
+    body{
+      font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter,"Helvetica Neue",Arial;
+      background:var(--page);color:var(--text);
+      display:flex;flex-direction:column;
+      -webkit-tap-highlight-color:rgba(0,0,0,0);
+      padding-top:env(safe-area-inset-top);
+    }
 
     /* Header */
-    header{position:sticky;top:0;z-index:10;background:rgba(255,255,255,.8);backdrop-filter:saturate(1.2) blur(8px);border-bottom:1px solid var(--border);}
-    .bar{max-width:min(1100px,94vw);margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:16px 0}
+    header{
+      position:sticky;top:0;z-index:10;
+      background:rgba(255,255,255,.8);
+      backdrop-filter:saturate(1.2) blur(8px);
+      border-bottom:1px solid var(--border);
+    }
+    .bar{max-width:min(1100px,94vw);margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:16px 0;min-height:var(--header-h)}
     .brand{display:flex;align-items:center;gap:12px;font-weight:800;letter-spacing:.2px}
     .brand img{height:22px;width:auto;display:block}
 
-    .meta{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:.95rem}
-    .logout{color:#2563eb;text-decoration:none;border:1px solid #dbe4ff;padding:8px 12px;border-radius:12px}
+    .meta{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:.95rem;flex-wrap:wrap;row-gap:6px;word-break:break-word}
+    .logout{color:#2563eb;text-decoration:none;border:1px solid #dbe4ff;padding:8px 12px;border-radius:12px;min-height:44px;display:inline-flex;align-items:center}
     .logout:hover{background:#eef2ff}
 
     /* Layout */
     .wrap{width:min(1100px,94vw);margin:20px auto 40px;flex:1;display:grid;gap:18px}
 
-    .panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
+    .panel{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:18px;
+    }
 
     h2{margin:0 0 12px;font-size:1.2rem;letter-spacing:-.01em}
     .subtle{color:var(--muted)}
 
     .tiles{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
-    .tile{display:flex;align-items:center;justify-content:space-between;gap:12px;text-decoration:none;color:inherit;background:linear-gradient(180deg,#fff,#fafafa);border:1px solid var(--border);border-radius:14px;padding:18px;min-height:140px;transition:transform .12s ease, box-shadow .15s ease, border-color .15s ease}
+    .tile{
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+      text-decoration:none;color:inherit;
+      background:linear-gradient(180deg,#fff,#fafafa);
+      border:1px solid var(--border);border-radius:14px;
+      padding:18px;min-height:140px;
+      transition:transform .12s ease, box-shadow .15s ease, border-color .15s ease
+    }
     .tile:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(16,24,40,.06);border-color:#d6d9df}
     .tile h3{margin:0 0 6px;font-size:1.1rem}
     .tile p{margin:0;color:var(--muted);font-size:.95rem}
@@ -60,7 +85,11 @@
     .grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
     .grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}
     .row{display:flex;gap:10px;flex-wrap:wrap}
-    .btn{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--border);background:#fff;border-radius:10px;padding:8px 12px;text-decoration:none;color:#111;font-weight:600}
+    .btn{
+      display:inline-flex;align-items:center;justify-content:center;
+      border:1px solid var(--border);background:#fff;border-radius:10px;
+      padding:8px 12px;text-decoration:none;color:#111;font-weight:600;min-height:44px
+    }
     .btn:hover{box-shadow:var(--shadow)}
     .btn-primary{background:linear-gradient(90deg,var(--brand),var(--brand-2));color:#fff;border:none}
     .btn-danger{border-color:#fecaca;background:#fee2e2}
@@ -74,6 +103,30 @@
 
     /* Accessibility */
     a:focus-visible, .tile:focus-visible, .logout:focus-visible{outline:none;box-shadow:var(--ring)}
+
+    /* ---- Mobile polish + blurred cards ---- */
+    @media (max-width: 720px) {
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }   /* stack columns */
+      .tiles { grid-template-columns: 1fr; gap: 12px; }
+      .tile { min-height: 120px; padding: 16px; }
+      .panel, .tile {
+        /* subtle frosted look on iOS while scrolling */
+        background: rgba(255,255,255,.8);
+        backdrop-filter: saturate(1.1) blur(10px);
+        -webkit-backdrop-filter: saturate(1.1) blur(10px);
+        box-shadow: 0 6px 16px rgba(17,24,39,.06), 0 1px 3px rgba(17,24,39,.06);
+      }
+      .bar { padding: 12px 0; }
+      :root { --header-h: 56px; }
+      .tile p, .subtle { font-size: clamp(14px, 3.4vw, 15px); }
+    }
+
+    /* Anchor offset so sticky header doesn't cover it */
+    #emergency { scroll-margin-top: calc(var(--header-h) + 18px); }
+
+    @supports (padding-top: constant(safe-area-inset-top)) {
+      body { padding-top: constant(safe-area-inset-top); }
+    }
   </style>
 </head>
 <body>
