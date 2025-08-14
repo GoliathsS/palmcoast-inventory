@@ -742,6 +742,31 @@ def admin_users_toggle_active(user_id):
     cur.close(); conn.close()
     return redirect(url_for("admin_users_list"))
 
+@app.get("/tech-requests")
+@login_required
+@role_required("ADMIN")
+def tech_requests_queue():
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cur.execute("""
+        SELECT
+            r.id,
+            r.technician_id   AS tech_id,
+            t.name            AS tech_name,
+            r.vehicle_id,
+            r.request_type,
+            COALESCE(r.description, r.details, r.title) AS description,
+            r.status,
+            r.created_at,
+            r.closed_at
+        FROM tech_requests r
+        LEFT JOIN technicians t ON t.id = r.technician_id
+        ORDER BY (r.status = 'open') DESC, r.created_at DESC
+    """)
+    requests_rows = cur.fetchall()
+    cur.close(); conn.close()
+    return render_template("admin_requests.html", requests_rows=requests_rows)
+
 @app.route("/scan")
 @login_required
 @role_required('ADMIN')
