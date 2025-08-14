@@ -180,18 +180,28 @@ def logout():
 
 @app.get("/api/dashboard-stats")
 @login_required
-@role_required("ADMIN")  # or TECH+ADMIN if you want techs to hit this too
+@role_required("ADMIN")
 def api_dashboard_stats():
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("SELECT COALESCE(SUM((p.cost_per_unit)::numeric),0) FROM products p")
+
+    # ✅ correct inventory value (unopened + partials), exclude archived
+    cur.execute("""
+        SELECT COALESCE(SUM(
+                 COALESCE(in_stock,0)        * COALESCE(cost_per_unit,0) +
+                 COALESCE(units_remaining,0) * COALESCE(unit_cost,0)
+               ), 0)::numeric(12,2)
+        FROM products
+        WHERE COALESCE(is_archived, FALSE) = FALSE
+    """)
     total_value = float(cur.fetchone()[0] or 0)
 
-    cur.execute("SELECT COUNT(*) FROM products WHERE category='Lawn'")
+    # counts should also exclude archived
+    cur.execute("SELECT COUNT(*) FROM products WHERE category='Lawn' AND COALESCE(is_archived,FALSE)=FALSE")
     lawn = cur.fetchone()[0]
-    cur.execute("SELECT COUNT(*) FROM products WHERE category='Pest'")
+    cur.execute("SELECT COUNT(*) FROM products WHERE category='Pest' AND COALESCE(is_archived,FALSE)=FALSE")
     pest = cur.fetchone()[0]
-    cur.execute("SELECT COUNT(*) FROM products WHERE category='Wildlife'")
+    cur.execute("SELECT COUNT(*) FROM products WHERE category='Wildlife' AND COALESCE(is_archived,FALSE)=FALSE")
     wildlife = cur.fetchone()[0]
 
     cur.execute("SELECT COUNT(*) FROM tech_requests WHERE status='open'")
@@ -531,39 +541,41 @@ def index():
     if current_user.role == 'TECH':
         return redirect(url_for('tech_home'))
 
-    # Otherwise continue to load admin dashboard
     conn = get_db_connection()
     cur = conn.cursor()
 
     category_filter = request.args.get('category', 'All')
     if category_filter == 'All':
-        cur.execute("SELECT * FROM products ORDER BY id")
+        cur.execute("SELECT * FROM products WHERE COALESCE(is_archived,FALSE)=FALSE ORDER BY name")
     else:
-        cur.execute("SELECT * FROM products WHERE category = %s ORDER BY id", (category_filter,))
+        cur.execute("""
+            SELECT * FROM products
+            WHERE category = %s AND COALESCE(is_archived,FALSE)=FALSE
+            ORDER BY name
+        """, (category_filter,))
     products = cur.fetchall()
 
-    # ✅ Total inventory value
-    cur.execute("SELECT SUM(stock * cost_per_unit) FROM products")
-    row = cur.fetchone()
-    total_value = row[0] if row and row[0] is not None else 0
+    # ✅ correct, consistent total value
+    cur.execute("""
+        SELECT COALESCE(SUM(
+                 COALESCE(in_stock,0)        * COALESCE(cost_per_unit,0) +
+                 COALESCE(units_remaining,0) * COALESCE(unit_cost,0)
+               ), 0)::numeric(12,2)
+        FROM products
+        WHERE COALESCE(is_archived, FALSE) = FALSE
+    """)
+    total_value = float(cur.fetchone()[0] or 0)
 
-    # ✅ Lawn count
-    cur.execute("SELECT COUNT(*) FROM products WHERE category = 'Lawn'")
+    cur.execute("SELECT COUNT(*) FROM products WHERE category='Lawn' AND COALESCE(is_archived,FALSE)=FALSE")
     lawn_count = cur.fetchone()[0]
-
-    # ✅ Pest count
-    cur.execute("SELECT COUNT(*) FROM products WHERE category = 'Pest'")
+    cur.execute("SELECT COUNT(*) FROM products WHERE category='Pest' AND COALESCE(is_archived,FALSE)=FALSE")
     pest_count = cur.fetchone()[0]
-
-    # ✅ Wildlife count
-    cur.execute("SELECT COUNT(*) FROM products WHERE category = 'Wildlife'")
+    cur.execute("SELECT COUNT(*) FROM products WHERE category='Wildlife' AND COALESCE(is_archived,FALSE)=FALSE")
     wildlife_count = cur.fetchone()[0]
 
-    cur.close()
-    conn.close()
+    cur.close(); conn.close()
 
     technicians = get_all_technicians()
-
     return render_template(
         'index.html',
         products=products,
@@ -842,15 +854,23 @@ def add_product():
     siteone_sku = request.form.get("siteone_sku", "").strip()
     category = request.form.get("category", "Pest")
 
+    # defaults for partials math
+    units_per_item = 1
+    unit_cost = cost_per_unit
+    in_stock = 0
+    units_remaining = 0
+
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("""
-        INSERT INTO products (name, barcode, min_stock, cost_per_unit, siteone_sku, category)
-        VALUES (%s, %s, %s, %s, %s, %s)
-    """, (name, barcode, min_stock, cost_per_unit, siteone_sku, category))
+        INSERT INTO products (
+            name, barcode, in_stock, min_stock, cost_per_unit,
+            siteone_sku, category, units_per_item, unit_cost, units_remaining, is_archived
+        ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s, FALSE)
+    """, (name, barcode, in_stock, min_stock, cost_per_unit,
+          siteone_sku, category, units_per_item, unit_cost, units_remaining))
     conn.commit()
-    cur.close()
-    conn.close()
+    cur.close(); conn.close()
     return redirect("/")
 
 @app.route('/edit-product/<int:product_id>', methods=['POST'])
