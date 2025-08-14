@@ -383,22 +383,50 @@ def checklist_toggle(item_id):
 
 @app.post("/my/request/new")
 @login_required
-@role_required("TECH","ADMIN")
+@role_required("TECH", "ADMIN")
 def tech_request_new():
-    req_type = request.form.get("request_type") or "other"
+    # --- sanitize inputs ---
+    req_type = (request.form.get("request_type") or "other").strip().lower()
     desc = (request.form.get("description") or "").strip()
     if not desc:
         return redirect(url_for("tech_home"))
+
+    # only allow values your enum supports
+    allowed = {"new_chemical", "equipment", "other"}
+    if req_type not in allowed:
+        req_type = "other"
+
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-    cur.execute("SELECT id FROM technicians WHERE user_id = %s", (current_user.id,))
-    trow = cur.fetchone()
-    tech_id = trow["id"] if trow else None
-    cur.execute("""
-        INSERT INTO tech_requests (tech_id, request_type, description, status, created_at)
-        VALUES (%s, %s, %s, 'open', NOW())
-    """, (tech_id, req_type, desc))
-    conn.commit(); cur.close(); conn.close()
+
+    try:
+        # find this user's technician_id
+        cur.execute("SELECT id FROM technicians WHERE user_id = %s", (current_user.id,))
+        trow = cur.fetchone()
+        if not trow:
+            # no technician linked to this user → nothing to insert
+            # (You could flash a message here if you use flask flashing.)
+            cur.close(); conn.close()
+            return redirect(url_for("tech_home"))
+
+        technician_id = trow["id"]
+
+        # Insert the request
+        cur.execute("""
+            INSERT INTO tech_requests (
+                technician_id, request_type, description, status, created_at
+            ) VALUES (
+                %s, %s::request_type, %s, 'open', NOW()
+            )
+        """, (technician_id, req_type, desc))
+
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        cur.close(); conn.close()
+
     return redirect(url_for("tech_home"))
 
 @app.post("/my/request/<int:req_id>/close")
