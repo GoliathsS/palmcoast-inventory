@@ -14,27 +14,35 @@
 
   <style>
     :root{
-      --pc-bg:#f5f7fb; --pc-card:#ffffff; --pc-border:rgba(0,0,0,.08);
-      --pc-text:#101828; --pc-muted:#667085; --pc-green:#14532d;
+      --pc-bg:#f6f7fb; --pc-card:#fff; --pc-border:#e6e7ec;
+      --pc-text:#0b1220; --pc-muted:#667085; --pc-green:#14532d;
       --ok:#16a34a; --warn:#f59e0b; --err:#dc2626;
+      --radius:14px; --shadow:0 8px 24px rgba(17,24,39,.06), 0 2px 6px rgba(17,24,39,.04);
     }
     *{box-sizing:border-box}
     html,body{height:100%}
     body{margin:0;background:var(--pc-bg);color:var(--pc-text);
          font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;}
+
+    /* Header */
     header{
       position:sticky; top:0; z-index:10; background:#fff;
-      box-shadow:0 2px 8px rgba(0,0,0,.06); text-align:center; padding:.75rem .75rem;
+      border-bottom:1px solid var(--pc-border);
+      padding:.75rem .75rem; text-align:center;
     }
-    header img{height:44px;border-radius:8px}
-    header h2{margin:.25rem 0 0; font-size:1.15rem}
+    header .brand{display:flex; flex-direction:column; align-items:center; gap:.25rem}
+    header img{height:40px;border-radius:8px}
+    header h1{margin:0; font-size:1.15rem; letter-spacing:.2px}
 
-    .wrap{max-width:640px; margin:14px auto; padding:0 12px}
-    .card{background:var(--pc-card); border:1px solid var(--pc-border); border-radius:16px;
-          box-shadow:0 4px 12px rgba(0,0,0,.05); padding:14px;}
+    .wrap{max-width:720px; margin:16px auto; padding:0 14px}
+    .card{background:var(--pc-card); border:1px solid var(--pc-border); border-radius:var(--radius);
+          box-shadow:var(--shadow); padding:16px;}
 
-    .row{display:grid; gap:.6rem}
-    @media (min-width:600px){ .row{ grid-template-columns: 1fr 1fr } }
+    /* Form rows */
+    .row{display:grid; gap:.75rem}
+    @media (min-width:640px){ .row{ grid-template-columns: 1fr 1fr } }
+
+    label{display:block; font-size:.9rem; color:var(--pc-muted); margin-bottom:.4rem}
 
     select,button{
       width:100%; padding:12px; font-size:1rem; border-radius:10px; border:1px solid var(--pc-border);
@@ -43,12 +51,15 @@
     select:focus, button:focus{ box-shadow:0 0 0 3px rgba(20,83,45,.15) }
 
     .btn-primary{ background:var(--pc-green); color:#fff; border:none; font-weight:700 }
-    .btn-ghost{ background:#eef2f7; border:1px solid var(--pc-border); color:#111 }
+    .btn-ghost{ background:#f2f4f8; border:1px solid var(--pc-border); color:#111; font-weight:600 }
     .btn-danger{ background:#fee2e2; border:1px solid #fca5a5; color:#b91c1c }
 
-    .controls{ display:grid; gap:.6rem; margin-top:.6rem }
-    .controls .row-btns{ display:grid; grid-template-columns: 1fr 1fr; gap:.6rem }
-    @media (min-width:600px){ .controls .row-btns{ grid-template-columns: 1fr 1fr 1fr } }
+    .controls{ display:grid; gap:.8rem; margin-top:.5rem }
+    .controls .row-btns{ display:grid; grid-template-columns: 1fr 1fr 1fr; gap:.6rem }
+
+    /* Direction segmented look (still a <select> under the hood for simplicity) */
+    .seg-wrap{display:grid; gap:.5rem}
+    .hint{font-size:.85rem; color:var(--pc-muted)}
 
     #scanner-container{ display:none; position:relative; margin-top:.75rem }
     #scanner-container video{
@@ -59,20 +70,20 @@
     /* Overlay guide */
     .overlay{ pointer-events:none; position:absolute; inset:0; display:grid; place-items:center; }
     .frame{
-      width:72%; max-width:420px; aspect-ratio: 1.6 / 1;
+      width:72%; max-width:460px; aspect-ratio: 1.6 / 1;
       border:3px solid rgba(255,255,255,.9); border-radius:12px;
-      box-shadow:0 0 0 9999px rgba(0,0,0,.25) inset; position:relative;
+      box-shadow:0 0 0 9999px rgba(0,0,0,.22) inset; position:relative;
     }
     .scanline{
-      position:absolute; left:4%; right:4%; height:2px; background:rgba(56,189,248,.9);
+      position:absolute; left:4%; right:4%; height:2px; background:rgba(56,189,248,.92);
       box-shadow:0 0 12px rgba(56,189,248,.7); border-radius:2px; animation:slide 2.2s linear infinite;
     }
     @keyframes slide{ 0%{ top:10% } 50%{ top:50% } 100%{ top:90% } }
 
-    #status{ margin: .75rem 0 .25rem; text-align:center; font-weight:800 }
+    #status{ margin:.75rem 0 .25rem; text-align:center; font-weight:800 }
     .success{ color:var(--ok) } .error{ color:var(--err) } .warning{ color:var(--warn) }
 
-    .toggle-log{ width:100%; background:#eef2f7; border:1px solid var(--pc-border); color:#111 }
+    .toggle-log{ width:100%; background:#f2f4f8; border:1px solid var(--pc-border); color:#111; font-weight:600 }
     .log{ background:#f9fafb; border:1px solid var(--pc-border); border-radius:12px; padding:12px; margin-top:.6rem }
     .log h3{ margin:.2rem 0 .5rem; font-size:1rem }
     .log ul{ margin:0; padding-left:1.1rem; font-size:.95rem }
@@ -94,7 +105,7 @@
       background:#111; color:#fff; padding:10px 12px; border-radius:12px;
       box-shadow:0 10px 20px rgba(0,0,0,.2); animation:toast-in .18s ease-out;
     }
-    .toast.success{ background: var(--pc-green, #14532d); }
+    .toast.success{ background: var(--pc-green); }
     .toast.error{ background:#b91c1c; }
     .toast .msg{ font-weight:700 }
     .toast .sub{ font-size:.85rem; opacity:.9 }
@@ -103,53 +114,66 @@
 </head>
 <body>
   <header>
-    <img src="/static/LOGO.jpg" alt="Palm Coast Pest Control Logo" />
-    <h2>🎞️ Scan Product</h2>
+    <div class="brand">
+      <img src="/static/LOGO.jpg" alt="Palm Coast Pest Control Logo" />
+      <h1>Scan Product</h1>
+    </div>
   </header>
 
   <div class="wrap">
-    <div class="card">
-      <!-- Direction + Technician (tech only for 'out') -->
+    <div class="card" role="region" aria-label="Scan controls">
+      <!-- Direction + Technician -->
       <div class="row">
-        <select id="direction" aria-label="Scan direction">
-          <option value="in">Scan In</option>
-          <option value="out">Scan Out</option>
-        </select>
+        <div class="seg-wrap">
+          <label for="direction">Direction</label>
+          <select id="direction" aria-label="Scan direction">
+            <option value="in">Scan In</option>
+            <option value="out">Scan Out</option>
+          </select>
+        </div>
 
-        <select id="technician" name="technician" aria-label="Technician">
-          <option value="">-- Select Technician --</option>
-          {% for tech in technicians %}
-            <option value="{{ tech.id }}">{{ tech.name }}</option>
-          {% endfor %}
-        </select>
+        <div>
+          <label for="technician">Technician</label>
+          <select id="technician" name="technician" aria-label="Technician">
+            <option value="">-- Select Technician --</option>
+            {% for tech in technicians %}
+              <option value="{{ tech.id }}">{{ tech.name }}</option>
+            {% endfor %}
+          </select>
+          <div class="hint" id="tech-hint">
+            For <strong>Scan Out</strong>, a technician is required. For <strong>Scan In</strong>, it’s optional.
+          </div>
+        </div>
       </div>
 
       <!-- Camera/device & actions -->
       <div class="controls">
         <div class="row">
-          <select id="cameraSelect" aria-label="Camera device">
-            <option value="">Default Camera</option>
-          </select>
-          <div class="row-btns">
-            <button id="start-btn" class="btn-primary">▶️ Start</button>
-            <button id="pause-btn" class="btn-ghost" disabled>⏸ Pause</button>
-            <button id="torch-btn" class="btn-ghost" disabled>🔦 Flash</button>
+          <div>
+            <label for="cameraSelect">Camera</label>
+            <select id="cameraSelect" aria-label="Camera device">
+              <option value="">Default Camera</option>
+            </select>
+          </div>
+
+          <div class="row-btns" aria-label="Scanner actions">
+            <button id="start-btn" class="btn-primary" type="button">Start</button>
+            <button id="pause-btn" class="btn-ghost" type="button" disabled>Pause</button>
+            <button id="torch-btn" class="btn-ghost" type="button" disabled>Flash</button>
           </div>
         </div>
 
         <div id="scanner-container">
           <video id="preview" playsinline autoplay muted></video>
           <div class="overlay" aria-hidden="true">
-            <div class="frame">
-              <div class="scanline"></div>
-            </div>
+            <div class="frame"><div class="scanline"></div></div>
           </div>
         </div>
       </div>
 
       <p id="status" class=""></p>
 
-      <button class="toggle-log" type="button" id="toggleLog">🗞 Checkout List</button>
+      <button class="toggle-log" type="button" id="toggleLog">Checkout List</button>
       <div id="log-panel" class="log hidden">
         <h3>Scanned Items</h3>
         <ul id="scanned-items"></ul>
@@ -157,7 +181,7 @@
     </div>
 
     <div style="text-align:center">
-      <a href="/" class="footer-link">⬅ Back to Dashboard</a>
+      <a href="/" class="footer-link">← Back to Dashboard</a>
     </div>
   </div>
 
@@ -170,7 +194,7 @@
   <script type="module">
     import { BrowserMultiFormatReader } from "https://cdn.jsdelivr.net/npm/@zxing/browser@latest/+esm";
 
-    // Toast helper (module-local)
+    // Toast helper
     function toast(message, {sub=null, variant='success', ttl=2600} = {}){
       const stack = document.getElementById('toasts');
       const el = document.createElement('div');
@@ -211,20 +235,24 @@
     let currentTrack = null;
     let torchOn = false;
 
-    const SCAN_COOLDOWN_MS = 900;   // prevent rapid dupes
-    const LOOP_DELAY_MS = 250;      // let UI/network breathe
+    const SCAN_COOLDOWN_MS = 900;
+    const LOOP_DELAY_MS = 250;
 
     function setStatus(msg, cls=""){
       statusEl.textContent = msg;
       statusEl.className = cls;
     }
 
-    function showTechIfNeeded(){
+    // Always show technician (requested). Only enforce for 'out'
+    function updateTechHint(){
       const isOut = directionEl.value === "out";
-      techEl.style.display = isOut ? "" : "none";
+      const hint = document.getElementById("tech-hint");
+      hint.innerHTML = isOut
+        ? 'For <strong>Scan Out</strong>, a technician is <strong>required</strong>.'
+        : 'For <strong>Scan In</strong>, selecting a technician is <strong>optional</strong>.';
     }
-    showTechIfNeeded();
-    directionEl.addEventListener("change", showTechIfNeeded);
+    updateTechHint();
+    directionEl.addEventListener("change", updateTechHint);
 
     toggleLogBtn.addEventListener("click", () => logPanel.classList.toggle("hidden"));
 
@@ -260,11 +288,7 @@
       // track + torch support
       currentTrack = stream.getVideoTracks()[0];
       const caps = currentTrack.getCapabilities?.() || {};
-      if ("torch" in caps){
-        torchBtn.disabled = false;
-      } else {
-        torchBtn.disabled = true;
-      }
+      torchBtn.disabled = !("torch" in caps);
       container.style.display = "block";
     }
 
@@ -276,7 +300,7 @@
       }
       container.style.display = "none";
       torchOn = false;
-      torchBtn.textContent = "🔦 Flash";
+      torchBtn.textContent = "Flash";
       torchBtn.disabled = true;
     }
 
@@ -285,7 +309,7 @@
         if (!currentTrack) return;
         torchOn = !torchOn;
         await currentTrack.applyConstraints({ advanced: [{ torch: torchOn }] });
-        torchBtn.textContent = torchOn ? "🔦 Flash: On" : "🔦 Flash";
+        torchBtn.textContent = torchOn ? "Flash: On" : "Flash";
       }catch(e){
         torchBtn.disabled = true;
       }
@@ -299,22 +323,25 @@
           body: JSON.stringify({ barcode, direction, technician })
         });
         const data = await res.json().catch(() => ({}));
-
         const name = data.product_name || data.name || "";
-        if (data.status === "success"){
-          setStatus(`✅ ${name ? name + " • " : ""}${barcode} ${direction} successful`, "success");
 
-          // Toast on success
+        if (data.status === "success"){
+          setStatus(`✓ ${name ? name + " • " : ""}${barcode} ${direction} successful`, "success");
           const verb = direction === 'out' ? 'Checked out' : 'Checked in';
           toast(verb, { sub: name ? `${name} • ${barcode}` : barcode, variant:'success' });
-
+        } else if (data.status === "not_enough_units"){
+          setStatus(`Not enough units for ${barcode}`, "warning");
+          toast("Not enough units", { sub: barcode, variant:'error' });
+        } else if (data.status === "not_found"){
+          setStatus(`Product ${barcode} not found`, "error");
+          toast("Not found", { sub: barcode, variant:'error' });
         } else {
-          setStatus(`❌ Product ${barcode} not found`, "error");
-          // toast('Not found', { sub: barcode, variant:'error' }); // enable if desired
+          setStatus(`Error processing ${barcode}`, "error");
+          toast("Error", { sub: barcode, variant:'error' });
         }
       }catch(e){
-        setStatus(`❌ Network error`, "error");
-        // toast('Network error', { variant:'error' });
+        setStatus(`Network error`, "error");
+        toast("Network error", { variant:'error' });
       }
     }
 
@@ -327,27 +354,28 @@
         const direction = directionEl.value;
         const technician = techEl.value;
 
+        // Enforce tech for Scan Out only
         if (direction === "out" && !technician){
-          setStatus("⚠️ Technician required for Scan Out.", "warning");
+          setStatus("Technician required for Scan Out.", "warning");
           setTimeout(scanLoop, LOOP_DELAY_MS);
           return;
         }
 
-        // De-dupe: skip same code within cooldown window
+        // De-dupe within cooldown
         if (barcode === lastBarcode && (now - lastTime) < SCAN_COOLDOWN_MS){
           setTimeout(scanLoop, LOOP_DELAY_MS);
           return;
         }
         lastBarcode = barcode; lastTime = now;
 
-        // Beep only on successful decode
-        beep?.play().catch(()=>{});
+        // Beep on successful decode
+        document.getElementById("beep")?.play().catch(()=>{});
 
         // Log entry
         const li = document.createElement("li");
         const t = new Date().toLocaleTimeString();
-        li.textContent = `${t} — ${barcode} (${direction})`;
-        list.appendChild(li);
+        li.textContent = `${t} — ${barcode} (${direction}${technician?` • tech:${technician}`:''})`;
+        document.getElementById("scanned-items").appendChild(li);
 
         // Send to server
         await sendScan(barcode, direction, technician);
@@ -355,7 +383,6 @@
         setTimeout(scanLoop, LOOP_DELAY_MS);
       }catch(err){
         if (!active) return;
-        console.warn("Scan error:", err?.message || err);
         setStatus(``, "");
         setTimeout(scanLoop, LOOP_DELAY_MS);
       }
@@ -372,8 +399,7 @@
         setStatus("Point camera at barcode");
         scanLoop();
       }catch(e){
-        console.error(e);
-        setStatus(`❌ ${e.message || "Camera access denied"}`, "error");
+        setStatus(`${e.message || "Camera access denied"}`, "error");
         startBtn.disabled = false;
       }
     });
@@ -381,12 +407,12 @@
     pauseBtn.addEventListener("click", async () => {
       if (!active){
         active = true;
-        pauseBtn.textContent = "⏸ Pause";
+        pauseBtn.textContent = "Pause";
         setStatus("Resumed");
         scanLoop();
       } else {
         active = false;
-        pauseBtn.textContent = "▶️ Resume";
+        pauseBtn.textContent = "Resume";
         setStatus("Paused");
       }
     });
@@ -404,7 +430,7 @@
           scanLoop();
         }
       }catch(e){
-        setStatus("❌ Failed to switch camera", "error");
+        setStatus("Failed to switch camera", "error");
       }
     });
 
