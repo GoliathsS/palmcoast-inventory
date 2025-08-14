@@ -110,20 +110,25 @@
     </section>
 
     <!-- ACTION GRID -->
-    <section class="actions mb-4">
-      <a href="/scan" class="action"><i class="i-green fa-solid fa-barcode"></i><span>Open Scanner</span></a>
-      <a href="/history" class="action"><i class="i-gray fa-solid fa-receipt"></i><span>View History</span></a>
-      <a href="/export-products" class="action"><i class="i-green fa-solid fa-file-export"></i><span>Export to Excel</span></a>
-      <a href="/print-report" target="_blank" class="action"><i class="i-orange fa-solid fa-print"></i><span>Print Report</span></a>
-      <a href="/upload-invoice" class="action"><i class="i-blue fa-solid fa-paperclip"></i><span>Upload Invoice (Sync)</span></a>
-      <a href="/corrections" class="action"><i class="i-red fa-solid fa-screwdriver-wrench"></i><span>Corrections</span></a>
-      <a href="/sds" class="action"><i class="i-cyan fa-solid fa-file-lines"></i><span>SDS & Labels</span></a>
-      <a href="/vehicles" class="action"><i class="i-blue fa-solid fa-truck"></i><span>Vehicle Profiles</span></a>
-      <a href="/inspections" class="action"><i class="i-gray fa-solid fa-clipboard-check"></i><span>Vehicle Inspections</span></a>
-      <a href="{{ url_for('inventory_analytics') }}" class="action"><i class="i-blue fa-solid fa-chart-line"></i><span>Inventory Analytics</span></a>
-      <a href="/settings" class="action"><i class="i-gray fa-solid fa-gear"></i><span>Settings</span></a>
-      <a class="btn" href="{{ url_for('tech_requests_queue') }}">Tech Request Queue</a>
-    </section>
+  <section class="actions mb-4">
+    <a href="/scan" class="action"><i class="i-green fa-solid fa-barcode"></i><span>Open Scanner</span></a>
+    <a href="/history" class="action"><i class="i-gray fa-solid fa-receipt"></i><span>View History</span></a>
+    <a href="/export-products" class="action"><i class="i-green fa-solid fa-file-export"></i><span>Export to Excel</span></a>
+    <a href="/print-report" target="_blank" class="action"><i class="i-orange fa-solid fa-print"></i><span>Print Report</span></a>
+    <a href="/upload-invoice" class="action"><i class="i-blue fa-solid fa-paperclip"></i><span>Upload Invoice (Sync)</span></a>
+    <a href="/corrections" class="action"><i class="i-red fa-solid fa-screwdriver-wrench"></i><span>Corrections</span></a>
+
+    <!-- NEW: Tech Request Queue (Admins) -->
+    <a href="{{ url_for('tech_requests_queue') }}" class="action">
+      <i class="i-orange fa-solid fa-list-check"></i><span>Tech Request Queue</span>
+    </a>
+
+    <a href="/sds" class="action"><i class="i-cyan fa-solid fa-file-lines"></i><span>SDS & Labels</span></a>
+    <a href="/vehicles" class="action"><i class="i-blue fa-solid fa-truck"></i><span>Vehicle Profiles</span></a>
+    <a href="/inspections" class="action"><i class="i-gray fa-solid fa-clipboard-check"></i><span>Vehicle Inspections</span></a>
+    <a href="{{ url_for('inventory_analytics') }}" class="action"><i class="i-blue fa-solid fa-chart-line"></i><span>Inventory Analytics</span></a>
+    <a href="/settings" class="action"><i class="i-gray fa-solid fa-gear"></i><span>Settings</span></a>
+  </section>
 
     <!-- FILTERS -->
     <section class="card-soft p-3 mb-3 filters">
