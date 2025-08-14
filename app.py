@@ -396,6 +396,17 @@ def tech_request_new():
     if req_type not in allowed:
         req_type = "other"
 
+    # build a human title (DB column is NOT NULL)
+    type_titles = {
+        "new_chemical": "Request to Try New Chemical",
+        "equipment": "Equipment Request",
+        "other": "Technician Request",
+    }
+    base_title = type_titles.get(req_type, "Technician Request")
+    # add a short suffix from the description
+    suffix = (desc[:60] + "…" if len(desc) > 60 else desc)
+    title = (f"{base_title}: {suffix}").strip()[:120]  # keep titles short
+
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
@@ -404,21 +415,19 @@ def tech_request_new():
         cur.execute("SELECT id FROM technicians WHERE user_id = %s", (current_user.id,))
         trow = cur.fetchone()
         if not trow:
-            # no technician linked to this user → nothing to insert
-            # (You could flash a message here if you use flask flashing.)
             cur.close(); conn.close()
             return redirect(url_for("tech_home"))
 
         technician_id = trow["id"]
 
-        # Insert the request
+        # Insert — note: request_type is ENUM, status is TEXT in your DB
         cur.execute("""
             INSERT INTO tech_requests (
-                technician_id, request_type, description, status, created_at
+                technician_id, request_type, title, description, status, created_at, updated_at
             ) VALUES (
-                %s, %s::request_type, %s, 'open', NOW()
+                %s, %s::request_type, %s, %s, 'open', NOW(), NOW()
             )
-        """, (technician_id, req_type, desc))
+        """, (technician_id, req_type, title, desc))
 
         conn.commit()
     except Exception:
