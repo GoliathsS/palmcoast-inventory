@@ -757,12 +757,17 @@ def edit_product(product_id):
 @login_required
 @role_required('ADMIN')
 def delete_product(product_id):
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("DELETE FROM products WHERE id=%s", (product_id,))
-    conn.commit()
-    cur.close()
-    conn.close()
+    conn = get_db_connection(); cur = conn.cursor()
+    try:
+        # Soft-delete
+        cur.execute("UPDATE products SET is_archived = TRUE WHERE id=%s", (product_id,))
+        conn.commit()
+        flash("Product archived. It will no longer appear in lists or inventory add forms.", "success")
+    except Exception as e:
+        conn.rollback()
+        flash(f"Could not archive product: {e}", "danger")
+    finally:
+        cur.close(); conn.close()
     return redirect(url_for('index'))
 
 @app.route('/export-products')
