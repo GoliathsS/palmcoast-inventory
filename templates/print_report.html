@@ -2,56 +2,163 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Printable Inventory Report</title>
+  <title>Printable Inventory Report · Palm Coast</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
   <style>
+    :root{
+      --ink:#0b1220; --muted:#667085; --border:#e6e7ec; --accent:#14532d;
+      --warn-bg:#fff4f0; --warn-text:#b93815;
+    }
+    html,body{background:#fff;color:var(--ink)}
+    body{padding:24px; font-family:system-ui,-apple-system,Segoe UI,Inter,Roboto,Arial,sans-serif}
+
+    /* Header / actions */
+    .report-header{display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:16px}
+    .brand{display:flex; align-items:center; gap:.6rem}
+    .brand img{height:36px; border-radius:6px}
+    .brand h1{font-size:1.25rem; margin:0}
+    .actions .btn{border-radius:10px}
+
+    .meta{color:var(--muted); font-size:.95rem; margin-bottom:14px}
+
+    /* Table look */
+    .table{border-color:var(--border)}
+    .table thead th{background:#f8fafc; border-color:var(--border)}
+    .table tfoot th{background:#f8fafc}
+    .table td, .table th{vertical-align:middle}
+    .low{background:var(--warn-bg)}
+    .low .text-danger{color:var(--warn-text)!important; font-weight:600}
+
+    /* Subtotal & total rows */
+    .row-subtotal{background:#f6f7fb; font-weight:600}
+    .row-grandtotal{background:#edf2f7; font-weight:700}
+
+    /* Print tweaks */
+    @page { size: auto; margin: 12mm }
     @media print {
-      .no-print { display: none; }
+      .no-print{display:none!important}
+      body{padding:0}
+      thead{display:table-header-group}
+      tfoot{display:table-row-group}
+      tr, img{break-inside:avoid}
+      .row-subtotal, .row-grandtotal { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     }
-    body {
-      padding: 2rem;
-      font-family: 'Inter', sans-serif;
-    }
-    h2 { margin-bottom: 2rem; }
   </style>
 </head>
 <body>
-  <div class="no-print mb-3">
-    <button onclick="window.print()" class="btn btn-primary">🖨️ Print This Page</button>
-    <a href="/" class="btn btn-secondary">⬅️ Back to Dashboard</a>
+
+  <!-- Header / actions (hidden in print) -->
+  <div class="report-header no-print">
+    <div class="brand">
+      <img src="/static/LOGO.jpg" alt="Palm Coast logo">
+      <h1>Inventory Report</h1>
+    </div>
+    <div class="actions">
+      <button onclick="window.print()" class="btn btn-primary">🖨️ Print</button>
+      <a href="/" class="btn btn-outline-secondary">← Back to Dashboard</a>
+    </div>
   </div>
 
-  <h2>📋 Palm Coast Inventory Report</h2>
+  <div class="meta">
+    Report generated on <strong>{{ now.strftime('%Y-%m-%d %H:%M') }}</strong>
+  </div>
+
+  {# 
+    Assumes products come sorted by category, name:
+    SELECT * FROM products ORDER BY category, name
+    Indexes based on your template:
+      [1]=name, [2]=barcode, [3]=stock, [4]=min_stock, [5]=cost_per_unit, [7]=category
+  #}
+
+  {% set ns = namespace(cat=None, subtotal_qty=0, subtotal_value=0, grand_qty=0, grand_value=0) %}
 
   <table class="table table-bordered table-sm">
     <thead class="table-light">
       <tr>
-        <th>Product</th>
-        <th>Category</th>
-        <th>Barcode</th>
-        <th>In Stock</th>
-        <th>Min Stock</th>
-        <th>Cost/Unit</th>
-        <th>Total Value</th>
+        <th style="width:28%">Product</th>
+        <th style="width:14%">Category</th>
+        <th style="width:16%">Barcode</th>
+        <th class="text-end" style="width:10%">In Stock</th>
+        <th class="text-end" style="width:10%">Min</th>
+        <th class="text-end" style="width:10%">Cost/Unit</th>
+        <th class="text-end" style="width:12%">Total Value</th>
       </tr>
     </thead>
     <tbody>
       {% for product in products %}
-      <tr {% if product[3] == 0 %}class="table-danger"{% endif %}>
-        <td>{{ product[1] }}</td>
-        <td>{{ product[7] }}</td>
-        <td>{{ product[2] }}</td>
-        <td>{{ product[3] }}</td>
-        <td>{{ product[4] }}</td>
-        <td>${{ '%.2f' | format(product[5] or 0.00) }}</td>
-        <td>${{ '%.2f' | format((product[3] or 0) * (product[5] or 0.00)) }}</td>
-      </tr>
+        {% set name = product[1] %}
+        {% set barcode = product[2] %}
+        {% set stock = product[3] or 0 %}
+        {% set min_stock = product[4] or 0 %}
+        {% set cost = product[5] or 0.0 %}
+        {% set category = product[7] %}
+        {% set value = (stock * cost) %}
+
+        {# On category change, print previous subtotal #}
+        {% if ns.cat is not none and category != ns.cat %}
+          <tr class="row-subtotal">
+            <td colspan="3" class="text-end">Subtotal — {{ ns.cat }}</td>
+            <td class="text-end">{{ ns.subtotal_qty }}</td>
+            <td></td>
+            <td></td>
+            <td class="text-end">${{ '%.2f' | format(ns.subtotal_value) }}</td>
+          </tr>
+          {% set ns.subtotal_qty = 0 %}
+          {% set ns.subtotal_value = 0 %}
+        {% endif %}
+
+        {# Initialize category on first row #}
+        {% if ns.cat is none %}
+          {% set ns.cat = category %}
+        {% endif %}
+        {% if category != ns.cat %}
+          {% set ns.cat = category %}
+        {% endif %}
+
+        {% set ns.subtotal_qty = ns.subtotal_qty + stock %}
+        {% set ns.subtotal_value = ns.subtotal_value + value %}
+        {% set ns.grand_qty = ns.grand_qty + stock %}
+        {% set ns.grand_value = ns.grand_value + value %}
+
+        <tr class="{% if stock <= min_stock %}low{% endif %}">
+          <td class="fw-semibold">{{ name }}</td>
+          <td>{{ category }}</td>
+          <td><span class="text-muted">{{ barcode }}</span></td>
+          <td class="text-end {% if stock <= min_stock %}text-danger{% endif %}">{{ stock }}</td>
+          <td class="text-end">{{ min_stock }}</td>
+          <td class="text-end">${{ '%.2f' | format(cost) }}</td>
+          <td class="text-end">${{ '%.2f' | format(value) }}</td>
+        </tr>
       {% endfor %}
     </tbody>
+
+    <tfoot>
+      {# Final subtotal for the last category #}
+      {% if ns.cat is not none %}
+      <tr class="row-subtotal">
+        <td colspan="3" class="text-end">Subtotal — {{ ns.cat }}</td>
+        <td class="text-end">{{ ns.subtotal_qty }}</td>
+        <td></td>
+        <td></td>
+        <td class="text-end">${{ '%.2f' | format(ns.subtotal_value) }}</td>
+      </tr>
+      {% endif %}
+
+      <tr class="row-grandtotal">
+        <th colspan="3" class="text-end">Grand Total</th>
+        <th class="text-end">{{ ns.grand_qty }}</th>
+        <th></th>
+        <th></th>
+        <th class="text-end">${{ '%.2f' | format(ns.grand_value) }}</th>
+      </tr>
+    </tfoot>
   </table>
 
-  <footer class="mt-5 text-muted small">
-    Report generated on {{ now.strftime('%Y-%m-%d %H:%M') }}
-  </footer>
+  <div class="text-muted small mt-3">
+    <em>Low stock rows are highlighted when <strong>In Stock ≤ Min</strong>.</em>
+  </div>
+
 </body>
 </html>
