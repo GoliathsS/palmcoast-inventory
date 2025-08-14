@@ -19,10 +19,10 @@
 
   <style>
     :root{
-      --pc-primary:#14532d;  /* deep palm green */
+      --pc-primary:#14532d;
       --pc-primary-2:#0e5a34;
-      --pc-accent:#1d4ed8;   /* blue accent for links */
-      --pc-soft:#f3f4f6;     /* soft gray */
+      --pc-accent:#1d4ed8;
+      --pc-soft:#f3f4f6;
     }
     body{ background:#f6f7f9; font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; }
 
@@ -51,6 +51,7 @@
       display:flex; align-items:center; gap:.65rem; text-decoration:none; color:#111;
       box-shadow: 0 2px 10px rgba(0,0,0,.04);
       transition: transform .12s ease, box-shadow .12s ease;
+      position:relative;  /* enable corner badges */
     }
     .action:hover{ transform: translateY(-2px); box-shadow:0 6px 18px rgba(0,0,0,.07); }
     .action i{ width:28px; height:28px; display:grid; place-items:center; border-radius:8px; font-size:14px; }
@@ -60,6 +61,22 @@
     .i-orange{ background:#fff1e6; color:#b45309; }
     .i-red{ background:#ffe8e8; color:#b91c1c; }
     .i-cyan{ background:#e6fbff; color:#0e7490; }
+
+    .count-badge{
+      position:absolute;
+      top:-6px; right:-6px;
+      background:#dc3545;
+      color:#fff;
+      border-radius:999px;
+      font-weight:700;
+      font-size:.75rem;
+      line-height:1;
+      padding:.35rem .5rem;
+      box-shadow:0 2px 8px rgba(220,53,69,.3);
+      display:none;         /* hidden when 0 */
+      min-width:1.45rem;    /* nice round pill for 1-digit */
+      text-align:center;
+    }
 
     /* Cards / sections */
     .card-soft { background:#fff; border:1px solid rgba(0,0,0,.06); border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,.04); }
@@ -102,42 +119,45 @@
         </div>
       </div>
       <div class="stat">
-        <div class="value">${{ '%.2f' | format(total_value or 0.00) }}</div>
+        <div id="totalValue" class="value">${{ '%.2f' | format(total_value or 0.00) }}</div>
         <small>
-          🌿 Lawn: {{ lawn_count }} &nbsp; • &nbsp; 🐜 Pest: {{ pest_count }} &nbsp; • &nbsp; 🦝 Wildlife: {{ wildlife_count }}
+          🌿 Lawn: <span id="lawnCount">{{ lawn_count }}</span>
+          &nbsp; • &nbsp; 🐜 Pest: <span id="pestCount">{{ pest_count }}</span>
+          &nbsp; • &nbsp; 🦝 Wildlife: <span id="wildlifeCount">{{ wildlife_count }}</span>
         </small>
       </div>
     </section>
 
     <!-- ACTION GRID -->
-  <section class="actions mb-4">
-    <a href="/scan" class="action"><i class="i-green fa-solid fa-barcode"></i><span>Open Scanner</span></a>
-    <a href="/history" class="action"><i class="i-gray fa-solid fa-receipt"></i><span>View History</span></a>
-    <a href="/export-products" class="action"><i class="i-green fa-solid fa-file-export"></i><span>Export to Excel</span></a>
-    <a href="/print-report" target="_blank" class="action"><i class="i-orange fa-solid fa-print"></i><span>Print Report</span></a>
-    <a href="/upload-invoice" class="action"><i class="i-blue fa-solid fa-paperclip"></i><span>Upload Invoice (Sync)</span></a>
-    <a href="/corrections" class="action"><i class="i-red fa-solid fa-screwdriver-wrench"></i><span>Corrections</span></a>
+    <section class="actions mb-4">
+      <a href="/scan" class="action"><i class="i-green fa-solid fa-barcode"></i><span>Open Scanner</span></a>
+      <a href="/history" class="action"><i class="i-gray fa-solid fa-receipt"></i><span>View History</span></a>
+      <a href="/export-products" class="action"><i class="i-green fa-solid fa-file-export"></i><span>Export to Excel</span></a>
+      <a href="/print-report" target="_blank" class="action"><i class="i-orange fa-solid fa-print"></i><span>Print Report</span></a>
+      <a href="/upload-invoice" class="action"><i class="i-blue fa-solid fa-paperclip"></i><span>Upload Invoice (Sync)</span></a>
+      <a href="/corrections" class="action"><i class="i-red fa-solid fa-screwdriver-wrench"></i><span>Corrections</span></a>
 
-    <!-- NEW: Tech Request Queue (Admins) -->
-    <a href="{{ url_for('tech_requests_queue') }}" class="action">
-      <i class="i-orange fa-solid fa-list-check"></i><span>Tech Request Queue</span>
-    </a>
+      <!-- Tech Request Queue + live badge -->
+      <a href="{{ url_for('tech_requests_queue') }}" class="action">
+        <i class="i-orange fa-solid fa-list-check"></i><span>Tech Request Queue</span>
+        <span id="openReqBadge" class="count-badge">0</span>
+      </a>
 
-    <a href="/sds" class="action"><i class="i-cyan fa-solid fa-file-lines"></i><span>SDS & Labels</span></a>
-    <a href="/vehicles" class="action"><i class="i-blue fa-solid fa-truck"></i><span>Vehicle Profiles</span></a>
-    <a href="/inspections" class="action"><i class="i-gray fa-solid fa-clipboard-check"></i><span>Vehicle Inspections</span></a>
-    <a href="{{ url_for('inventory_analytics') }}" class="action"><i class="i-blue fa-solid fa-chart-line"></i><span>Inventory Analytics</span></a>
-    <a href="/settings" class="action"><i class="i-gray fa-solid fa-gear"></i><span>Settings</span></a>
-  </section>
+      <a href="/sds" class="action"><i class="i-cyan fa-solid fa-file-lines"></i><span>SDS & Labels</span></a>
+      <a href="/vehicles" class="action"><i class="i-blue fa-solid fa-truck"></i><span>Vehicle Profiles</span></a>
+      <a href="/inspections" class="action"><i class="i-gray fa-solid fa-clipboard-check"></i><span>Vehicle Inspections</span></a>
+      <a href="{{ url_for('inventory_analytics') }}" class="action"><i class="i-blue fa-solid fa-chart-line"></i><span>Inventory Analytics</span></a>
+      <a href="/settings" class="action"><i class="i-gray fa-solid fa-gear"></i><span>Settings</span></a>
+    </section>
 
     <!-- FILTERS -->
     <section class="card-soft p-3 mb-3 filters">
-      <form method="get" action="/" class="row g-2 align-items-center">
+      <form id="filterForm" method="get" action="/" class="row g-2 align-items-center">
         <div class="col-auto">
           <label for="category" class="fw-semibold me-2">Filter by Category:</label>
         </div>
         <div class="col-auto">
-          <select class="form-select" name="category" onchange="this.form.submit()">
+          <select id="categorySelect" class="form-select" name="category" onchange="this.form.submit()">
             <option value="All" {% if category_filter == 'All' %}selected{% endif %}>All</option>
             <option value="Pest" {% if category_filter == 'Pest' %}selected{% endif %}>Pest</option>
             <option value="Lawn" {% if category_filter == 'Lawn' %}selected{% endif %}>Lawn</option>
@@ -202,7 +222,7 @@
               <th style="min-width:120px;">Actions</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="productsBody">
             {% for product in products %}
             <tr class="{% if product[3] == 0 %}table-danger{% endif %}" {% if product[3] == 0 %}title="Out of Stock"{% endif %}>
               <td class="fw-semibold">{{ product[1] }}</td>
@@ -237,7 +257,7 @@
               </td>
             </tr>
 
-            <!-- Edit Modal -->
+            <!-- Edit Modal (server-rendered once; optional to live-update) -->
             <div class="modal fade" id="editModal{{ product[0] }}" tabindex="-1" aria-labelledby="editModalLabel{{ product[0] }}" aria-hidden="true">
               <div class="modal-dialog">
                 <div class="modal-content">
@@ -387,6 +407,107 @@
         };
         cost?.addEventListener("input", calc);
         units?.addEventListener("input", calc);
+      }
+    });
+
+    /* ===========================
+       LIVE UPDATES (polling)
+       =========================== */
+    const $ = (id) => document.getElementById(id);
+
+    async function fetchJSON(url) {
+      const res = await fetch(url, { headers: { 'Accept':'application/json' }});
+      if (!res.ok) throw new Error(`Fetch ${url} → ${res.status}`);
+      return res.json();
+    }
+
+    function fmtMoney(n){ return Number(n || 0).toFixed(2); }
+
+    function updateStatsUI(s) {
+      if (s.total_value !== undefined) $('totalValue').textContent = `$${fmtMoney(s.total_value)}`;
+      if (s.lawn_count !== undefined) $('lawnCount').textContent = s.lawn_count;
+      if (s.pest_count !== undefined) $('pestCount').textContent = s.pest_count;
+      if (s.wildlife_count !== undefined) $('wildlifeCount').textContent = s.wildlife_count;
+
+      const badge = $('openReqBadge');
+      const count = Number(s.open_requests_count || 0);
+      if (count > 0) {
+        badge.style.display = 'inline-block';
+        badge.textContent = count > 99 ? '99+' : String(count);
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+
+    function rowBadge(stock, min) {
+      if (stock <= 0) return '<span class="badge bg-danger">Out</span>';
+      if (stock < min) return '<span class="badge badge-low">Low</span>';
+      return '<span class="badge badge-ok">OK</span>';
+    }
+
+    function catBadge(cat) {
+      if (cat === 'Lawn') return '<span class="badge bg-success">Lawn</span>';
+      if (cat === 'Wildlife') return '<span class="badge bg-warning text-dark">Wildlife</span>';
+      return '<span class="badge bg-info text-dark">Pest</span>';
+    }
+
+    function renderProducts(products) {
+      const tbody = $('productsBody');
+      const rows = products.map(p => {
+        // expected fields (match your table): 
+        // [id, name, barcode, in_stock, min_stock, price, siteone_sku, category, units_per_item, unit_cost, units_remaining]
+        const out = (p[3] === 0) ? 'table-danger' : '';
+        return `
+          <tr class="${out}" ${p[3]===0?'title="Out of Stock"':''}>
+            <td class="fw-semibold">${p[1] ?? ''}</td>
+            <td class="text-muted">${p[2] ?? ''}</td>
+            <td>${p[3] ?? 0}</td>
+            <td>${p[10] ?? 0}</td>
+            <td>${p[4] ?? 0}</td>
+            <td>${rowBadge(Number(p[3]||0), Number(p[4]||0))}</td>
+            <td>$${fmtMoney(p[5])}</td>
+            <td>${catBadge(p[7] ?? '')}</td>
+            <td>
+              <button class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#editModal${p[0]}">✏️ Edit</button>
+              <form action="/delete-product/${p[0]}" method="post" style="display:inline-block" onsubmit="return confirm('Are you sure?')">
+                <button class="btn btn-sm btn-outline-danger">🗑 Delete</button>
+              </form>
+            </td>
+          </tr>
+        `;
+      }).join('');
+      tbody.innerHTML = rows;
+    }
+
+    async function refreshAll() {
+      try {
+        // 1) Stats
+        const stats = await fetchJSON('/api/dashboard-stats');
+        updateStatsUI(stats);
+
+        // 2) Products for the current filter
+        const sel = document.getElementById('categorySelect');
+        const category = encodeURIComponent(sel?.value || 'All');
+        const products = await fetchJSON(`/api/products?category=${category}`);
+        renderProducts(products);
+      } catch(e) {
+        console.warn('Live update failed:', e);
+      }
+    }
+
+    // Initial fetch + poll every 15s
+    document.addEventListener('DOMContentLoaded', () => {
+      refreshAll();
+      setInterval(refreshAll, 15000);
+
+      // also refresh when filter changes (prevent full page reload)
+      const form = document.getElementById('filterForm');
+      const select = document.getElementById('categorySelect');
+      if (form && select) {
+        form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          refreshAll();
+        });
       }
     });
   </script>
