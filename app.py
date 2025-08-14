@@ -185,23 +185,20 @@ def api_dashboard_stats():
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # ✅ correct inventory value (unopened + partials), exclude archived
+    # ✅ correct total: units_remaining * unit_cost, ignore archived
     cur.execute("""
-        SELECT COALESCE(SUM(
-            COALESCE(stock,0) * COALESCE(cost_per_unit,0) +
-            COALESCE(units_remaining,0) * COALESCE(unit_cost,0)
-        ), 0)
+        SELECT COALESCE(SUM(COALESCE(units_remaining,0)::numeric
+                            * COALESCE(unit_cost,0)::numeric), 0)
         FROM products
-        WHERE COALESCE(is_archived, FALSE) = FALSE
+        WHERE is_archived = FALSE
     """)
     total_value = float(cur.fetchone()[0] or 0)
 
-    # counts should also exclude archived
-    cur.execute("SELECT COUNT(*) FROM products WHERE category='Lawn' AND COALESCE(is_archived,FALSE)=FALSE")
+    cur.execute("SELECT COUNT(*) FROM products WHERE category='Lawn'     AND is_archived=FALSE")
     lawn = cur.fetchone()[0]
-    cur.execute("SELECT COUNT(*) FROM products WHERE category='Pest' AND COALESCE(is_archived,FALSE)=FALSE")
+    cur.execute("SELECT COUNT(*) FROM products WHERE category='Pest'     AND is_archived=FALSE")
     pest = cur.fetchone()[0]
-    cur.execute("SELECT COUNT(*) FROM products WHERE category='Wildlife' AND COALESCE(is_archived,FALSE)=FALSE")
+    cur.execute("SELECT COUNT(*) FROM products WHERE category='Wildlife' AND is_archived=FALSE")
     wildlife = cur.fetchone()[0]
 
     cur.execute("SELECT COUNT(*) FROM tech_requests WHERE status='open'")
@@ -224,33 +221,29 @@ def api_products():
     conn = get_db_connection()
     cur = conn.cursor()
 
+    base_select = """
+        SELECT
+            id,                 -- [0]
+            name,               -- [1]
+            barcode,            -- [2]
+            stock,              -- [3]  (you use this in the table)
+            min_stock,          -- [4]
+            cost_per_unit,      -- [5]
+            siteone_sku,        -- [6]
+            category,           -- [7]
+            units_per_item,     -- [8]
+            unit_cost,          -- [9]
+            units_remaining     -- [10]
+        FROM products
+    """
+
     if category and category != "All":
-        cur.execute("""
-            SELECT id, name, barcode,
-                   COALESCE(stock,0)           AS in_stock,
-                   min_stock, cost_per_unit, siteone_sku,
-                   category, units_per_item, unit_cost,
-                   COALESCE(units_remaining,0) AS units_remaining
-              FROM products
-             WHERE category = %s
-               AND COALESCE(is_archived, FALSE) = FALSE
-             ORDER BY name
-        """, (category,))
+        cur.execute(base_select + " WHERE category = %s AND is_archived = FALSE ORDER BY name", (category,))
     else:
-        cur.execute("""
-            SELECT id, name, barcode,
-                   COALESCE(stock,0)           AS in_stock,
-                   min_stock, cost_per_unit, siteone_sku,
-                   category, units_per_item, unit_cost,
-                   COALESCE(units_remaining,0) AS units_remaining
-              FROM products
-             WHERE COALESCE(is_archived, FALSE) = FALSE
-             ORDER BY name
-        """)
+        cur.execute(base_select + " WHERE is_archived = FALSE ORDER BY name")
 
     rows = cur.fetchall()
     cur.close(); conn.close()
-    # return as a simple list-of-lists to match your current table indexing
     return jsonify(rows)
 
 @app.get("/my")
@@ -554,32 +547,34 @@ def index():
 
     category_filter = request.args.get('category', 'All')
     if category_filter == 'All':
-        cur.execute("SELECT * FROM products WHERE COALESCE(is_archived,FALSE)=FALSE ORDER BY name")
+        cur.execute("""
+            SELECT * FROM products
+            WHERE is_archived = FALSE
+            ORDER BY id
+        """)
     else:
         cur.execute("""
             SELECT * FROM products
-            WHERE category = %s AND COALESCE(is_archived,FALSE)=FALSE
-            ORDER BY name
+            WHERE category = %s AND is_archived = FALSE
+            ORDER BY id
         """, (category_filter,))
     products = cur.fetchall()
 
-    # ✅ correct, consistent total value
+    # ✅ Total inventory value (correct columns + ignore archived)
     cur.execute("""
-        SELECT COALESCE(SUM(
-            COALESCE(stock,0) * COALESCE(cost_per_unit,0) +
-            COALESCE(units_remaining,0) * COALESCE(unit_cost,0)
-        ), 0)
+        SELECT COALESCE(SUM(COALESCE(units_remaining,0)::numeric
+                            * COALESCE(unit_cost,0)::numeric), 0)
         FROM products
-        WHERE COALESCE(is_archived, FALSE) = FALSE
+        WHERE is_archived = FALSE
     """)
     row = cur.fetchone()
-    total_value = row[0] if row and row[0] is not None else 0
+    total_value = float(row[0] or 0)
 
-    cur.execute("SELECT COUNT(*) FROM products WHERE category='Lawn' AND COALESCE(is_archived,FALSE)=FALSE")
+    cur.execute("SELECT COUNT(*) FROM products WHERE category='Lawn'     AND is_archived=FALSE")
     lawn_count = cur.fetchone()[0]
-    cur.execute("SELECT COUNT(*) FROM products WHERE category='Pest' AND COALESCE(is_archived,FALSE)=FALSE")
+    cur.execute("SELECT COUNT(*) FROM products WHERE category='Pest'     AND is_archived=FALSE")
     pest_count = cur.fetchone()[0]
-    cur.execute("SELECT COUNT(*) FROM products WHERE category='Wildlife' AND COALESCE(is_archived,FALSE)=FALSE")
+    cur.execute("SELECT COUNT(*) FROM products WHERE category='Wildlife' AND is_archived=FALSE")
     wildlife_count = cur.fetchone()[0]
 
     cur.close(); conn.close()
