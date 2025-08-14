@@ -178,6 +178,63 @@ def logout():
     logout_user()
     return redirect(url_for("login"))
 
+@app.get("/api/dashboard-stats")
+@login_required
+@role_required("ADMIN")  # or TECH+ADMIN if you want techs to hit this too
+def api_dashboard_stats():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT COALESCE(SUM((p.cost_per_unit)::numeric),0) FROM products p")
+    total_value = float(cur.fetchone()[0] or 0)
+
+    cur.execute("SELECT COUNT(*) FROM products WHERE category='Lawn'")
+    lawn = cur.fetchone()[0]
+    cur.execute("SELECT COUNT(*) FROM products WHERE category='Pest'")
+    pest = cur.fetchone()[0]
+    cur.execute("SELECT COUNT(*) FROM products WHERE category='Wildlife'")
+    wildlife = cur.fetchone()[0]
+
+    cur.execute("SELECT COUNT(*) FROM tech_requests WHERE status='open'")
+    open_reqs = cur.fetchone()[0]
+
+    cur.close(); conn.close()
+    return jsonify({
+        "total_value": total_value,
+        "lawn_count": lawn,
+        "pest_count": pest,
+        "wildlife_count": wildlife,
+        "open_requests_count": open_reqs
+    })
+
+@app.get("/api/products")
+@login_required
+@role_required("ADMIN")
+def api_products():
+    category = request.args.get("category", "All")
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    if category and category != "All":
+        cur.execute("""
+            SELECT id, name, barcode, in_stock, min_stock, cost_per_unit, siteone_sku,
+                   category, units_per_item, unit_cost, units_remaining
+              FROM products
+             WHERE category = %s
+             ORDER BY name
+        """, (category,))
+    else:
+        cur.execute("""
+            SELECT id, name, barcode, in_stock, min_stock, cost_per_unit, siteone_sku,
+                   category, units_per_item, unit_cost, units_remaining
+              FROM products
+             ORDER BY name
+        """)
+
+    rows = cur.fetchall()
+    cur.close(); conn.close()
+    # return as a simple list-of-lists to match your current table indexing
+    return jsonify(rows)
+
 @app.get("/my")
 @login_required
 @role_required("TECH","ADMIN")
