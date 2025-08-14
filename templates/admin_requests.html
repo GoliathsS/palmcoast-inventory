@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Palm Coast • Tech Requests</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="color-scheme" content="light" />
+  <style>
+    :root{
+      --page:#f7f7f9; --card:#ffffff; --border:#e6e7eb; --text:#0b1220; --muted:#6b7280;
+      --brand:#0ea5e9; --brand-2:#10b981; --good:#16a34a; --shadow:0 8px 24px rgba(17,24,39,.08), 0 2px 6px rgba(17,24,39,.06);
+      --radius:16px; --ring:0 0 0 4px rgba(14,165,233,.15);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0}
+    body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter,"Helvetica Neue",Arial;background:var(--page);color:var(--text);display:flex;flex-direction:column}
+    header{position:sticky;top:0;z-index:10;background:rgba(255,255,255,.8);backdrop-filter:saturate(1.2) blur(8px);border-bottom:1px solid var(--border);}
+    .bar{max-width:min(1200px,94vw);margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:16px 0}
+    .brand{display:flex;align-items:center;gap:12px;font-weight:800;letter-spacing:.2px}
+    .meta{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:.95rem}
+    .logout{color:#2563eb;text-decoration:none;border:1px solid #dbe4ff;padding:8px 12px;border-radius:12px}
+    .logout:hover{background:#eef2ff}
+
+    .wrap{width:min(1200px,94vw);margin:20px auto 40px;flex:1;display:grid;gap:18px}
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
+    h1{margin:0 0 8px;font-size:1.4rem;letter-spacing:-.01em}
+    .subtle{color:var(--muted)}
+    .controls{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0 14px}
+    .inp,.btn{border:1px solid var(--border);background:#fff;border-radius:10px;padding:10px 12px;font-weight:500}
+    .btn{cursor:pointer}
+    .btn-primary{background:linear-gradient(90deg,var(--brand),var(--brand-2));color:#fff;border:none}
+    .badge{display:inline-block;padding:4px 10px;border-radius:999px;font-size:.8rem}
+    .badge-ok{background:#dcfce7;color:#065f46}
+    .badge-warn{background:#fef3c7;color:#92400e}
+    .table-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px}
+    table{border-collapse:separate;border-spacing:0;width:100%;min-width:800px;background:#fff}
+    th,td{padding:12px 14px;text-align:left;border-bottom:1px dashed #e5e7eb;vertical-align:top}
+    th{font-size:.9rem;color:#374151;background:#fafafa;position:sticky;top:0;z-index:1}
+    tr:last-child td{border-bottom:none}
+    .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid #cdebd8;color:#065f46;background:#ecfdf5;border-radius:999px;font-size:.85rem}
+    .dot{width:8px;height:8px;border-radius:50%;background:var(--good)}
+    .footer{color:var(--muted);font-size:.9rem;text-align:center;padding:24px 0 34px}
+    a:focus-visible,.logout:focus-visible,.btn:focus-visible,.inp:focus-visible{outline:none;box-shadow:var(--ring)}
+    @media (max-width:680px){
+      .meta{display:none}
+      .table-wrap{border:none}
+      table{min-width:0}
+      th:nth-child(3), td:nth-child(3){display:none} /* hide Vehicle on small screens (optional) */
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="bar">
+      <div class="brand">Palm Coast • Admin • Tech Requests</div>
+      <div class="meta">
+        {% if current_user.is_authenticated %}{{ current_user.email }}{% endif %}
+        • <a class="logout" href="{{ url_for('logout') }}">Sign out</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <section class="panel">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <h1>Request Queue</h1>
+        <span class="pill"><span class="dot"></span> Admin view</span>
+      </div>
+      <div class="subtle">Review and close technician requests.</div>
+
+      <!-- Filters -->
+      <div class="controls">
+        <input id="q" class="inp" type="search" placeholder="Search by tech, description, type…" />
+        <select id="status" class="inp">
+          <option value="">All statuses</option>
+          <option value="open">Open</option>
+          <option value="closed">Closed</option>
+        </select>
+        <select id="rtype" class="inp">
+          <option value="">All types</option>
+          <option value="new_chemical">New Chemical</option>
+          <option value="equipment">Equipment</option>
+          <option value="other">Other</option>
+        </select>
+        <button id="clear" class="btn">Clear</button>
+      </div>
+
+      <!-- Table -->
+      <div class="table-wrap">
+        <table id="requests">
+          <thead>
+            <tr>
+              <th style="width:80px">ID</th>
+              <th>Technician</th>
+              <th>Vehicle</th>
+              <th>Type</th>
+              <th>Description</th>
+              <th style="width:120px">Status</th>
+              <th style="width:180px">Opened</th>
+              <th style="width:120px">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if requests_rows and requests_rows|length > 0 %}
+              {% for r in requests_rows %}
+              <tr
+                data-status="{{ r.status }}"
+                data-type="{{ r.request_type }}"
+                data-text="{{ (r.tech_name or '') }} {{ (r.request_type or '') }} {{ (r.description or '') }}"
+              >
+                <td>#{{ r.id }}</td>
+                <td>{{ r.tech_name or '—' }}</td>
+                <td>{{ r.vehicle_id if r.vehicle_id is defined else '—' }}</td>
+                <td style="text-transform:capitalize">{{ (r.request_type or '').replace('_',' ') }}</td>
+                <td>{{ r.description or '—' }}</td>
+                <td>
+                  {% if r.status == 'open' %}
+                    <span class="badge badge-warn">Open</span>
+                  {% else %}
+                    <span class="badge badge-ok">Closed</span>
+                  {% endif %}
+                </td>
+                <td>{{ r.created_at.strftime('%Y-%m-%d %H:%M') if r.created_at else '—' }}</td>
+                <td>
+                  {% if r.status == 'open' %}
+                    <form method="POST" action="{{ url_for('tech_request_close', req_id=r.id) }}">
+                      <button class="btn btn-primary" type="submit">Close</button>
+                    </form>
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr><td colspan="8" class="subtle">No requests found.</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <div class="footer">© {{ date.today().year if date else '' }} Palm Coast • All rights reserved</div>
+
+  <script>
+    (function(){
+      const q = document.getElementById('q');
+      const status = document.getElementById('status');
+      const rtype = document.getElementById('rtype');
+      const clear = document.getElementById('clear');
+      const rows = Array.from(document.querySelectorAll('#requests tbody tr'));
+
+      function apply(){
+        const term = (q.value || '').toLowerCase().trim();
+        const s = status.value;
+        const t = rtype.value;
+
+        rows.forEach(tr => {
+          const txt = tr.dataset.text.toLowerCase();
+          const matchText = !term || txt.includes(term);
+          const matchStatus = !s || tr.dataset.status === s;
+          const matchType = !t || tr.dataset.type === t;
+          tr.style.display = (matchText && matchStatus && matchType) ? '' : 'none';
+        });
+      }
+      [q, status, rtype].forEach(el => el.addEventListener('input', apply));
+      clear.addEventListener('click', () => { q.value=''; status.value=''; rtype.value=''; apply(); });
+    })();
+  </script>
+</body>
+</html>
