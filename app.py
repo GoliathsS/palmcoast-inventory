@@ -234,19 +234,35 @@ def tech_home():
 
     # --- requests (tech sees their own; admin sees queue) ---
     if current_user.role == "ADMIN":
+        # Show the whole queue with tech names
         cur.execute("""
-            SELECT r.id, r.tech_id, t.name AS tech_name, r.request_type, r.description,
-                   r.status, r.created_at, r.closed_at
-              FROM tech_requests r
-              LEFT JOIN technicians t ON t.id = r.tech_id
-             ORDER BY (r.status='open') DESC, r.created_at DESC
+            SELECT
+                r.id,
+                r.technician_id AS tech_id,
+                t.name          AS tech_name,
+                r.request_type,
+                COALESCE(r.description, r.details, r.title) AS description,
+                r.status,
+                r.created_at,
+                r.closed_at
+            FROM tech_requests r
+            LEFT JOIN technicians t ON t.id = r.technician_id
+            ORDER BY (r.status = 'open') DESC, r.created_at DESC
         """)
     else:
+        # Show only this tech's requests
         cur.execute("""
-            SELECT id, tech_id, request_type, description, status, created_at, closed_at
-              FROM tech_requests
-             WHERE tech_id = %s
-             ORDER BY (status='open') DESC, created_at DESC
+            SELECT
+                r.id,
+                r.technician_id AS tech_id,
+                r.request_type,
+                COALESCE(r.description, r.details, r.title) AS description,
+                r.status,
+                r.created_at,
+                r.closed_at
+            FROM tech_requests r
+            WHERE r.technician_id = %s
+            ORDER BY (r.status = 'open') DESC, r.created_at DESC
         """, (tech_id,))
     requests_rows = cur.fetchall()
 
