@@ -188,9 +188,9 @@ def api_dashboard_stats():
     # ✅ correct inventory value (unopened + partials), exclude archived
     cur.execute("""
         SELECT COALESCE(SUM(
-                 COALESCE(in_stock,0)        * COALESCE(cost_per_unit,0) +
-                 COALESCE(units_remaining,0) * COALESCE(unit_cost,0)
-               ), 0)::numeric(12,2)
+            COALESCE(stock,0) * COALESCE(cost_per_unit,0) +
+            COALESCE(units_remaining,0) * COALESCE(unit_cost,0)
+        ), 0)
         FROM products
         WHERE COALESCE(is_archived, FALSE) = FALSE
     """)
@@ -226,17 +226,25 @@ def api_products():
 
     if category and category != "All":
         cur.execute("""
-            SELECT id, name, barcode, in_stock, min_stock, cost_per_unit, siteone_sku,
-                   category, units_per_item, unit_cost, units_remaining
+            SELECT id, name, barcode,
+                   COALESCE(stock,0)           AS in_stock,
+                   min_stock, cost_per_unit, siteone_sku,
+                   category, units_per_item, unit_cost,
+                   COALESCE(units_remaining,0) AS units_remaining
               FROM products
              WHERE category = %s
+               AND COALESCE(is_archived, FALSE) = FALSE
              ORDER BY name
         """, (category,))
     else:
         cur.execute("""
-            SELECT id, name, barcode, in_stock, min_stock, cost_per_unit, siteone_sku,
-                   category, units_per_item, unit_cost, units_remaining
+            SELECT id, name, barcode,
+                   COALESCE(stock,0)           AS in_stock,
+                   min_stock, cost_per_unit, siteone_sku,
+                   category, units_per_item, unit_cost,
+                   COALESCE(units_remaining,0) AS units_remaining
               FROM products
+             WHERE COALESCE(is_archived, FALSE) = FALSE
              ORDER BY name
         """)
 
@@ -558,13 +566,14 @@ def index():
     # ✅ correct, consistent total value
     cur.execute("""
         SELECT COALESCE(SUM(
-                 COALESCE(in_stock,0)        * COALESCE(cost_per_unit,0) +
-                 COALESCE(units_remaining,0) * COALESCE(unit_cost,0)
-               ), 0)::numeric(12,2)
+            COALESCE(stock,0) * COALESCE(cost_per_unit,0) +
+            COALESCE(units_remaining,0) * COALESCE(unit_cost,0)
+        ), 0)
         FROM products
         WHERE COALESCE(is_archived, FALSE) = FALSE
     """)
-    total_value = float(cur.fetchone()[0] or 0)
+    row = cur.fetchone()
+    total_value = row[0] if row and row[0] is not None else 0
 
     cur.execute("SELECT COUNT(*) FROM products WHERE category='Lawn' AND COALESCE(is_archived,FALSE)=FALSE")
     lawn_count = cur.fetchone()[0]
