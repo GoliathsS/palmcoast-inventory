@@ -180,15 +180,34 @@ def logout():
 
 @app.get("/api/dashboard-stats")
 @login_required
-# @role_required("ADMIN")  # ← enable only if you want this locked to admins
+# @role_required("ADMIN")
 def api_dashboard_stats():
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # ----- Inventory stats -----
-    cur.execute("SELECT COALESCE(SUM(stock * cost_per_unit),0) FROM products")
+    # ----- Inventory cost on hand (matches report: units_remaining * unit_cost) -----
+    # Falls back to derived values if either column is NULL/zero.
+    cur.execute("""
+        SELECT COALESCE(
+                 SUM(
+                   COALESCE(units_remaining,
+                            stock * COALESCE(NULLIF(units_per_item,0),1)
+                   )::numeric
+                   *
+                   COALESCE(unit_cost,
+                            CASE WHEN COALESCE(NULLIF(units_per_item,0),1) > 0
+                                 THEN cost_per_unit / COALESCE(NULLIF(units_per_item,0),1)
+                                 ELSE cost_per_unit
+                            END
+                   )::numeric
+                 ),
+                 0
+               )
+        FROM products
+    """)
     total_value = float(cur.fetchone()[0] or 0)
 
+    # ----- Category counts -----
     cur.execute("SELECT COUNT(*) FROM products WHERE category='Lawn'")
     lawn_count = int(cur.fetchone()[0] or 0)
 
@@ -202,8 +221,7 @@ def api_dashboard_stats():
     cur.execute("SELECT COUNT(*) FROM tech_requests WHERE status='open'")
     open_requests_count = int(cur.fetchone()[0] or 0)
 
-    # ----- Vehicles due buckets (per vehicle, nearest upcoming reminder) -----
-    # Buckets: red <= 500, orange 501–1000, yellow 1001–2000 miles
+    # ----- Vehicle due buckets (per vehicle; nearest upcoming reminder) -----
     cur.execute("""
         WITH v AS (
           SELECT vehicle_id, COALESCE(current_mileage, mileage, 0) AS miles
@@ -217,38 +235,33 @@ def api_dashboard_stats():
           WHERE mr.received_at IS NULL
         ),
         per_vehicle AS (
-          -- one row per vehicle: the nearest due reminder
           SELECT vehicle_id, MIN(miles_left) AS miles_left
           FROM pending
           GROUP BY vehicle_id
         )
         SELECT
-          COUNT(*) FILTER (WHERE miles_left <= 500)                             AS red_count,
-          COUNT(*) FILTER (WHERE miles_left > 500  AND miles_left <= 1000)      AS orange_count,
-          COUNT(*) FILTER (WHERE miles_left > 1000 AND miles_left <= 2000)      AS yellow_count
+          COUNT(*) FILTER (WHERE miles_left <= 500)                        AS red_count,
+          COUNT(*) FILTER (WHERE miles_left > 500  AND miles_left <= 1000) AS orange_count,
+          COUNT(*) FILTER (WHERE miles_left > 1000 AND miles_left <= 2000) AS yellow_count
         FROM per_vehicle;
     """)
     row = cur.fetchone()
     red_vehicle_count    = int(row[0] or 0)
     orange_vehicle_count = int(row[1] or 0)
     yellow_vehicle_count = int(row[2] or 0)
-
-    # total vehicles with any upcoming reminder within 2000 miles
-    due_vehicles_count = red_vehicle_count + orange_vehicle_count + yellow_vehicle_count
+    due_vehicles_count   = red_vehicle_count + orange_vehicle_count + yellow_vehicle_count
 
     cur.close(); conn.close()
     return jsonify({
-        "total_value": total_value,
+        "total_value": total_value,                 # ✅ cost on hand, aligned with report
         "lawn_count": lawn_count,
         "pest_count": pest_count,
         "wildlife_count": wildlife_count,
         "open_requests_count": open_requests_count,
-
-        # vehicle profile badges
         "red_vehicle_count": red_vehicle_count,
         "orange_vehicle_count": orange_vehicle_count,
         "yellow_vehicle_count": yellow_vehicle_count,
-        "due_vehicles_count": due_vehicles_count,   # keeps the single total for legacy use
+        "due_vehicles_count": due_vehicles_count,   # legacy total (0–2000 mi)
     })
 
 @app.get("/api/products")
