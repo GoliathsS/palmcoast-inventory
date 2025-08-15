@@ -155,6 +155,134 @@ def require_vehicle_access(fn):
 def normalize_email(email: str) -> str:
     return (email or "").strip().lower()
 
+DEC = lambda x: Decimal(str(x))  # keep full precision; format at display time
+
+HEADER_ALIASES = {
+    "sku": {"sku","item #","item#","item no.","item no","product #","code","item id","id"},
+    "name": {"description","item description","product","item name"},
+    "qty_ordered": {"qty ordered","ordered"},
+    "qty_shipped": {"qty shipped","shipped"},
+    "qty": {"qty","quantity"},
+    # vendor uses "Net Price"
+    "unit_price": {"unit price","price/unit","price ea","unit cost","price each","unit cost ($)","net price"},
+    # vendor uses "Ext. Price" / "Extended Price"
+    "amount": {"amount","line total","extended","ext price","extended price","ext. price","total"}
+}
+
+NON_PRODUCT_ROWS = {"subtotal","sales tax","freight","delivery","shipping","fuel surcharge","order total","amount due","tax"}
+
+def norm_header(h: str) -> str:
+    h = (h or "").strip().lower()
+    for canon, aliases in HEADER_ALIASES.items():
+        if h in aliases:
+            return canon
+    return h
+
+def coerce_decimal(s: str) -> Decimal | None:
+    if s is None:
+        return None
+    s = str(s).strip()
+    if not s:
+        return None
+    s = s.replace("$","").replace(",","")
+    # handle "99.000 / EA", "38.781/PK"
+    if "/" in s:
+        s = s.split("/")[0].strip()
+    # extract leading numeric if needed
+    m = re.search(r"[-+]?\d+(\.\d+)?", s)
+    if not m:
+        return None
+    try:
+        return DEC(m.group(0))
+    except Exception:
+        return None
+
+def best_tables(page):
+    # lattice (ruled) + stream (text) to maximize capture
+    tables = page.extract_tables({
+        "vertical_strategy": "lines",
+        "horizontal_strategy": "lines",
+        "snap_tolerance": 3,
+        "intersection_tolerance": 3
+    }) or []
+    tables += page.extract_tables({
+        "vertical_strategy": "text",
+        "horizontal_strategy": "text",
+        "snap_tolerance": 3,
+        "join_tolerance": 3,
+        "intersection_tolerance": 3,
+        "min_words_vertical": 1,
+        "text_tolerance": 2
+    }) or []
+    return tables
+
+def parse_pdf_lines(pdf_path: str):
+    """Yield dicts: {sku,name,qty,unit_price,amount,unit_price_raw,amount_raw} with Decimal where possible."""
+    with pdfplumber.open(pdf_path) as pdf:
+        for page in pdf.pages:
+            for table in best_tables(page):
+                if not table or len(table) < 2:
+                    continue
+                header = [norm_header(x) for x in table[0]]
+                idx = {col:i for i,col in enumerate(header)}
+                # must at least have a name column
+                if "name" not in idx:
+                    continue
+
+                for raw in table[1:]:
+                    def col(c):
+                        i = idx.get(c)
+                        return (raw[i].strip() if (i is not None and i < len(raw) and raw[i]) else "")
+
+                    # prefer Shipped, then Qty, then Ordered
+                    qty_val = None
+                    if "qty_shipped" in idx: qty_val = coerce_decimal(col("qty_shipped"))
+                    if qty_val is None and "qty" in idx: qty_val = coerce_decimal(col("qty"))
+                    if qty_val is None and "qty_ordered" in idx: qty_val = coerce_decimal(col("qty_ordered"))
+
+                    name = col("name")
+                    if name and name.strip().lower() in NON_PRODUCT_ROWS:
+                        continue
+
+                    data = {
+                        "sku": col("sku"),
+                        "name": name,
+                        "qty": qty_val,
+                        "unit_price_raw": col("unit_price"),
+                        "amount_raw": col("amount"),
+                        "unit_price": coerce_decimal(col("unit_price")),
+                        "amount": coerce_decimal(col("amount")),
+                    }
+
+                    # derive unit price if missing but have qty & amount
+                    if data["unit_price"] is None and data["qty"] not in (None, Decimal(0)) and data["amount"] is not None:
+                        try:
+                            data["unit_price"] = (data["amount"] / data["qty"])
+                        except Exception:
+                            pass
+
+                    # skip fully empty rows
+                    if not any([data["sku"], data["name"], data["qty"], data["unit_price"], data["amount"]]):
+                        continue
+
+                    yield data
+
+def merge_wrapped_rows(rows):
+    """Attach name-only rows to the previous row with a SKU (handles wrapped product descriptions)."""
+    merged = []
+    for r in rows:
+        if r["sku"] or not merged:
+            merged.append(r)
+        else:
+            # continuation line: extend previous name
+            merged[-1]["name"] = (merged[-1]["name"] + " " + (r["name"] or "")).strip()
+    return merged
+
+def norm_id(s: str) -> str:
+    """Normalize SKU/UPC: uppercase alphanum only."""
+    if not s: return ""
+    return re.sub(r"[^A-Z0-9]", "", s.upper())
+
 @app.get("/login")
 def login():
     if current_user.is_authenticated:
@@ -2367,104 +2495,122 @@ def print_report():
 
     return render_template("print_report.html", products=products, now=datetime.now())
 
-
 @app.route('/upload-invoice', methods=['GET', 'POST'])
 @login_required
 @role_required('ADMIN')
 def upload_invoice():
     if request.method == 'POST':
-        file = request.files['pdf']
-        if not file or not file.filename.endswith('.pdf'):
+        file = request.files.get('pdf')
+        if not file or not file.filename.lower().endswith('.pdf'):
             return "Invalid file format", 400
 
         filename = secure_filename(file.filename)
         filepath = os.path.join('/tmp', filename)
         file.save(filepath)
 
-        # Load product list from DB
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("SELECT id, name, cost_per_unit FROM products")
-        db_products = cur.fetchall()
-        cur.close()
-        name_list = [p[1] for p in db_products]
 
-        updates = []
-        debug_log = []
-        matched_count = 0
-        updated_count = 0
-        skipped_count = 0
+        # Pull richer product fields (siteone_sku is present in your schema)
+        cur.execute("""
+            SELECT id, name, cost_per_unit, COALESCE(siteone_sku,'')
+            FROM products
+        """)
+        products = cur.fetchall()
+        names = [p[1] for p in products]
 
-        # Parse PDF table with pdfplumber
-        with pdfplumber.open(filepath) as pdf:
-            for page in pdf.pages:
-                table = page.extract_table()
-                if not table:
+        # map exact SKU → product index
+        by_sku = {}
+        for i, (pid, pname, pcost, psku) in enumerate(products):
+            if psku:
+                by_sku[norm_id(psku)] = i
+
+        updates, debug_log = [], []
+        matched_count = updated_count = skipped_count = 0
+
+        # guardrails to avoid churn from rounding
+        MIN_ABS_DELTA = Decimal("0.01")     # >= 1 cent
+        MIN_PCT_DELTA = Decimal("0.005")    # >= 0.5%
+
+        try:
+            parsed_rows = list(parse_pdf_lines(filepath))
+            if not parsed_rows:
+                updates.append("⚠️ No usable tables found in the PDF (try OCR if scanned).")
+            rows = merge_wrapped_rows(parsed_rows)
+
+            for line in rows:
+                sku_raw = (line["sku"] or "").strip()
+                sku_norm = norm_id(sku_raw)
+                name = (line["name"] or "").strip()
+                unit_price = line["unit_price"]  # Decimal or None
+
+                if not name:
+                    skipped_count += 1
+                    updates.append(f"🔴 Skipped: empty name (sku: {sku_raw or '—'})")
                     continue
-                for row in table[1:]:  # Skip header row
-                    if len(row) < 9:
-                        skipped_count += 1
-                        updates.append(f"🔴 Skipped: incomplete row → {row}")
-                        continue
+                if unit_price is None:
+                    skipped_count += 1
+                    up_raw = line.get("unit_price_raw") or line.get("amount_raw")
+                    updates.append(f"🔴 Skipped: no unit price for '{name}' (raw: {up_raw})")
+                    continue
 
-                    sku = row[1].strip()
-                    name = row[2].strip()
-                    unit_price_raw = row[7].strip()
-                    total_raw = row[8].strip()
+                # 1) Exact match by siteone_sku
+                idx = by_sku.get(sku_norm) if sku_norm else None
+                if idx is not None:
+                    debug_log.append(f"🔎 Exact SKU match: '{products[idx][1]}' ← invoice SKU '{sku_raw}'")
 
-                    # Extract unit price (e.g. '26.035 / EA')
-                    price_match = re.match(r"(\d+\.\d+)\s*/\s*(EA|BG)", unit_price_raw)
-                    if not price_match:
-                        skipped_count += 1
-                        updates.append(f"🔴 Skipped: price format error → {unit_price_raw}")
-                        continue
-
-                    try:
-                        unit_price = float(price_match.group(1))
-                        total_price = float(total_raw)
-                    except Exception as e:
-                        skipped_count += 1
-                        updates.append(f"🔴 Skipped: parse error → {e}")
-                        continue
-
-                    updates.append(f"🧪 Trying to match: '{name}'")
-
-                    match = process.extractOne(name, name_list, scorer=fuzz.token_set_ratio)
+                # 2) Fuzzy by name if no exact match
+                if idx is None:
+                    match = process.extractOne(name, names, scorer=fuzz.token_set_ratio)
                     if match:
-                        actual_name, score, idx = match
-                        debug_log.append(f"🤖 Match: '{actual_name}' ({score}%)")
-                    else:
-                        actual_name, score, idx = "N/A", 0, -1
+                        best_name, score, idx = match
+                        debug_log.append(f"🤖 Fuzzy: '{name}' → '{best_name}' ({score}%)")
+                        if score < 70:  # stricter than 65
+                            idx = None
 
-                    if score >= 65:
-                        matched_count += 1
-                        product_id, _, old_price = db_products[idx]
+                if idx is None:
+                    skipped_count += 1
+                    updates.append(f"🔴 No match: '{name}' (sku: {sku_raw or '—'})")
+                    continue
 
-                        # Log current price to price_history
-                        cur = conn.cursor()
-                        cur.execute("INSERT INTO price_history (product_id, price) VALUES (%s, %s)", (product_id, unit_price))
+                product_id, actual_name, old_price, _sku = products[idx]
+                if old_price is None:
+                    old_price = Decimal("0")
 
-                        # Update if changed
-                        if round(old_price, 2) != round(unit_price, 2):
-                            cur.execute("UPDATE products SET cost_per_unit = %s WHERE id = %s", (unit_price, product_id))
-                            conn.commit()
-                            updated_count += 1
-                            updates.append(f"🟢 [{actual_name}] updated from ${old_price:.2f} → ${unit_price:.2f}")
-                        else:
-                            updates.append(f"⚪ [{actual_name}] no change (${unit_price:.2f})")
-                        cur.close()
-                    else:
-                        skipped_count += 1
-                        updates.append(f"🔴 No match for: '{name}' → Best: '{actual_name}' ({score}%)")
+                # Always log price history
+                cur.execute("INSERT INTO price_history (product_id, price) VALUES (%s, %s)",
+                            (product_id, unit_price))
 
-        conn.close()
+                # Update only on meaningful delta
+                delta = (unit_price - old_price).copy_abs()
+                pct = (delta / old_price) if old_price > 0 else Decimal("1")
+                if delta >= MIN_ABS_DELTA and pct >= MIN_PCT_DELTA:
+                    cur.execute("UPDATE products SET cost_per_unit = %s WHERE id = %s",
+                                (unit_price, product_id))
+                    matched_count += 1
+                    updated_count += 1
+                    updates.append(f"🟢 [{actual_name}] {old_price:.2f} → {unit_price:.2f}")
+                else:
+                    matched_count += 1
+                    updates.append(f"⚪ [{actual_name}] no meaningful change ({unit_price:.2f})")
+
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            updates.append(f"💥 Error: {e}")
+        finally:
+            cur.close()
+            conn.close()
 
         summary = f"📊 Summary: {matched_count} matched, {updated_count} updated, {skipped_count} skipped."
         updates.insert(0, summary)
 
         debug = request.args.get('debug') == 'true'
-        return render_template("upload_result.html", updates=updates, debug_log=debug_log if debug else [])
+        return render_template("upload_result.html",
+                               updates=updates,
+                               debug_log=debug_log if debug else [])
 
+    # GET
     return render_template("upload_invoice.html")
 
 @app.route('/update-production', methods=['POST'])
