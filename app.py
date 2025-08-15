@@ -122,7 +122,10 @@ def _run_schema_guard():
         _ensure_product_columns_once()
         app.logger.info("SDS columns ensured.")
     except Exception as e:
-        app.logger.warning(f"SDS column ensure skipped (will continue without): {e}")
+        app.logger.warning(f"SDS column ensure skipped: {e}")
+
+# Call it immediately after app = Flask(__name__) is created and helpers are defined
+_run_schema_guard()
 
 def _is_http_url(s): 
     if not s: return False
