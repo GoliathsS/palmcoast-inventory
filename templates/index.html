@@ -144,12 +144,18 @@
       </a>
 
       <a href="/sds" class="action"><i class="i-cyan fa-solid fa-file-lines"></i><span>SDS & Labels</span></a>
-      <a href="/vehicles" class="action"><i class="i-blue fa-solid fa-truck"></i><span>Vehicle Profiles</span></a>
 
-      <!-- Vehicle Inspections + due vehicles badge -->
+      <!-- ✅ Vehicle Profiles with color-coded badges -->
+      <a href="/vehicles" class="action">
+        <i class="i-blue fa-solid fa-truck"></i><span>Vehicle Profiles</span>
+        <span id="badge-red" class="count-badge" style="background:#dc3545; right:-6px;">0</span>
+        <span id="badge-orange" class="count-badge" style="background:#fd7e14; right:28px;">0</span>
+        <span id="badge-yellow" class="count-badge" style="background:#ffc107; color:#000; right:62px;">0</span>
+      </a>
+
+      <!-- Vehicle Inspections (no badge here) -->
       <a href="/inspections" class="action">
         <i class="i-gray fa-solid fa-clipboard-check"></i><span>Vehicle Inspections</span>
-        <span id="dueVehiclesBadge" class="count-badge">0</span>
       </a>
 
       <a href="{{ url_for('inventory_analytics') }}" class="action"><i class="i-blue fa-solid fa-chart-line"></i><span>Inventory Analytics</span></a>
@@ -429,6 +435,17 @@
 
     function fmtMoney(n){ return Number(n || 0).toFixed(2); }
 
+    function setBadge(id, count) {
+      const el = $(id);
+      if (!el) return;
+      if (count > 0) {
+        el.style.display = 'inline-block';
+        el.textContent = count > 99 ? '99+' : String(count);
+      } else {
+        el.style.display = 'none';
+      }
+    }
+
     function updateStatsUI(s) {
       if (s.total_value !== undefined) $('totalValue').textContent = `$${fmtMoney(s.total_value)}`;
       if (s.lawn_count !== undefined) $('lawnCount').textContent = s.lawn_count;
@@ -436,28 +453,12 @@
       if (s.wildlife_count !== undefined) $('wildlifeCount').textContent = s.wildlife_count;
 
       // Tech request badge
-      const badge = $('openReqBadge');
-      const count = Number(s.open_requests_count || 0);
-      if (badge) {
-        if (count > 0) {
-          badge.style.display = 'inline-block';
-          badge.textContent = count > 99 ? '99+' : String(count);
-        } else {
-          badge.style.display = 'none';
-        }
-      }
+      setBadge('openReqBadge', Number(s.open_requests_count || 0));
 
-      // Due vehicles badge (Vehicle Inspections)
-      const dueBadge = $('dueVehiclesBadge');
-      const due = Number(s.due_vehicles_count || 0);
-      if (dueBadge) {
-        if (due > 0) {
-          dueBadge.style.display = 'inline-block';
-          dueBadge.textContent = due > 99 ? '99+' : String(due);
-        } else {
-          dueBadge.style.display = 'none';
-        }
-      }
+      // Vehicle Profiles: red / orange / yellow badges
+      setBadge('badge-red',    Number(s.red_vehicle_count || 0));
+      setBadge('badge-orange', Number(s.orange_vehicle_count || 0));
+      setBadge('badge-yellow', Number(s.yellow_vehicle_count || 0));
     }
 
     function rowBadge(stock, min) {
