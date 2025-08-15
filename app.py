@@ -124,8 +124,7 @@ def _run_schema_guard():
     except Exception as e:
         app.logger.warning(f"SDS column ensure skipped: {e}")
 
-# Call it immediately after app = Flask(__name__) is created and helpers are defined
-_run_schema_guard()
+_run_schema_guard()  # runs once at import time; Flask 3-safe
 
 def _is_http_url(s): 
     if not s: return False
@@ -2344,7 +2343,6 @@ def uploaded_file(filename):
 @login_required
 @role_required('ADMIN')
 def edit_sds():
-    _ensure_product_columns()
 
     conn = get_db_connection()
     cur = conn.cursor()
