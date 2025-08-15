@@ -65,11 +65,16 @@
     Report generated on <strong>{{ now.strftime('%Y-%m-%d %H:%M') }}</strong>
   </div>
 
-  {# 
+  {#
     Assumes products come sorted by category, name:
-    SELECT * FROM products ORDER BY category, name
-    Indexes based on your template:
-      [1]=name, [2]=barcode, [3]=stock, [4]=min_stock, [5]=cost_per_unit, [7]=category
+    SELECT id, name, barcode, stock, min_stock, cost_per_unit, siteone_sku,
+           category, units_per_item, unit_cost, units_remaining
+      FROM products
+     WHERE is_archived = FALSE
+     ORDER BY category, name;
+    Indexes:
+      [1]=name, [2]=barcode, [3]=stock, [4]=min_stock, [7]=category,
+      [9]=unit_cost, [10]=units_remaining
   #}
 
   {% set ns = namespace(cat=None, subtotal_qty=0, subtotal_value=0, grand_qty=0, grand_value=0) %}
@@ -80,21 +85,22 @@
         <th style="width:28%">Product</th>
         <th style="width:14%">Category</th>
         <th style="width:16%">Barcode</th>
-        <th class="text-end" style="width:10%">In Stock</th>
+        <th class="text-end" style="width:10%">Units Remaining</th>
         <th class="text-end" style="width:10%">Min</th>
-        <th class="text-end" style="width:10%">Cost/Unit</th>
+        <th class="text-end" style="width:10%">Unit Cost</th>
         <th class="text-end" style="width:12%">Total Value</th>
       </tr>
     </thead>
     <tbody>
       {% for product in products %}
-        {% set name = product[1] %}
-        {% set barcode = product[2] %}
-        {% set stock = product[3] or 0 %}
-        {% set min_stock = product[4] or 0 %}
-        {% set cost = product[5] or 0.0 %}
-        {% set category = product[7] %}
-        {% set value = (stock * cost) %}
+        {% set name            = product[1] %}
+        {% set barcode         = product[2] %}
+        {% set stock           = product[3] or 0 %}        {# optional display / low marker uses this vs min #}
+        {% set min_stock       = product[4] or 0 %}
+        {% set category        = product[7] %}
+        {% set unit_cost       = product[9] or 0.0 %}
+        {% set units_remaining = product[10] or 0 %}
+        {% set value           = (units_remaining * unit_cost) %}
 
         {# On category change, print previous subtotal #}
         {% if ns.cat is not none and category != ns.cat %}
@@ -109,33 +115,29 @@
           {% set ns.subtotal_value = 0 %}
         {% endif %}
 
-        {# Initialize category on first row #}
-        {% if ns.cat is none %}
-          {% set ns.cat = category %}
-        {% endif %}
-        {% if category != ns.cat %}
+        {# Initialize / update current category #}
+        {% if ns.cat is none or category != ns.cat %}
           {% set ns.cat = category %}
         {% endif %}
 
-        {% set ns.subtotal_qty = ns.subtotal_qty + stock %}
+        {% set ns.subtotal_qty   = ns.subtotal_qty   + units_remaining %}
         {% set ns.subtotal_value = ns.subtotal_value + value %}
-        {% set ns.grand_qty = ns.grand_qty + stock %}
-        {% set ns.grand_value = ns.grand_value + value %}
+        {% set ns.grand_qty      = ns.grand_qty      + units_remaining %}
+        {% set ns.grand_value    = ns.grand_value    + value %}
 
         <tr class="{% if stock <= min_stock %}low{% endif %}">
           <td class="fw-semibold">{{ name }}</td>
           <td>{{ category }}</td>
           <td><span class="text-muted">{{ barcode }}</span></td>
-          <td class="text-end {% if stock <= min_stock %}text-danger{% endif %}">{{ stock }}</td>
+          <td class="text-end {% if stock <= min_stock %}text-danger{% endif %}">{{ units_remaining }}</td>
           <td class="text-end">{{ min_stock }}</td>
-          <td class="text-end">${{ '%.2f' | format(cost) }}</td>
+          <td class="text-end">${{ '%.2f' | format(unit_cost) }}</td>
           <td class="text-end">${{ '%.2f' | format(value) }}</td>
         </tr>
       {% endfor %}
     </tbody>
 
     <tfoot>
-      {# Final subtotal for the last category #}
       {% if ns.cat is not none %}
       <tr class="row-subtotal">
         <td colspan="3" class="text-end">Subtotal — {{ ns.cat }}</td>
@@ -157,7 +159,8 @@
   </table>
 
   <div class="text-muted small mt-3">
-    <em>Low stock rows are highlighted when <strong>In Stock ≤ Min</strong>.</em>
+    <em>Low stock rows are highlighted when <strong>In Stock ≤ Min</strong>.
+      Total value uses <strong>Units Remaining × Unit Cost</strong>.</em>
   </div>
 
 </body>
