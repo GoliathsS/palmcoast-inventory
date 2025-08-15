@@ -427,49 +427,48 @@ def api_dashboard_stats():
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # ---------- Totals & category counts ----------
     # ---------- Totals & category counts (unit-aware, ignore archived) ----------
-total_value = 0.0
-lawn_count = pest_count = wildlife_count = 0
-try:
-    # total inventory value
-    cur.execute("""
-        SELECT COALESCE(
-                 SUM(
-                   COALESCE(units_remaining,
-                            stock * COALESCE(NULLIF(units_per_item,0),1)
-                   )::numeric
-                   *
-                   COALESCE(unit_cost,
-                            CASE WHEN COALESCE(NULLIF(units_per_item,0),1) > 0
-                                 THEN cost_per_unit / COALESCE(NULLIF(units_per_item,0),1)
-                                 ELSE cost_per_unit
-                            END
-                   )::numeric
-                 ),
-                 0
-               )
-        FROM products
-        WHERE is_archived = FALSE
-    """)
-    tv = cur.fetchone()[0]
-    total_value = float(tv or 0)
+    total_value = 0.0
+    lawn_count = pest_count = wildlife_count = 0
+    try:
+        # total inventory value
+        cur.execute("""
+            SELECT COALESCE(
+                     SUM(
+                       COALESCE(units_remaining,
+                                stock * COALESCE(NULLIF(units_per_item,0),1)
+                       )::numeric
+                       *
+                       COALESCE(unit_cost,
+                                CASE WHEN COALESCE(NULLIF(units_per_item,0),1) > 0
+                                     THEN cost_per_unit / COALESCE(NULLIF(units_per_item,0),1)
+                                     ELSE cost_per_unit
+                                END
+                       )::numeric
+                     ),
+                     0
+                   )
+            FROM products
+            WHERE is_archived = FALSE
+        """)
+        tv = cur.fetchone()[0]
+        total_value = float(tv or 0)
 
-    # category counts (case-insensitive, ignore archived)
-    cur.execute("""
-        SELECT
-          SUM(CASE WHEN LOWER(COALESCE(category,''))='lawn'     THEN 1 ELSE 0 END),
-          SUM(CASE WHEN LOWER(COALESCE(category,''))='pest'     THEN 1 ELSE 0 END),
-          SUM(CASE WHEN LOWER(COALESCE(category,''))='wildlife' THEN 1 ELSE 0 END)
-        FROM products
-        WHERE is_archived = FALSE
-    """)
-    lc, pc, wc = cur.fetchone()
-    lawn_count = int(lc or 0)
-    pest_count = int(pc or 0)
-    wildlife_count = int(wc or 0)
-except Exception as e:
-    app.logger.exception("dashboard-stats totals failed: %s", e)
+        # category counts (case-insensitive, ignore archived)
+        cur.execute("""
+            SELECT
+              SUM(CASE WHEN LOWER(COALESCE(category,''))='lawn'     THEN 1 ELSE 0 END),
+              SUM(CASE WHEN LOWER(COALESCE(category,''))='pest'     THEN 1 ELSE 0 END),
+              SUM(CASE WHEN LOWER(COALESCE(category,''))='wildlife' THEN 1 ELSE 0 END)
+            FROM products
+            WHERE is_archived = FALSE
+        """)
+        lc, pc, wc = cur.fetchone()
+        lawn_count = int(lc or 0)
+        pest_count = int(pc or 0)
+        wildlife_count = int(wc or 0)
+    except Exception as e:
+        app.logger.exception("dashboard-stats totals failed: %s", e)
 
     # ---------- Vehicle due buckets (pending reminders only) ----------
     red_vehicle_count = orange_vehicle_count = yellow_vehicle_count = due_vehicles_count = 0
@@ -910,7 +909,7 @@ def index():
         'index.html',
         products=products,
         technicians=technicians,
-        total_value=total_value,
+        total_value=inventory_total
         category_filter=category_filter,
         lawn_count=lawn_count,
         pest_count=pest_count,
