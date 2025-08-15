@@ -78,17 +78,51 @@ def _guess_content_type(kind: str, filename: str) -> str:
     if ext in ("jpg","jpeg"): return "image/jpeg"
     return "application/octet-stream"
 
-def _ensure_product_columns():
-    conn = get_db_connection(); cur = conn.cursor()
+MIGRATED_SDS_COLS = False
+
+def _ensure_product_columns_once():
+    """Only ALTER if columns are actually missing; run once at startup."""
+    global MIGRATED_SDS_COLS
+    if MIGRATED_SDS_COLS:
+        return
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # Check which columns already exist (no lock)
     cur.execute("""
-        ALTER TABLE products
-          ADD COLUMN IF NOT EXISTS sds_key TEXT,
-          ADD COLUMN IF NOT EXISTS label_key TEXT,
-          ADD COLUMN IF NOT EXISTS barcode_key TEXT,
-          ADD COLUMN IF NOT EXISTS label_uploaded_on TIMESTAMPTZ,
-          ADD COLUMN IF NOT EXISTS barcode_uploaded_on TIMESTAMPTZ;
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'products'
+          AND column_name IN (
+            'sds_key','label_key','barcode_key',
+            'label_uploaded_on','barcode_uploaded_on'
+          )
     """)
-    conn.commit(); cur.close(); conn.close()
+    existing = {r[0] for r in cur.fetchall()}
+
+    missing = []
+    if 'sds_key' not in existing:             missing.append("ADD COLUMN sds_key TEXT")
+    if 'label_key' not in existing:           missing.append("ADD COLUMN label_key TEXT")
+    if 'barcode_key' not in existing:         missing.append("ADD COLUMN barcode_key TEXT")
+    if 'label_uploaded_on' not in existing:   missing.append("ADD COLUMN label_uploaded_on TIMESTAMPTZ")
+    if 'barcode_uploaded_on' not in existing: missing.append("ADD COLUMN barcode_uploaded_on TIMESTAMPTZ")
+
+    if missing:
+        # Only now take a lock once to add anything missing
+        cur.execute(f"ALTER TABLE products {', '.join(missing)};")
+        conn.commit()
+
+    cur.close(); conn.close()
+    MIGRATED_SDS_COLS = True
+
+# Run once when the app starts serving
+@app.before_first_request
+def _run_schema_guard():
+    try:
+        _ensure_product_columns_once()
+        app.logger.info("SDS columns ensured.")
+    except Exception as e:
+        app.logger.warning(f"SDS column ensure skipped (will continue without): {e}")
 
 def _is_http_url(s): 
     if not s: return False
@@ -2245,8 +2279,6 @@ def delete_equipment(vehicle_id, equipment_id):
 @login_required
 @role_required('TECH','ADMIN')
 def sds_portal():
-    _ensure_product_columns()
-
     filter_type = request.args.get('filter', '')
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
