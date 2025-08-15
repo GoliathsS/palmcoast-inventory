@@ -427,76 +427,47 @@ def api_dashboard_stats():
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # ----- Inventory cost on hand (same as report: units_remaining × unit_cost) -----
-    cur.execute("""
-        SELECT COALESCE(
-                 SUM(
-                   COALESCE(units_remaining,
-                            stock * COALESCE(NULLIF(units_per_item,0),1)
-                   )::numeric
-                   *
-                   COALESCE(unit_cost,
-                            CASE WHEN COALESCE(NULLIF(units_per_item,0),1) > 0
-                                 THEN cost_per_unit / COALESCE(NULLIF(units_per_item,0),1)
-                                 ELSE cost_per_unit
-                            END
-                   )::numeric
-                 ),
-                 0
-               )
-        FROM products
-    """)
-    total_value = float(cur.fetchone()[0] or 0)
+    # ... your existing totals above ...
 
-    # ----- Category counts -----
-    cur.execute("SELECT COUNT(*) FROM products WHERE category='Lawn'")
-    lawn_count = int(cur.fetchone()[0] or 0)
-    cur.execute("SELECT COUNT(*) FROM products WHERE category='Pest'")
-    pest_count = int(cur.fetchone()[0] or 0)
-    cur.execute("SELECT COUNT(*) FROM products WHERE category='Wildlife'")
-    wildlife_count = int(cur.fetchone()[0] or 0)
+    # ----- Vehicle due buckets (nearest *pending* reminder per vehicle) -----
+    red_vehicle_count = orange_vehicle_count = yellow_vehicle_count = due_vehicles_count = 0
+    try:
+        cur.execute("""
+            WITH v AS (
+              SELECT vehicle_id, COALESCE(current_mileage, mileage, 0) AS miles
+              FROM vehicles
+              WHERE status = 'active'
+            ),
+            next_due AS (
+              SELECT
+                v.vehicle_id,
+                MIN(mr.odometer_due - v.miles) FILTER (WHERE mr.received_at IS NULL) AS miles_left
+              FROM v
+              LEFT JOIN maintenance_reminders mr
+                ON mr.vehicle_id = v.vehicle_id
+              GROUP BY v.vehicle_id
+            )
+            SELECT
+              COUNT(*) FILTER (WHERE miles_left IS NOT NULL AND miles_left <= 500)       AS red_count,
+              COUNT(*) FILTER (WHERE miles_left > 500  AND miles_left <= 1000)           AS orange_count,
+              COUNT(*) FILTER (WHERE miles_left > 1000 AND miles_left <= 2000)           AS yellow_count
+            FROM next_due
+        """)
+        r = cur.fetchone()
+        red_vehicle_count    = int(r[0] or 0)
+        orange_vehicle_count = int(r[1] or 0)
+        yellow_vehicle_count = int(r[2] or 0)
+        due_vehicles_count   = red_vehicle_count + orange_vehicle_count + yellow_vehicle_count
+    except Exception as e:
+        # Never break the dashboard; just log & continue with zeros
+        app.logger.exception("dashboard-stats vehicle buckets failed: %s", e)
 
     # ----- Tech requests -----
     cur.execute("SELECT COUNT(*) FROM tech_requests WHERE status='open'")
     open_requests_count = int(cur.fetchone()[0] or 0)
 
-    # ----- Vehicle due buckets (use nearest UN-CLOSED reminder per vehicle) -----
-    # If your schema doesn't have closed_at, drop it and keep received_at check.
-    cur.execute("""
-        WITH v AS (
-          SELECT vehicle_id, COALESCE(current_mileage, mileage, 0) AS miles
-          FROM vehicles
-          WHERE status = 'active'
-        ),
-        next_due AS (
-          SELECT
-            v.vehicle_id,
-            nd.miles_left
-          FROM v
-          LEFT JOIN LATERAL (
-            SELECT (mr.odometer_due - v.miles) AS miles_left
-            FROM maintenance_reminders mr
-            WHERE mr.vehicle_id = v.vehicle_id
-              AND COALESCE(mr.received_at, mr.closed_at) IS NULL  -- treat as open
-            ORDER BY (mr.odometer_due - v.miles) ASC
-            LIMIT 1
-          ) nd ON TRUE
-        )
-        SELECT
-          COUNT(*) FILTER (WHERE miles_left IS NOT NULL AND miles_left <= 500)                        AS red_count,
-          COUNT(*) FILTER (WHERE miles_left > 500  AND miles_left <= 1000)                            AS orange_count,
-          COUNT(*) FILTER (WHERE miles_left > 1000 AND miles_left <= 2000)                            AS yellow_count
-        FROM next_due
-    """)
-    r = cur.fetchone()
-    red_vehicle_count    = int(r[0] or 0)
-    orange_vehicle_count = int(r[1] or 0)
-    yellow_vehicle_count = int(r[2] or 0)
-    due_vehicles_count   = red_vehicle_count + orange_vehicle_count + yellow_vehicle_count
-
     cur.close(); conn.close()
 
-    # No caching — reflect updates immediately
     resp = jsonify({
         "total_value": total_value,
         "lawn_count": lawn_count,
