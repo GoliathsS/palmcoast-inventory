@@ -389,13 +389,11 @@ def logout():
 
 @app.get("/api/dashboard-stats")
 @login_required
-# @role_required("ADMIN")
 def api_dashboard_stats():
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # ----- Inventory cost on hand (matches report: units_remaining * unit_cost) -----
-    # Falls back to derived values if either column is NULL/zero.
+    # ----- Inventory cost on hand (same as report: units_remaining × unit_cost) -----
     cur.execute("""
         SELECT COALESCE(
                  SUM(
@@ -419,10 +417,8 @@ def api_dashboard_stats():
     # ----- Category counts -----
     cur.execute("SELECT COUNT(*) FROM products WHERE category='Lawn'")
     lawn_count = int(cur.fetchone()[0] or 0)
-
     cur.execute("SELECT COUNT(*) FROM products WHERE category='Pest'")
     pest_count = int(cur.fetchone()[0] or 0)
-
     cur.execute("SELECT COUNT(*) FROM products WHERE category='Wildlife'")
     wildlife_count = int(cur.fetchone()[0] or 0)
 
@@ -430,39 +426,45 @@ def api_dashboard_stats():
     cur.execute("SELECT COUNT(*) FROM tech_requests WHERE status='open'")
     open_requests_count = int(cur.fetchone()[0] or 0)
 
-    # ----- Vehicle due buckets (per vehicle; nearest upcoming reminder) -----
+    # ----- Vehicle due buckets (use nearest UN-CLOSED reminder per vehicle) -----
+    # If your schema doesn't have closed_at, drop it and keep received_at check.
     cur.execute("""
         WITH v AS (
           SELECT vehicle_id, COALESCE(current_mileage, mileage, 0) AS miles
           FROM vehicles
           WHERE status = 'active'
         ),
-        pending AS (
-          SELECT v.vehicle_id, (mr.odometer_due - v.miles) AS miles_left
-          FROM maintenance_reminders mr
-          JOIN v ON v.vehicle_id = mr.vehicle_id
-          WHERE mr.received_at IS NULL
-        ),
-        per_vehicle AS (
-          SELECT vehicle_id, MIN(miles_left) AS miles_left
-          FROM pending
-          GROUP BY vehicle_id
+        next_due AS (
+          SELECT
+            v.vehicle_id,
+            nd.miles_left
+          FROM v
+          LEFT JOIN LATERAL (
+            SELECT (mr.odometer_due - v.miles) AS miles_left
+            FROM maintenance_reminders mr
+            WHERE mr.vehicle_id = v.vehicle_id
+              AND COALESCE(mr.received_at, mr.closed_at) IS NULL  -- treat as open
+            ORDER BY (mr.odometer_due - v.miles) ASC
+            LIMIT 1
+          ) nd ON TRUE
         )
         SELECT
-          COUNT(*) FILTER (WHERE miles_left <= 500)                        AS red_count,
-          COUNT(*) FILTER (WHERE miles_left > 500  AND miles_left <= 1000) AS orange_count,
-          COUNT(*) FILTER (WHERE miles_left > 1000 AND miles_left <= 2000) AS yellow_count
-        FROM per_vehicle;
+          COUNT(*) FILTER (WHERE miles_left IS NOT NULL AND miles_left <= 500)                        AS red_count,
+          COUNT(*) FILTER (WHERE miles_left > 500  AND miles_left <= 1000)                            AS orange_count,
+          COUNT(*) FILTER (WHERE miles_left > 1000 AND miles_left <= 2000)                            AS yellow_count
+        FROM next_due
     """)
-    row = cur.fetchone()
-    red_vehicle_count    = int(row[0] or 0)
-    orange_vehicle_count = int(row[1] or 0)
-    yellow_vehicle_count = int(row[2] or 0)
+    r = cur.fetchone()
+    red_vehicle_count    = int(r[0] or 0)
+    orange_vehicle_count = int(r[1] or 0)
+    yellow_vehicle_count = int(r[2] or 0)
     due_vehicles_count   = red_vehicle_count + orange_vehicle_count + yellow_vehicle_count
 
     cur.close(); conn.close()
-    return jsonify({
-        "total_value": total_value,                 # ✅ cost on hand, aligned with report
+
+    # No caching — reflect updates immediately
+    resp = jsonify({
+        "total_value": total_value,
         "lawn_count": lawn_count,
         "pest_count": pest_count,
         "wildlife_count": wildlife_count,
@@ -470,8 +472,10 @@ def api_dashboard_stats():
         "red_vehicle_count": red_vehicle_count,
         "orange_vehicle_count": orange_vehicle_count,
         "yellow_vehicle_count": yellow_vehicle_count,
-        "due_vehicles_count": due_vehicles_count,   # legacy total (0–2000 mi)
+        "due_vehicles_count": due_vehicles_count,
     })
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
 
 @app.get("/api/products")
 @login_required
