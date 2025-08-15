@@ -33,19 +33,13 @@
     @media(min-width:720px){
       .toolbar{ grid-template-columns: 1fr auto auto auto; align-items:center }
     }
-    .search{
-      position:relative;
-    }
-    .search input{
-      padding-left:36px;
-    }
+    .search{ position:relative; }
+    .search input{ padding-left:36px; }
     .search .icon{
       position:absolute; left:10px; top:50%; transform:translateY(-50%);
       opacity:.55;
     }
-    .filters{
-      display:flex; gap:.5rem; flex-wrap:wrap;
-    }
+    .filters{ display:flex; gap:.5rem; flex-wrap:wrap; }
     .filters .select,
     .filters .check{
       display:flex; align-items:center; gap:.4rem;
@@ -106,9 +100,9 @@
         <h2 class="title">SDS & Label Portal</h2>
         <div class="kpis">
           {% set total = products|length %}
-          {% set sds_count = products|selectattr(3)|list|length %}
-          {% set label_count = products|selectattr(4)|list|length %}
-          {% set barcode_count = products|selectattr(5)|list|length %}
+          {% set sds_count = products|selectattr('sds_url')|list|length %}
+          {% set label_count = products|selectattr('label_url')|list|length %}
+          {% set barcode_count = products|selectattr('barcode_img_url')|list|length %}
           <span class="chip">📦 {{ total }} products</span>
           <span class="chip">📄 SDS: {{ sds_count }}</span>
           <span class="chip">🧾 Labels: {{ label_count }}</span>
@@ -150,13 +144,13 @@
     <!-- Grid -->
     <section id="grid" class="grid" aria-live="polite">
       {% for p in products %}
-        {% set pid = p[0] %}
-        {% set name = p[1] %}
-        {% set epa = p[2] %}
-        {% set sds = p[3] %}
-        {% set label = p[4] %}
-        {% set barcode = p[5] %}
-        {% set uploaded = p[6] %}
+        {% set pid = p.id %}
+        {% set name = p.name %}
+        {% set epa = p.epa_number %}
+        {% set sds = p.sds_url %}
+        {% set label = p.label_url %}
+        {% set barcode = p.barcode_img_url %}
+        {% set uploaded = p.sds_uploaded_on %}
 
         {% set cutoff = today.replace(year=today.year - 3) %}
         {% if uploaded %}
@@ -194,9 +188,19 @@
           </div>
 
           <div class="links">
-            {% if sds %}<a href="{{ sds }}" target="_blank" rel="noopener" aria-label="Open SDS for {{ name }}">📄 SDS</a>{% endif %}
-            {% if label %}<a href="{{ label }}" target="_blank" rel="noopener" aria-label="Open Label for {{ name }}">🧾 Label</a>{% endif %}
-            {% if barcode %}<a href="{{ barcode }}" target="_blank" rel="noopener" aria-label="Open Barcode for {{ name }}">🧷 Barcode</a>{% endif %}
+            {% if sds %}
+              <!-- Use presigned URL from route, or switch to always-fresh redirect below -->
+              <a href="{{ sds }}" target="_blank" rel="noopener" aria-label="Open SDS for {{ name }}">📄 SDS</a>
+              {# Alternatively: <a href="{{ url_for('sds_open', product_id=pid, kind='sds') }}" target="_blank" rel="noopener">📄 SDS</a> #}
+            {% endif %}
+            {% if label %}
+              <a href="{{ label }}" target="_blank" rel="noopener" aria-label="Open Label for {{ name }}">🧾 Label</a>
+              {# Or: <a href="{{ url_for('sds_open', product_id=pid, kind='label') }}" target="_blank" rel="noopener">🧾 Label</a> #}
+            {% endif %}
+            {% if barcode %}
+              <a href="{{ barcode }}" target="_blank" rel="noopener" aria-label="Open Barcode for {{ name }}">🧷 Barcode</a>
+              {# Or: <a href="{{ url_for('sds_open', product_id=pid, kind='barcode') }}" target="_blank" rel="noopener">🧷 Barcode</a> #}
+            {% endif %}
           </div>
         </article>
       {% endfor %}
@@ -261,4 +265,3 @@
   </script>
 </body>
 </html>
-
