@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -145,7 +145,13 @@
 
       <a href="/sds" class="action"><i class="i-cyan fa-solid fa-file-lines"></i><span>SDS & Labels</span></a>
       <a href="/vehicles" class="action"><i class="i-blue fa-solid fa-truck"></i><span>Vehicle Profiles</span></a>
-      <a href="/inspections" class="action"><i class="i-gray fa-solid fa-clipboard-check"></i><span>Vehicle Inspections</span></a>
+
+      <!-- Vehicle Inspections + due vehicles badge -->
+      <a href="/inspections" class="action">
+        <i class="i-gray fa-solid fa-clipboard-check"></i><span>Vehicle Inspections</span>
+        <span id="dueVehiclesBadge" class="count-badge">0</span>
+      </a>
+
       <a href="{{ url_for('inventory_analytics') }}" class="action"><i class="i-blue fa-solid fa-chart-line"></i><span>Inventory Analytics</span></a>
       <a href="/settings" class="action"><i class="i-gray fa-solid fa-gear"></i><span>Settings</span></a>
     </section>
@@ -257,7 +263,7 @@
               </td>
             </tr>
 
-            <!-- Edit Modal (server-rendered once; optional to live-update) -->
+            <!-- Edit Modal -->
             <div class="modal fade" id="editModal{{ product[0] }}" tabindex="-1" aria-labelledby="editModalLabel{{ product[0] }}" aria-hidden="true">
               <div class="modal-dialog">
                 <div class="modal-content">
@@ -429,13 +435,28 @@
       if (s.pest_count !== undefined) $('pestCount').textContent = s.pest_count;
       if (s.wildlife_count !== undefined) $('wildlifeCount').textContent = s.wildlife_count;
 
+      // Tech request badge
       const badge = $('openReqBadge');
       const count = Number(s.open_requests_count || 0);
-      if (count > 0) {
-        badge.style.display = 'inline-block';
-        badge.textContent = count > 99 ? '99+' : String(count);
-      } else {
-        badge.style.display = 'none';
+      if (badge) {
+        if (count > 0) {
+          badge.style.display = 'inline-block';
+          badge.textContent = count > 99 ? '99+' : String(count);
+        } else {
+          badge.style.display = 'none';
+        }
+      }
+
+      // Due vehicles badge (Vehicle Inspections)
+      const dueBadge = $('dueVehiclesBadge');
+      const due = Number(s.due_vehicles_count || 0);
+      if (dueBadge) {
+        if (due > 0) {
+          dueBadge.style.display = 'inline-block';
+          dueBadge.textContent = due > 99 ? '99+' : String(due);
+        } else {
+          dueBadge.style.display = 'none';
+        }
       }
     }
 
@@ -454,7 +475,6 @@
     function renderProducts(products) {
       const tbody = $('productsBody');
       const rows = products.map(p => {
-        // expected fields (match your table): 
         // [id, name, barcode, in_stock, min_stock, price, siteone_sku, category, units_per_item, unit_cost, units_remaining]
         const out = (p[3] === 0) ? 'table-danger' : '';
         return `
