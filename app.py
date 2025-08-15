@@ -470,34 +470,40 @@ def api_dashboard_stats():
     except Exception as e:
         app.logger.exception("dashboard-stats totals failed: %s", e)
 
-    # ---------- Vehicle due buckets (pending reminders only) ----------
+    # ---------- Vehicle due buckets (match Vehicle Profiles) ----------
     red_vehicle_count = orange_vehicle_count = yellow_vehicle_count = due_vehicles_count = 0
     try:
         cur.execute("""
             WITH v AS (
-              SELECT vehicle_id, COALESCE(current_mileage, mileage, 0) AS miles
+              SELECT vehicle_id,
+                     COALESCE(mileage, current_mileage, 0) AS miles  -- grid uses mileage first
               FROM vehicles
               WHERE status = 'active'
             ),
-            next_due AS (
+            due AS (
               SELECT
                 v.vehicle_id,
-                MIN(mr.odometer_due - v.miles) FILTER (WHERE mr.received_at IS NULL) AS miles_left
+                MIN(mr.odometer_due - v.miles) AS miles_left
               FROM v
-              LEFT JOIN maintenance_reminders mr
-                     ON mr.vehicle_id = v.vehicle_id
+              JOIN maintenance_reminders mr
+                ON mr.vehicle_id = v.vehicle_id
+              WHERE mr.received_at IS NULL
+                AND TRIM(LOWER(mr.service_type)) IN (
+                  'oil change','oil_change','oilchange',
+                  'tire rotation','tire_rotation','tirerotation'
+                )
               GROUP BY v.vehicle_id
             )
             SELECT
-              COUNT(*) FILTER (WHERE miles_left IS NOT NULL AND miles_left <= 500)       AS red_count,
-              COUNT(*) FILTER (WHERE miles_left > 500  AND miles_left <= 1000)           AS orange_count,
-              COUNT(*) FILTER (WHERE miles_left > 1000 AND miles_left <= 2000)           AS yellow_count
-            FROM next_due
+              COUNT(*) FILTER (WHERE miles_left <  500)  AS red_count,
+              COUNT(*) FILTER (WHERE miles_left >= 500  AND miles_left < 1000) AS orange_count,
+              COUNT(*) FILTER (WHERE miles_left >= 1000 AND miles_left < 2000) AS yellow_count
+            FROM due
         """)
         r = cur.fetchone()
-        red_vehicle_count    = int((r[0] or 0))
-        orange_vehicle_count = int((r[1] or 0))
-        yellow_vehicle_count = int((r[2] or 0))
+        red_vehicle_count    = int(r[0] or 0)
+        orange_vehicle_count = int(r[1] or 0)
+        yellow_vehicle_count = int(r[2] or 0)
         due_vehicles_count   = red_vehicle_count + orange_vehicle_count + yellow_vehicle_count
     except Exception as e:
         app.logger.exception("dashboard-stats vehicle buckets failed: %s", e)
