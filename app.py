@@ -115,8 +115,6 @@ def _ensure_product_columns_once():
     cur.close(); conn.close()
     MIGRATED_SDS_COLS = True
 
-# Run once when the app starts serving
-@app.before_first_request
 def _run_schema_guard():
     try:
         _ensure_product_columns_once()
