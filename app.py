@@ -14,6 +14,7 @@ import json
 from dotenv import load_dotenv
 load_dotenv()
 from io import TextIOWrapper
+from urllib.parse import urlparse
 from werkzeug.utils import secure_filename
 from datetime import datetime, date
 from technician_manager import add_technician, remove_technician, get_all_technicians
@@ -53,6 +54,92 @@ s3 = boto3.client(
     aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
     aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY")
 )
+# ===== SDS / Label / Barcode on S3 =====
+SDS_BUCKET = os.environ.get("SDS_BUCKET")
+if not SDS_BUCKET:
+    raise RuntimeError("SDS_BUCKET env var is required")
+
+PDF_EXTS = {"pdf"}
+IMG_EXTS = {"png", "jpg", "jpeg"}
+
+def _allowed_ext(kind: str, filename: str) -> bool:
+    ext = (filename.rsplit(".", 1)[-1] or "").lower()
+    return (ext in PDF_EXTS) if kind in ("sds","label") else (ext in IMG_EXTS)
+
+def _key_for(product_id: int, kind: str, filename: str) -> str:
+    ext = (filename.rsplit(".",1)[-1] or "").lower()
+    if kind in ("sds","label"): ext = "pdf"
+    return f"sds/{product_id}/{kind}.{ext}"
+
+def _guess_content_type(kind: str, filename: str) -> str:
+    ext = (filename.rsplit(".",1)[-1] or "").lower()
+    if kind in ("sds","label"): return "application/pdf"
+    if ext == "png": return "image/png"
+    if ext in ("jpg","jpeg"): return "image/jpeg"
+    return "application/octet-stream"
+
+def _ensure_product_columns():
+    conn = get_db_connection(); cur = conn.cursor()
+    cur.execute("""
+        ALTER TABLE products
+          ADD COLUMN IF NOT EXISTS sds_key TEXT,
+          ADD COLUMN IF NOT EXISTS label_key TEXT,
+          ADD COLUMN IF NOT EXISTS barcode_key TEXT,
+          ADD COLUMN IF NOT EXISTS label_uploaded_on TIMESTAMPTZ,
+          ADD COLUMN IF NOT EXISTS barcode_uploaded_on TIMESTAMPTZ;
+    """)
+    conn.commit(); cur.close(); conn.close()
+
+def _is_http_url(s): 
+    if not s: return False
+    try:
+        u = urlparse(s); return u.scheme in ("http","https")
+    except: return False
+
+def _is_s3_url(s): 
+    return bool(s and s.startswith("s3://"))
+
+def _handle_to_presigned(handle: str|None, kind: str, expires: int = 1800) -> str|None:
+    if not handle: return None
+    if _is_http_url(handle):  # legacy URL
+        return handle
+    bucket = SDS_BUCKET
+    key = handle
+    if _is_s3_url(handle):
+        u = urlparse(handle); bucket = u.netloc or SDS_BUCKET; key = u.path.lstrip("/")
+    params = {"Bucket": bucket, "Key": key}
+    if kind in ("sds","label"):
+        params["ResponseContentType"] = "application/pdf"
+        params["ResponseContentDisposition"] = f'inline; filename="{kind}.pdf"'
+    try:
+        return s3.generate_presigned_url("get_object", Params=params, ExpiresIn=expires)
+    except Exception as e:
+        app.logger.error(f"Presign failed for {handle}: {e}")
+        return None
+
+def _update_product_key(product_id: int, kind: str, key: str):
+    col = {"sds":"sds_key","label":"label_key","barcode":"barcode_key"}[kind]
+    ts  = {"sds":"sds_uploaded_on","label":"label_uploaded_on","barcode":"barcode_uploaded_on"}[kind]
+    conn = get_db_connection(); cur = conn.cursor()
+    cur.execute(f"UPDATE products SET {col}=%s, {ts}=NOW() WHERE id=%s", (key, product_id))
+    conn.commit(); cur.close(); conn.close()
+
+def _upload_file_to_s3(file_storage, product_id: int, kind: str) -> str:
+    filename = secure_filename(file_storage.filename)
+    if not _allowed_ext(kind, filename):
+        raise ValueError(f"Invalid file type for {kind}")
+    key = _key_for(product_id, kind, filename)
+    s3.upload_fileobj(
+        Fileobj=file_storage.stream,
+        Bucket=SDS_BUCKET,
+        Key=key,
+        ExtraArgs={
+            "ContentType": _guess_content_type(kind, filename),
+            "Metadata": {"product_id": str(product_id), "kind": kind},
+            "CacheControl": "private, max-age=31536000"
+        }
+    )
+    return key
 
 # Ensure upload folders exist
 UPLOAD_FOLDERS = [
@@ -2154,28 +2241,59 @@ def delete_equipment(vehicle_id, equipment_id):
 @login_required
 @role_required('TECH','ADMIN')
 def sds_portal():
+    _ensure_product_columns()
+
     filter_type = request.args.get('filter', '')
     conn = get_db_connection()
-    cur = conn.cursor()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
-    if filter_type == 'has_sds':
-        cur.execute("""
-            SELECT id, name, epa_number, sds_url, label_url, barcode_img_url, sds_uploaded_on
-            FROM products
-            WHERE sds_url IS NOT NULL
-            ORDER BY name;
-        """)
-    else:
-        cur.execute("""
-            SELECT id, name, epa_number, sds_url, label_url, barcode_img_url, sds_uploaded_on
-            FROM products
-            ORDER BY name;
-        """)
+    where = "WHERE p.sds_key IS NOT NULL OR p.sds_url IS NOT NULL" if filter_type == 'has_sds' else ""
+    cur.execute(f"""
+        SELECT
+            p.id, p.name, p.epa_number,
+            p.sds_key, p.label_key, p.barcode_key,
+            p.sds_url, p.label_url, p.barcode_img_url,
+            p.sds_uploaded_on
+        FROM products p
+        {where}
+        ORDER BY p.name;
+    """)
+    rows = cur.fetchall()
+    cur.close(); conn.close()
 
-    products = cur.fetchall()
-    cur.close()
-    conn.close()
+    products = []
+    for r in rows:
+        sds_link = _handle_to_presigned(r["sds_key"], "sds") or _handle_to_presigned(r["sds_url"], "sds")
+        label_link = _handle_to_presigned(r["label_key"], "label") or _handle_to_presigned(r["label_url"], "label")
+        barcode_link = _handle_to_presigned(r["barcode_key"], "barcode") or _handle_to_presigned(r["barcode_img_url"], "barcode")
+        products.append({
+            "id": r["id"], "name": r["name"], "epa_number": r["epa_number"],
+            "sds_url": sds_link, "label_url": label_link, "barcode_img_url": barcode_link,
+            "sds_uploaded_on": r["sds_uploaded_on"],
+        })
+
     return render_template('sds_view.html', products=products, today=date.today())
+
+@app.route('/sds/open/<int:product_id>/<kind>')
+@login_required
+@role_required('TECH','ADMIN')
+def sds_open(product_id, kind):
+    kind = kind.lower()
+    if kind not in ("sds","label","barcode"): abort(400)
+
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cur.execute("""SELECT sds_key,label_key,barcode_key,sds_url,label_url,barcode_img_url
+                   FROM products WHERE id=%s""", (product_id,))
+    r = cur.fetchone(); cur.close(); conn.close()
+    if not r: abort(404)
+
+    handle = {"sds": r["sds_key"] or r["sds_url"],
+              "label": r["label_key"] or r["label_url"],
+              "barcode": r["barcode_key"] or r["barcode_img_url"]}[kind]
+    url = _handle_to_presigned(handle, kind)
+    if not url: abort(404, f"No {kind} attached.")
+    return redirect(url)
 
 @app.route('/static/uploads/<path:filename>')
 @login_required
@@ -2187,77 +2305,49 @@ def uploaded_file(filename):
 @login_required
 @role_required('ADMIN')
 def edit_sds():
-    # Only allow admins to access this route
-    if session.get('role') == 'tech':
-        return redirect(url_for('sds_portal'))
+    _ensure_product_columns()
 
     conn = get_db_connection()
     cur = conn.cursor()
 
     if request.method == 'POST':
-        product_id = request.form['product_id']
-        epa_number = request.form.get('epa_number')
+        product_id = int(request.form['product_id'])
+        epa_number = (request.form.get('epa_number') or "").strip()
 
         sds_file = request.files.get('sds_pdf')
         label_file = request.files.get('label_pdf')
         barcode_file = request.files.get('barcode_img')
 
-        sds_url = label_url = barcode_img_url = None
+        try:
+            if epa_number:
+                cur.execute("UPDATE products SET epa_number=%s WHERE id=%s", (epa_number, product_id))
 
-        if sds_file and sds_file.filename != '':
-            sds_filename = secure_filename(sds_file.filename)
-            sds_path = os.path.join('static/uploads/sds', sds_filename)
-            sds_file.save(sds_path)
-            sds_url = '/' + sds_path.replace("\\", "/")
+            if sds_file and sds_file.filename:
+                key = _upload_file_to_s3(sds_file, product_id, "sds")
+                _update_product_key(product_id, "sds", key)
 
-        if label_file and label_file.filename != '':
-            label_filename = secure_filename(label_file.filename)
-            label_path = os.path.join('static/uploads/labels', label_filename)
-            label_file.save(label_path)
-            label_url = '/' + label_path.replace("\\", "/")
+            if label_file and label_file.filename:
+                key = _upload_file_to_s3(label_file, product_id, "label")
+                _update_product_key(product_id, "label", key)
 
-        if barcode_file and barcode_file.filename != '':
-            barcode_filename = secure_filename(barcode_file.filename)
-            barcode_path = os.path.join('static/uploads/barcodes', barcode_filename)
-            barcode_file.save(barcode_path)
-            barcode_img_url = '/' + barcode_path.replace("\\", "/")
+            if barcode_file and barcode_file.filename:
+                key = _upload_file_to_s3(barcode_file, product_id, "barcode")
+                _update_product_key(product_id, "barcode", key)
 
-        updates = []
-        values = []
-
-        if epa_number:
-            updates.append("epa_number = %s")
-            values.append(epa_number)
-
-        if sds_url:
-            updates.append("sds_url = %s")
-            values.append(sds_url)
-            updates.append("sds_uploaded_on = %s")
-            values.append(date.today())  # Record the date of upload
-
-        if label_url:
-            updates.append("label_url = %s")
-            values.append(label_url)
-
-        if barcode_img_url:
-            updates.append("barcode_img_url = %s")
-            values.append(barcode_img_url)
-
-        if updates:
-            values.append(product_id)
-            query = f"UPDATE products SET {', '.join(updates)} WHERE id = %s"
-            cur.execute(query, tuple(values))
             conn.commit()
+        except Exception as e:
+            conn.rollback()
+            app.logger.exception("SDS upload failed")
+            flash(f"Upload failed: {e}", "danger")
+        finally:
+            cur.close(); conn.close()
 
-        cur.close()
-        conn.close()
         return redirect(url_for('edit_sds'))
 
-    # GET: Load product list
+    # GET: product list for the form
     cur.execute("SELECT id, name, epa_number FROM products ORDER BY name;")
     products = cur.fetchall()
-    cur.close()
-    conn.close()
+    cur.close(); conn.close()
     return render_template('edit_sds.html', products=products)
 
 @app.route('/corrections', methods=['GET', 'POST'])
