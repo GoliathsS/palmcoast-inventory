@@ -427,9 +427,27 @@ def api_dashboard_stats():
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # ... your existing totals above ...
+    # ---------- Totals & category counts ----------
+    total_value = 0.0
+    lawn_count = pest_count = wildlife_count = 0
+    try:
+        cur.execute("""
+            SELECT
+              COALESCE(SUM(COALESCE(units_remaining,0) * COALESCE(cost_per_unit,0)),0) AS total_value,
+              COALESCE(SUM(CASE WHEN LOWER(COALESCE(category,'')) = 'lawn'     THEN 1 ELSE 0 END),0) AS lawn_count,
+              COALESCE(SUM(CASE WHEN LOWER(COALESCE(category,'')) = 'pest'     THEN 1 ELSE 0 END),0) AS pest_count,
+              COALESCE(SUM(CASE WHEN LOWER(COALESCE(category,'')) = 'wildlife' THEN 1 ELSE 0 END),0) AS wildlife_count
+            FROM products
+        """)
+        tv, lc, pc, wc = cur.fetchone()
+        total_value = float(tv or 0)
+        lawn_count = int(lc or 0)
+        pest_count = int(pc or 0)
+        wildlife_count = int(wc or 0)
+    except Exception as e:
+        app.logger.exception("dashboard-stats totals failed: %s", e)
 
-    # ----- Vehicle due buckets (nearest *pending* reminder per vehicle) -----
+    # ---------- Vehicle due buckets (pending reminders only) ----------
     red_vehicle_count = orange_vehicle_count = yellow_vehicle_count = due_vehicles_count = 0
     try:
         cur.execute("""
@@ -444,7 +462,7 @@ def api_dashboard_stats():
                 MIN(mr.odometer_due - v.miles) FILTER (WHERE mr.received_at IS NULL) AS miles_left
               FROM v
               LEFT JOIN maintenance_reminders mr
-                ON mr.vehicle_id = v.vehicle_id
+                     ON mr.vehicle_id = v.vehicle_id
               GROUP BY v.vehicle_id
             )
             SELECT
@@ -454,17 +472,20 @@ def api_dashboard_stats():
             FROM next_due
         """)
         r = cur.fetchone()
-        red_vehicle_count    = int(r[0] or 0)
-        orange_vehicle_count = int(r[1] or 0)
-        yellow_vehicle_count = int(r[2] or 0)
+        red_vehicle_count    = int((r[0] or 0))
+        orange_vehicle_count = int((r[1] or 0))
+        yellow_vehicle_count = int((r[2] or 0))
         due_vehicles_count   = red_vehicle_count + orange_vehicle_count + yellow_vehicle_count
     except Exception as e:
-        # Never break the dashboard; just log & continue with zeros
         app.logger.exception("dashboard-stats vehicle buckets failed: %s", e)
 
-    # ----- Tech requests -----
-    cur.execute("SELECT COUNT(*) FROM tech_requests WHERE status='open'")
-    open_requests_count = int(cur.fetchone()[0] or 0)
+    # ---------- Open tech requests ----------
+    open_requests_count = 0
+    try:
+        cur.execute("SELECT COUNT(*) FROM tech_requests WHERE status='open'")
+        open_requests_count = int(cur.fetchone()[0] or 0)
+    except Exception as e:
+        app.logger.exception("dashboard-stats tech requests failed: %s", e)
 
     cur.close(); conn.close()
 
