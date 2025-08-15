@@ -180,12 +180,12 @@ def logout():
 
 @app.get("/api/dashboard-stats")
 @login_required
-# @role_required("ADMIN")  # ← optional: comment out or widen if TECH needs this data
+# @role_required("ADMIN")  # ← enable only if you want this locked to admins
 def api_dashboard_stats():
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # existing stats ...
+    # ----- Inventory stats -----
     cur.execute("SELECT COALESCE(SUM(stock * cost_per_unit),0) FROM products")
     total_value = float(cur.fetchone()[0] or 0)
 
@@ -198,11 +198,12 @@ def api_dashboard_stats():
     cur.execute("SELECT COUNT(*) FROM products WHERE category='Wildlife'")
     wildlife_count = int(cur.fetchone()[0] or 0)
 
-    # open tech requests
+    # ----- Tech requests -----
     cur.execute("SELECT COUNT(*) FROM tech_requests WHERE status='open'")
     open_requests_count = int(cur.fetchone()[0] or 0)
 
-    # ===== Vehicles due/overdue count (<= 500 miles remaining) =====
+    # ----- Vehicles due buckets (per vehicle, nearest upcoming reminder) -----
+    # Buckets: red <= 500, orange 501–1000, yellow 1001–2000 miles
     cur.execute("""
         WITH v AS (
           SELECT vehicle_id, COALESCE(current_mileage, mileage, 0) AS miles
@@ -210,34 +211,30 @@ def api_dashboard_stats():
           WHERE status = 'active'
         ),
         pending AS (
-          SELECT DISTINCT mr.vehicle_id
+          SELECT v.vehicle_id, (mr.odometer_due - v.miles) AS miles_left
           FROM maintenance_reminders mr
           JOIN v ON v.vehicle_id = mr.vehicle_id
           WHERE mr.received_at IS NULL
-            AND (mr.odometer_due - v.miles) <= 500
         ),
-        hist AS (
-          SELECT DISTINCT v.vehicle_id
-          FROM v
-          JOIN LATERAL (
-            SELECT mr.odometer_due
-            FROM maintenance_reminders mr
-            WHERE mr.vehicle_id = v.vehicle_id
-              AND mr.service_type = 'Oil Change'
-              AND mr.received_at IS NOT NULL
-            ORDER BY mr.received_at DESC
-            LIMIT 1
-          ) lo ON TRUE
-          WHERE (lo.odometer_due + 5000 - v.miles) <= 500
-        ),
-        all_due AS (
-          SELECT vehicle_id FROM pending
-          UNION
-          SELECT vehicle_id FROM hist
+        per_vehicle AS (
+          -- one row per vehicle: the nearest due reminder
+          SELECT vehicle_id, MIN(miles_left) AS miles_left
+          FROM pending
+          GROUP BY vehicle_id
         )
-        SELECT COUNT(*) FROM all_due;
+        SELECT
+          COUNT(*) FILTER (WHERE miles_left <= 500)                             AS red_count,
+          COUNT(*) FILTER (WHERE miles_left > 500  AND miles_left <= 1000)      AS orange_count,
+          COUNT(*) FILTER (WHERE miles_left > 1000 AND miles_left <= 2000)      AS yellow_count
+        FROM per_vehicle;
     """)
-    due_vehicles_count = int(cur.fetchone()[0] or 0)
+    row = cur.fetchone()
+    red_vehicle_count    = int(row[0] or 0)
+    orange_vehicle_count = int(row[1] or 0)
+    yellow_vehicle_count = int(row[2] or 0)
+
+    # total vehicles with any upcoming reminder within 2000 miles
+    due_vehicles_count = red_vehicle_count + orange_vehicle_count + yellow_vehicle_count
 
     cur.close(); conn.close()
     return jsonify({
@@ -246,7 +243,12 @@ def api_dashboard_stats():
         "pest_count": pest_count,
         "wildlife_count": wildlife_count,
         "open_requests_count": open_requests_count,
-        "due_vehicles_count": due_vehicles_count,  # 👈 renamed to match UI
+
+        # vehicle profile badges
+        "red_vehicle_count": red_vehicle_count,
+        "orange_vehicle_count": orange_vehicle_count,
+        "yellow_vehicle_count": yellow_vehicle_count,
+        "due_vehicles_count": due_vehicles_count,   # keeps the single total for legacy use
     })
 
 @app.get("/api/products")
