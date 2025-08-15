@@ -909,7 +909,7 @@ def index():
         'index.html',
         products=products,
         technicians=technicians,
-        total_value=inventory_total
+        total_value=inventory_total,
         category_filter=category_filter,
         lawn_count=lawn_count,
         pest_count=pest_count,
