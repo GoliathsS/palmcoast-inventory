@@ -470,13 +470,13 @@ def api_dashboard_stats():
     except Exception as e:
         app.logger.exception("dashboard-stats totals failed: %s", e)
 
-    # ---------- Vehicle due buckets (match Vehicle Profiles) ----------
+    # ---------- Vehicle due buckets (Oil Change ONLY; matches Vehicle Profiles grid) ----------
     red_vehicle_count = orange_vehicle_count = yellow_vehicle_count = due_vehicles_count = 0
     try:
         cur.execute("""
             WITH v AS (
               SELECT vehicle_id,
-                     COALESCE(mileage, current_mileage, 0) AS miles  -- grid uses mileage first
+                     COALESCE(mileage, current_mileage, 0) AS miles   -- same precedence as grid
               FROM vehicles
               WHERE status = 'active'
             ),
@@ -488,10 +488,7 @@ def api_dashboard_stats():
               JOIN maintenance_reminders mr
                 ON mr.vehicle_id = v.vehicle_id
               WHERE mr.received_at IS NULL
-                AND TRIM(LOWER(mr.service_type)) IN (
-                  'oil change','oil_change','oilchange',
-                  'tire rotation','tire_rotation','tirerotation'
-                )
+                AND TRIM(LOWER(mr.service_type)) IN ('oil change','oil_change','oilchange')
               GROUP BY v.vehicle_id
             )
             SELECT
