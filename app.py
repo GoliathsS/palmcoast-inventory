@@ -470,40 +470,57 @@ def api_dashboard_stats():
     except Exception as e:
         app.logger.exception("dashboard-stats totals failed: %s", e)
 
-    # ---------- Vehicle due buckets (Oil Change ONLY; matches Vehicle Profiles grid) ----------
-    red_vehicle_count = orange_vehicle_count = yellow_vehicle_count = due_vehicles_count = 0
-    try:
-        cur.execute("""
-            WITH v AS (
-              SELECT vehicle_id,
-                     COALESCE(mileage, current_mileage, 0) AS miles   -- same precedence as grid
-              FROM vehicles
-              WHERE status = 'active'
-            ),
-            due AS (
-              SELECT
-                v.vehicle_id,
-                MIN(mr.odometer_due - v.miles) AS miles_left
-              FROM v
-              JOIN maintenance_reminders mr
-                ON mr.vehicle_id = v.vehicle_id
-              WHERE mr.received_at IS NULL
+    # ---------- Vehicle due buckets (Oil Change only; FUTURE pending else last+5000) ----------
+red_vehicle_count = orange_vehicle_count = yellow_vehicle_count = due_vehicles_count = 0
+try:
+    cur.execute("""
+        WITH v AS (
+          SELECT vehicle_id, COALESCE(current_mileage, mileage, 0) AS miles
+          FROM vehicles
+          WHERE status = 'active'
+        ),
+        calc AS (
+          SELECT
+            v.vehicle_id,
+            v.miles,
+            /* first FUTURE pending oil change (>= current miles) */
+            (
+              SELECT MIN(mr.odometer_due)
+              FROM maintenance_reminders mr
+              WHERE mr.vehicle_id = v.vehicle_id
+                AND mr.received_at IS NULL
                 AND TRIM(LOWER(mr.service_type)) IN ('oil change','oil_change','oilchange')
-              GROUP BY v.vehicle_id
-            )
-            SELECT
-              COUNT(*) FILTER (WHERE miles_left <  500)  AS red_count,
-              COUNT(*) FILTER (WHERE miles_left >= 500  AND miles_left < 1000) AS orange_count,
-              COUNT(*) FILTER (WHERE miles_left >= 1000 AND miles_left < 2000) AS yellow_count
-            FROM due
-        """)
-        r = cur.fetchone()
-        red_vehicle_count    = int(r[0] or 0)
-        orange_vehicle_count = int(r[1] or 0)
-        yellow_vehicle_count = int(r[2] or 0)
-        due_vehicles_count   = red_vehicle_count + orange_vehicle_count + yellow_vehicle_count
-    except Exception as e:
-        app.logger.exception("dashboard-stats vehicle buckets failed: %s", e)
+                AND mr.odometer_due >= v.miles
+            ) AS next_pending_oil,
+            /* last completed oil change */
+            (
+              SELECT MAX(mr.odometer_due)
+              FROM maintenance_reminders mr
+              WHERE mr.vehicle_id = v.vehicle_id
+                AND mr.received_at IS NOT NULL
+                AND TRIM(LOWER(mr.service_type)) IN ('oil change','oil_change','oilchange')
+            ) AS last_completed_oil
+          FROM v
+        ),
+        final AS (
+          SELECT
+            COALESCE(next_pending_oil,
+                     last_completed_oil + 5000,
+                     miles + 5000) AS due_at,
+            miles
+          FROM calc
+        )
+        SELECT
+          COUNT(*) FILTER (WHERE (due_at - miles) <  500),
+          COUNT(*) FILTER (WHERE (due_at - miles) >= 500  AND (due_at - miles) < 1000),
+          COUNT(*) FILTER (WHERE (due_at - miles) >= 1000 AND (due_at - miles) < 2000)
+        FROM final
+    """)
+    r = cur.fetchone()
+    red_vehicle_count, orange_vehicle_count, yellow_vehicle_count = [int(x or 0) for x in r]
+    due_vehicles_count = red_vehicle_count + orange_vehicle_count + yellow_vehicle_count
+except Exception as e:
+    app.logger.exception("dashboard-stats vehicle buckets failed: %s", e)
 
     # ---------- Open tech requests ----------
     open_requests_count = 0
