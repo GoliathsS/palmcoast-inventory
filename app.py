@@ -1213,7 +1213,7 @@ def add_product():
     cur = conn.cursor()
     cur.execute("""
         INSERT INTO products (
-            name, barcode, in_stock, min_stock, cost_per_unit,
+            name, barcode, stock, min_stock, cost_per_unit,
             siteone_sku, category, units_per_item, unit_cost, units_remaining, is_archived
         ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s, FALSE)
     """, (name, barcode, in_stock, min_stock, cost_per_unit,
