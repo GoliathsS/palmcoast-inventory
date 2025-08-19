@@ -476,7 +476,7 @@
     function renderProducts(products) {
       const tbody = $('productsBody');
       const rows = products.map(p => {
-        // [id, name, barcode, in_stock, min_stock, price, siteone_sku, category, units_per_item, unit_cost, units_remaining]
+        // [id, name, barcode, stock, min_stock, price, siteone_sku, category, units_per_item, unit_cost, units_remaining]
         const out = (p[3] === 0) ? 'table-danger' : '';
         return `
           <tr class="${out}" ${p[3]===0?'title="Out of Stock"':''}>
