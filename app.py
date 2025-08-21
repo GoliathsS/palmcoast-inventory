@@ -115,16 +115,6 @@ def _ensure_product_columns_once():
     cur.close(); conn.close()
     MIGRATED_SDS_COLS = True
 
-@app.before_first_request
-def _bootstrap_sds_columns():
-    try:
-        _ensure_product_columns_once()
-        app.logger.info("SDS columns ensured.")
-    except Exception as e:
-        app.logger.warning(f"SDS column ensure failed: {e}")
-
-_run_schema_guard()  # runs once at import time; Flask 3-safe
-
 def _is_http_url(s): 
     if not s: return False
     try:
@@ -192,6 +182,13 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "YOUR_RENDER_POSTGRES_CONNECTION_S
 def get_db_connection():
     return psycopg2.connect(DATABASE_URL)
 
+# Run column guard once on import (Flask 3-safe)
+try:
+    with app.app_context():
+        _ensure_product_columns_once()
+        app.logger.info("SDS columns ensured.")
+except Exception as e:
+    app.logger.warning(f"SDS column ensure failed: {e}")
 
 class LoginUser(UserMixin):
     def __init__(self, row):
