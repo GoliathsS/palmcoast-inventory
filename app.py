@@ -81,21 +81,21 @@ def _guess_content_type(kind: str, filename: str) -> str:
 MIGRATED_SDS_COLS = False
 
 def _ensure_product_columns_once():
-    """Only ALTER if columns are actually missing; run once at startup."""
+    """Only ALTER if columns are actually missing; run once after app init."""
     global MIGRATED_SDS_COLS
     if MIGRATED_SDS_COLS:
         return
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # Check which columns already exist (no lock)
+    # include sds_uploaded_on in the check
     cur.execute("""
         SELECT column_name
         FROM information_schema.columns
         WHERE table_schema = 'public' AND table_name = 'products'
           AND column_name IN (
             'sds_key','label_key','barcode_key',
-            'label_uploaded_on','barcode_uploaded_on'
+            'sds_uploaded_on','label_uploaded_on','barcode_uploaded_on'
           )
     """)
     existing = {r[0] for r in cur.fetchall()}
@@ -104,23 +104,24 @@ def _ensure_product_columns_once():
     if 'sds_key' not in existing:             missing.append("ADD COLUMN sds_key TEXT")
     if 'label_key' not in existing:           missing.append("ADD COLUMN label_key TEXT")
     if 'barcode_key' not in existing:         missing.append("ADD COLUMN barcode_key TEXT")
+    if 'sds_uploaded_on' not in existing:     missing.append("ADD COLUMN sds_uploaded_on TIMESTAMPTZ")
     if 'label_uploaded_on' not in existing:   missing.append("ADD COLUMN label_uploaded_on TIMESTAMPTZ")
     if 'barcode_uploaded_on' not in existing: missing.append("ADD COLUMN barcode_uploaded_on TIMESTAMPTZ")
 
     if missing:
-        # Only now take a lock once to add anything missing
         cur.execute(f"ALTER TABLE products {', '.join(missing)};")
         conn.commit()
 
     cur.close(); conn.close()
     MIGRATED_SDS_COLS = True
 
-def _run_schema_guard():
+@app.before_first_request
+def _bootstrap_sds_columns():
     try:
         _ensure_product_columns_once()
         app.logger.info("SDS columns ensured.")
     except Exception as e:
-        app.logger.warning(f"SDS column ensure skipped: {e}")
+        app.logger.warning(f"SDS column ensure failed: {e}")
 
 _run_schema_guard()  # runs once at import time; Flask 3-safe
 
