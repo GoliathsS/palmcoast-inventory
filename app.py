@@ -1908,28 +1908,23 @@ def add_vehicle_service():
 
     if file and file.filename:
         filename = secure_filename(file.filename)
-        unique_filename = f"{uuid.uuid4()}_{filename}"
-
-        # Upload to S3
+        key = f"invoices/{uuid.uuid4()}_{filename}"   # IMPORTANT: invoices/ prefix
         s3 = boto3.client(
             "s3",
             aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
             aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
-            region_name="us-east-2"
+            region_name="us-east-2",
         )
-
+        file.seek(0)
         s3.upload_fileobj(
             file,
             "palmcoast-invoices",
-            unique_filename,
-            ExtraArgs={
-                "ContentType": file.content_type,
-                "ACL": "public-read"  # ✅ this makes the file publicly accessible
-            }
+            key,
+            ExtraArgs={"ContentType": file.content_type or "application/pdf"}
         )
-        invoice_url = f"https://palmcoast-invoices.s3.us-east-2.amazonaws.com/{unique_filename}"
+        # Public URL works because of your bucket policy on invoices/*
+        invoice_url = f"https://palmcoast-invoices.s3.us-east-2.amazonaws.com/{key}"
 
-    # Insert into database
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("""
