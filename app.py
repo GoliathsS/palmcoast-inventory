@@ -13,7 +13,7 @@ import io
 import json
 from dotenv import load_dotenv
 load_dotenv()
-from io import TextIOWrapper
+from io import 
 from urllib.parse import urlparse
 from werkzeug.utils import secure_filename
 from datetime import datetime, date
@@ -197,14 +197,14 @@ def _upload_file_to_s3(file_storage, product_id: int, kind: str) -> str:
 
     key = _key_for(product_id, kind, filename)
 
-    # 🔒 Make sure we start reading from the beginning of the stream.
+    # ensure we read from the beginning even if Werkzeug wrapped it
     try:
         file_storage.stream.seek(0)
     except Exception:
-        pass  # not all wrappers need/allow seek
+        pass
 
     s3.upload_fileobj(
-        Fileobj=file_storage.stream,   # pass the file-like stream
+        Fileobj=file_storage.stream,
         Bucket=SDS_BUCKET,
         Key=key,
         ExtraArgs={
@@ -2430,61 +2430,70 @@ def uploaded_file(filename):
 @login_required
 @role_required('ADMIN')
 def edit_sds():
-    conn = get_db_connection()
-    cur = conn.cursor()
+    # GET: render form
+    if request.method == 'GET':
+        conn = get_db_connection(); cur = conn.cursor()
+        cur.execute("SELECT id, name, epa_number FROM products ORDER BY name;")
+        products = cur.fetchall()
+        cur.close(); conn.close()
+        return render_template('edit_sds.html', products=products)
 
-    if request.method == 'POST':
-        product_id = int(request.form['product_id'])
-        epa_number = (request.form.get('epa_number') or "").strip()
-
-        sds_file = request.files.get('sds_pdf')
-        label_file = request.files.get('label_pdf')
-        barcode_file = request.files.get('barcode_img')
-
-        saved = []  # what we successfully saved
-
-        try:
-            if epa_number:
-                cur.execute("UPDATE products SET epa_number=%s WHERE id=%s", (epa_number, product_id))
-                saved.append("EPA #")
-
-            if sds_file and sds_file.filename:
-                key = _upload_file_to_s3(sds_file, product_id, "sds")
-                _update_product_key(product_id, "sds", key)
-                saved.append("SDS")
-
-            if label_file and label_file.filename:
-                key = _upload_file_to_s3(label_file, product_id, "label")
-                _update_product_key(product_id, "label", key)
-                saved.append("Label")
-
-            if barcode_file and barcode_file.filename:
-                key = _upload_file_to_s3(barcode_file, product_id, "barcode")
-                _update_product_key(product_id, "barcode", key)
-                saved.append("Barcode")
-
-            if saved:
-                conn.commit()
-                flash(f"Saved: {', '.join(saved)}", "success")
-            else:
-                conn.rollback()         # nothing changed
-                flash("Nothing to update. Choose a file or enter EPA #.", "warning")
-
-        except Exception as e:
-            conn.rollback()
-            app.logger.exception("SDS/Label upload failed")
-            flash(f"Upload failed: {e}", "danger")
-
-        finally:
-            cur.close(); conn.close()
-
+    # POST: process upload/update
+    product_id_raw = request.form.get('product_id', '').strip()
+    if not product_id_raw.isdigit():
+        flash("Please select a product.", "danger")
         return redirect(url_for('edit_sds'))
 
-    # GET
-    cur.execute("SELECT id, name, epa_number FROM products ORDER BY name;")
-    products = cur.fetchall()
-    cur.close(); conn.close()
-    return render_template('edit_sds.html', products=products)
+    product_id = int(product_id_raw)
+    epa_number = (request.form.get('epa_number') or "").strip()
+
+    sds_file     = request.files.get('sds_pdf')
+    label_file   = request.files.get('label_pdf')
+    barcode_file = request.files.get('barcode_img')
+
+    # nothing to do? don't 400 — just flash and return
+    if not any([
+        epa_number,
+        (sds_file and sds_file.filename),
+        (label_file and label_file.filename),
+        (barcode_file and barcode_file.filename),
+    ]):
+        flash("Nothing to update. Choose a file or enter EPA #.", "warning")
+        return redirect(url_for('edit_sds'))
+
+    conn = get_db_connection(); cur = conn.cursor()
+    saved = []
+    try:
+        if epa_number:
+            cur.execute("UPDATE products SET epa_number=%s WHERE id=%s", (epa_number, product_id))
+            saved.append("EPA #")
+
+        if sds_file and sds_file.filename:
+            key = _upload_file_to_s3(sds_file, product_id, "sds")
+            _update_product_key(product_id, "sds", key)
+            saved.append("SDS")
+
+        if label_file and label_file.filename:
+            key = _upload_file_to_s3(label_file, product_id, "label")
+            _update_product_key(product_id, "label", key)
+            saved.append("Label")
+
+        if barcode_file and barcode_file.filename:
+            key = _upload_file_to_s3(barcode_file, product_id, "barcode")
+            _update_product_key(product_id, "barcode", key)
+            saved.append("Barcode")
+
+        conn.commit()
+        flash(f"Saved: {', '.join(saved)}", "success")
+
+    except Exception as e:
+        conn.rollback()
+        app.logger.exception("SDS/Label upload failed")
+        flash(f"Upload failed: {e}", "danger")
+    finally:
+        cur.close(); conn.close()
+
+    return redirect(url_for('edit_sds'))
 
 @app.route('/corrections', methods=['GET', 'POST'])
 @login_required
