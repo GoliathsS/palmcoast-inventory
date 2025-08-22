@@ -189,19 +189,29 @@ def _update_product_key(product_id: int, kind: str, key: str):
     conn.commit(); cur.close(); conn.close()
 
 def _upload_file_to_s3(file_storage, product_id: int, kind: str) -> str:
-    filename = secure_filename(file_storage.filename)
+    filename = secure_filename(file_storage.filename or "")
+    if not filename:
+        raise ValueError(f"No file provided for {kind}")
     if not _allowed_ext(kind, filename):
         raise ValueError(f"Invalid file type for {kind}")
+
     key = _key_for(product_id, kind, filename)
+
+    # 🔒 Make sure we start reading from the beginning of the stream.
+    try:
+        file_storage.stream.seek(0)
+    except Exception:
+        pass  # not all wrappers need/allow seek
+
     s3.upload_fileobj(
-        Fileobj=file_storage.stream,
+        Fileobj=file_storage.stream,   # pass the file-like stream
         Bucket=SDS_BUCKET,
         Key=key,
         ExtraArgs={
             "ContentType": _guess_content_type(kind, filename),
             "Metadata": {"product_id": str(product_id), "kind": kind},
-            "CacheControl": "private, max-age=31536000"
-        }
+            "CacheControl": "private, max-age=31536000",
+        },
     )
     return key
 
