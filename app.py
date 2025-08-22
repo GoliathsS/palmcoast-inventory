@@ -39,6 +39,15 @@ app = Flask(__name__)
 from werkzeug.middleware.proxy_fix import ProxyFix
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 
+CANONICAL_HOST = os.environ.get("CANONICAL_HOST")  # e.g. "palmcoast-inventory.onrender.com"
+
+@app.before_request
+def _enforce_host():
+    if CANONICAL_HOST and request.host != CANONICAL_HOST:
+        from urllib.parse import urlsplit, urlunsplit
+        u = urlsplit(request.url)
+        return redirect(urlunsplit((u.scheme, CANONICAL_HOST, u.path, u.query, u.fragment)), code=301)
+
 app.config.update(
     SESSION_COOKIE_SECURE=True,        # HTTPS on Render
     SESSION_COOKIE_SAMESITE="Lax",
@@ -46,7 +55,11 @@ app.config.update(
     REMEMBER_COOKIE_SAMESITE="Lax",
     PREFERRED_URL_SCHEME="https",
 )
-app.secret_key = os.getenv("SECRET_KEY", "CHANGE_ME_IN_PROD")  # set env var in prod
+
+SECRET_KEY = os.environ.get("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY env var is required")
+app.config['SECRET_KEY'] = SECRET_KEY
 
 # Rate limiter – used on /login only
 limiter = Limiter(get_remote_address, app=app, default_limits=[])
