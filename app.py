@@ -13,7 +13,7 @@ import io
 import json
 from dotenv import load_dotenv
 load_dotenv()
-from io import
+from io import TextIOWrapper
 from urllib.parse import urlparse
 from werkzeug.utils import secure_filename
 from datetime import datetime, date
