@@ -64,18 +64,34 @@ IMG_EXTS = {"png", "jpg", "jpeg"}
 
 def _allowed_ext(kind: str, filename: str) -> bool:
     ext = (filename.rsplit(".", 1)[-1] or "").lower()
-    return (ext in PDF_EXTS) if kind in ("sds","label") else (ext in IMG_EXTS)
+    if kind == "sds":
+        return ext in PDF_EXTS
+    if kind == "label":
+        return ext in (PDF_EXTS | IMG_EXTS)     # allow PDF or image for label
+    if kind == "barcode":
+        return ext in IMG_EXTS
+    return False
 
 def _key_for(product_id: int, kind: str, filename: str) -> str:
-    ext = (filename.rsplit(".",1)[-1] or "").lower()
-    if kind in ("sds","label"): ext = "pdf"
-    return f"sds/{product_id}/{kind}.{ext}"
+    ext = (filename.rsplit(".", 1)[-1] or "").lower()
+    if kind == "sds":
+        ext = "pdf"                              # SDS must be pdf
+    elif kind == "label":
+        if ext not in (PDF_EXTS | IMG_EXTS):
+            raise ValueError("Label must be PDF/PNG/JPG")
+    elif kind == "barcode":
+        if ext not in IMG_EXTS:
+            raise ValueError("Barcode must be PNG/JPG")
+    return f"sds/{product_id}/{kind}.{ext}"      # deterministic key (overwrite old)
 
 def _guess_content_type(kind: str, filename: str) -> str:
-    ext = (filename.rsplit(".",1)[-1] or "").lower()
-    if kind in ("sds","label"): return "application/pdf"
-    if ext == "png": return "image/png"
-    if ext in ("jpg","jpeg"): return "image/jpeg"
+    ext = (filename.rsplit(".", 1)[-1] or "").lower()
+    if ext == "pdf":
+        return "application/pdf"
+    if ext == "png":
+        return "image/png"
+    if ext in ("jpg", "jpeg"):
+        return "image/jpeg"
     return "application/octet-stream"
 
 MIGRATED_SDS_COLS = False
@@ -115,27 +131,40 @@ def _ensure_product_columns_once():
     cur.close(); conn.close()
     MIGRATED_SDS_COLS = True
 
-def _is_http_url(s): 
-    if not s: return False
-    try:
-        u = urlparse(s); return u.scheme in ("http","https")
-    except: return False
+def _handle_to_presigned(handle: str | None, kind: str, expires: int = 1800) -> str | None:
+    if not handle:
+        return None
 
-def _is_s3_url(s): 
-    return bool(s and s.startswith("s3://"))
+    def _is_http_url(s):
+        from urllib.parse import urlparse
+        try:
+            u = urlparse(s); return u.scheme in ("http", "https")
+        except:
+            return False
 
-def _handle_to_presigned(handle: str|None, kind: str, expires: int = 1800) -> str|None:
-    if not handle: return None
+    def _is_s3_url(s):
+        return bool(s and s.startswith("s3://"))
+
     if _is_http_url(handle):  # legacy URL
         return handle
+
     bucket = SDS_BUCKET
     key = handle
     if _is_s3_url(handle):
+        from urllib.parse import urlparse
         u = urlparse(handle); bucket = u.netloc or SDS_BUCKET; key = u.path.lstrip("/")
+
+    # Pick response type based on file extension
+    ext = (key.rsplit(".", 1)[-1] or "").lower()
     params = {"Bucket": bucket, "Key": key}
-    if kind in ("sds","label"):
+    if ext == "pdf":
         params["ResponseContentType"] = "application/pdf"
         params["ResponseContentDisposition"] = f'inline; filename="{kind}.pdf"'
+    elif ext == "png":
+        params["ResponseContentType"] = "image/png"
+    elif ext in ("jpg", "jpeg"):
+        params["ResponseContentType"] = "image/jpeg"
+
     try:
         return s3.generate_presigned_url("get_object", Params=params, ExpiresIn=expires)
     except Exception as e:
