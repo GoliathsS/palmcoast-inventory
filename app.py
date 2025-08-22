@@ -2410,7 +2410,6 @@ def uploaded_file(filename):
 @login_required
 @role_required('ADMIN')
 def edit_sds():
-
     conn = get_db_connection()
     cur = conn.cursor()
 
@@ -2422,33 +2421,46 @@ def edit_sds():
         label_file = request.files.get('label_pdf')
         barcode_file = request.files.get('barcode_img')
 
+        saved = []  # what we successfully saved
+
         try:
             if epa_number:
                 cur.execute("UPDATE products SET epa_number=%s WHERE id=%s", (epa_number, product_id))
+                saved.append("EPA #")
 
             if sds_file and sds_file.filename:
                 key = _upload_file_to_s3(sds_file, product_id, "sds")
                 _update_product_key(product_id, "sds", key)
+                saved.append("SDS")
 
             if label_file and label_file.filename:
                 key = _upload_file_to_s3(label_file, product_id, "label")
                 _update_product_key(product_id, "label", key)
+                saved.append("Label")
 
             if barcode_file and barcode_file.filename:
                 key = _upload_file_to_s3(barcode_file, product_id, "barcode")
                 _update_product_key(product_id, "barcode", key)
+                saved.append("Barcode")
 
-            conn.commit()
+            if saved:
+                conn.commit()
+                flash(f"Saved: {', '.join(saved)}", "success")
+            else:
+                conn.rollback()         # nothing changed
+                flash("Nothing to update. Choose a file or enter EPA #.", "warning")
+
         except Exception as e:
             conn.rollback()
-            app.logger.exception("SDS upload failed")
+            app.logger.exception("SDS/Label upload failed")
             flash(f"Upload failed: {e}", "danger")
+
         finally:
             cur.close(); conn.close()
 
         return redirect(url_for('edit_sds'))
 
-    # GET: product list for the form
+    # GET
     cur.execute("SELECT id, name, epa_number FROM products ORDER BY name;")
     products = cur.fetchall()
     cur.close(); conn.close()
