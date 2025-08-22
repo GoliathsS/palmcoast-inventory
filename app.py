@@ -36,6 +36,16 @@ log = logging.getLogger("scan_action")
 log.setLevel(logging.INFO)
 
 app = Flask(__name__)
+from werkzeug.middleware.proxy_fix import ProxyFix
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
+
+app.config.update(
+    SESSION_COOKIE_SECURE=True,        # HTTPS on Render
+    SESSION_COOKIE_SAMESITE="Lax",
+    REMEMBER_COOKIE_SECURE=True,
+    REMEMBER_COOKIE_SAMESITE="Lax",
+    PREFERRED_URL_SCHEME="https",
+)
 app.secret_key = os.getenv("SECRET_KEY", "CHANGE_ME_IN_PROD")  # set env var in prod
 
 # Rate limiter – used on /login only
