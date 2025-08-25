@@ -35,10 +35,11 @@
     <form action="{{ url_for('edit_sds') }}" method="POST" enctype="multipart/form-data">
       <div class="mb-3">
         <label for="product_id" class="form-label">Select Product:</label>
-        <select name="product_id" class="form-select" required>
+        <select id="product_id" name="product_id" class="form-select" required>
           {% for product in products %}
             <!-- product[0]=id, product[1]=name -->
-            <option value="{{ product[0] }}" {% if request.form.product_id|default('') == product[0]|string %}selected{% endif %}>
+            {% set selected_id = selected_product_id if selected_product_id is defined else request.form.product_id %}
+            <option value="{{ product[0] }}" {% if (selected_id|default('')) == (product[0]|string) %}selected{% endif %}>
               {{ product[1] }}
             </option>
           {% endfor %}
@@ -47,24 +48,23 @@
 
       <div class="mb-3">
         <label for="epa_number" class="form-label">EPA Registration # (optional):</label>
-        <input type="text" name="epa_number" class="form-control" placeholder="e.g. 12345-67"
+        <input id="epa_number" type="text" name="epa_number" class="form-control" placeholder="e.g. 12345-67"
                value="{{ request.form.epa_number or '' }}">
       </div>
 
       <div class="mb-3">
         <label for="sds_pdf" class="form-label">Upload SDS PDF:</label>
-        <input type="file" name="sds_pdf" class="form-control" accept=".pdf">
+        <input id="sds_pdf" type="file" name="sds_pdf" class="form-control" accept=".pdf" autocomplete="off">
       </div>
 
       <div class="mb-3">
         <label for="label_pdf" class="form-label">Upload Product Label (PDF or Image):</label>
-        <!-- Allow PDF or image; server will set correct Content-Type -->
-        <input type="file" name="label_pdf" class="form-control" accept=".pdf,.png,.jpg,.jpeg">
+        <input id="label_pdf" type="file" name="label_pdf" class="form-control" accept=".pdf,.png,.jpg,.jpeg" autocomplete="off">
       </div>
 
       <div class="mb-4">
         <label for="barcode_img" class="form-label">Upload Barcode Image:</label>
-        <input type="file" name="barcode_img" class="form-control" accept="image/png,image/jpeg">
+        <input id="barcode_img" type="file" name="barcode_img" class="form-control" accept="image/png,image/jpeg" autocomplete="off">
       </div>
 
       <button type="submit" class="btn btn-primary w-100">📤 Upload & Save</button>
@@ -72,3 +72,4 @@
   </div>
 </body>
 </html>
+
