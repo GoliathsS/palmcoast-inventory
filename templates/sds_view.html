@@ -8,87 +8,30 @@
 
   <style>
     /* Page-local polish (uses your global tokens) */
-    .header-bar{
-      position:sticky; top:0; z-index:10;
-      background: color-mix(in oklab, var(--surface-1), transparent 4%);
-      backdrop-filter: blur(6px);
-      border-bottom:1px solid var(--border);
-      padding: 12px 0;
-    }
+    .header-bar{position:sticky; top:0; z-index:10; background: color-mix(in oklab, var(--surface-1), transparent 4%); backdrop-filter: blur(6px); border-bottom:1px solid var(--border); padding: 12px 0;}
     .title{ margin:0 0 4px; color:var(--primary) }
     .kpis{ display:flex; gap:.5rem; flex-wrap:wrap }
-    .kpis .chip{
-      display:inline-flex; align-items:center; gap:.35rem;
-      padding:.35rem .55rem; border-radius:.6rem;
-      background:var(--accent); color:var(--primary-ink);
-      border:1px solid color-mix(in oklab, var(--primary), #000 12%);
-      font-weight:600; font-size:.9rem;
-    }
-
-    .toolbar{
-      display:grid; gap:.6rem;
-      grid-template-columns: 1fr;
-      margin: 12px 0 16px;
-    }
-    @media(min-width:720px){
-      .toolbar{ grid-template-columns: 1fr auto auto auto; align-items:center }
-    }
-    .search{ position:relative; }
-    .search input{ padding-left:36px; }
-    .search .icon{
-      position:absolute; left:10px; top:50%; transform:translateY(-50%);
-      opacity:.55;
-    }
+    .kpis .chip{ display:inline-flex; align-items:center; gap:.35rem; padding:.35rem .55rem; border-radius:.6rem; background:var(--accent); color:var(--primary-ink); border:1px solid color-mix(in oklab, var(--primary), #000 12%); font-weight:600; font-size:.9rem; }
+    .toolbar{ display:grid; gap:.6rem; grid-template-columns: 1fr; margin: 12px 0 16px;}
+    @media(min-width:720px){ .toolbar{ grid-template-columns: 1fr auto auto auto; align-items:center } }
+    .search{ position:relative; } .search input{ padding-left:36px; }
+    .search .icon{ position:absolute; left:10px; top:50%; transform:translateY(-50%); opacity:.55; }
     .filters{ display:flex; gap:.5rem; flex-wrap:wrap; }
-    .filters .select,
-    .filters .check{
-      display:flex; align-items:center; gap:.4rem;
-      background:var(--surface-1);
-      border:1px solid var(--border);
-      padding:8px 10px; border-radius:8px;
-      font-weight:600; color:var(--text-1)
-    }
+    .filters .select, .filters .check{ display:flex; align-items:center; gap:.4rem; background:var(--surface-1); border:1px solid var(--border); padding:8px 10px; border-radius:8px; font-weight:600; color:var(--text-1) }
     .filters .select select{ border:none; background:transparent; font-weight:600; color:inherit; outline:none }
-
-    .grid{
-      display:grid; gap:12px;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    }
-    .card{
-      background:var(--surface-1);
-      border:1px solid var(--border);
-      border-radius:12px;
-      padding:14px;
-      box-shadow:0 2px 12px rgba(0,0,0,.05);
-      display:flex; flex-direction:column; gap:.55rem;
-    }
+    .grid{ display:grid; gap:12px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+    .card{ background:var(--surface-1); border:1px solid var(--border); border-radius:12px; padding:14px; box-shadow:0 2px 12px rgba(0,0,0,.05); display:flex; flex-direction:column; gap:.55rem; }
     .card h3{ margin:0; font-size:1.02rem; color:var(--text-1) }
     .meta{ color:var(--text-2); font-size:.95rem }
-
     .badges{ display:flex; gap:.4rem; flex-wrap:wrap; margin-top:.25rem }
-    .badge{
-      display:inline-flex; align-items:center; gap:.35rem;
-      font-size:.85rem; font-weight:700;
-      padding:.35rem .55rem; border-radius:999px;
-      border:1px solid var(--border); background:var(--surface-2);
-    }
+    .badge{ display:inline-flex; align-items:center; gap:.35rem; font-size:.85rem; font-weight:700; padding:.35rem .55rem; border-radius:999px; border:1px solid var(--border); background:var(--surface-2); }
     .badge.ok{ background:color-mix(in oklab, var(--success), #fff 85%); color:#065f46; border-color:color-mix(in oklab, var(--success), #000 14%) }
     .badge.warn{ background:color-mix(in oklab, var(--warning), #fff 86%); color:#92400e; border-color:color-mix(in oklab, var(--warning), #000 14%) }
     .badge.danger{ background:color-mix(in oklab, var(--danger), #fff 86%); color:#7f1d1d; border-color:color-mix(in oklab, var(--danger), #000 14%) }
     .links{ display:flex; flex-wrap:wrap; gap:.4rem; margin-top:.25rem }
-    .links a{
-      text-decoration:none;
-      border:1px solid var(--border);
-      padding:.45rem .6rem; border-radius:8px;
-      background:var(--surface-1); color:var(--text-1); font-weight:600;
-      transition: transform .12s ease, box-shadow .12s ease;
-    }
+    .links a{ text-decoration:none; border:1px solid var(--border); padding:.45rem .6rem; border-radius:8px; background:var(--surface-1); color:var(--text-1); font-weight:600; transition: transform .12s ease, box-shadow .12s ease; }
     .links a:hover{ transform: translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,.08) }
-
-    .empty{
-      text-align:center; color:var(--text-2); padding:28px 12px;
-      border:1px dashed var(--border); border-radius:12px; background:var(--surface-1)
-    }
+    .empty{ text-align:center; color:var(--text-2); padding:28px 12px; border:1px dashed var(--border); border-radius:12px; background:var(--surface-1) }
   </style>
 </head>
 <body>
@@ -98,15 +41,24 @@
     <header class="header-bar">
       <div class="container">
         <h2 class="title">SDS & Label Portal</h2>
+
+        {# ---- Robust counters: support new keys and legacy URL fields ---- #}
+        {% set counts = namespace(total=0, sds=0, label=0, barcode=0) %}
+        {% for p in products %}
+          {% set counts.total = counts.total + 1 %}
+          {% set sds_val = (p.sds_key if p.sds_key is defined else (p.sds_url if p.sds_url is defined else None)) %}
+          {% set label_val = (p.label_key if p.label_key is defined else (p.label_url if p.label_url is defined else None)) %}
+          {% set barcode_val = (p.barcode_key if p.barcode_key is defined else (p.barcode_img_url if p.barcode_img_url is defined else None)) %}
+          {% if sds_val %}{% set counts.sds = counts.sds + 1 %}{% endif %}
+          {% if label_val %}{% set counts.label = counts.label + 1 %}{% endif %}
+          {% if barcode_val %}{% set counts.barcode = counts.barcode + 1 %}{% endif %}
+        {% endfor %}
+
         <div class="kpis">
-          {% set total = products|length %}
-          {% set sds_count = products|selectattr('sds_url')|list|length %}
-          {% set label_count = products|selectattr('label_url')|list|length %}
-          {% set barcode_count = products|selectattr('barcode_img_url')|list|length %}
-          <span class="chip">📦 {{ total }} products</span>
-          <span class="chip">📄 SDS: {{ sds_count }}</span>
-          <span class="chip">🧾 Labels: {{ label_count }}</span>
-          <span class="chip">🧷 Barcodes: {{ barcode_count }}</span>
+          <span class="chip">📦 {{ counts.total }} products</span>
+          <span class="chip">📄 SDS: {{ counts.sds }}</span>
+          <span class="chip">🧾 Labels: {{ counts.label }}</span>
+          <span class="chip">🧷 Barcodes: {{ counts.barcode }}</span>
         </div>
       </div>
     </header>
@@ -144,29 +96,28 @@
     <!-- Grid -->
     <section id="grid" class="grid" aria-live="polite">
       {% for p in products %}
-        {% set pid = p.id %}
-        {% set name = p.name %}
-        {% set epa = p.epa_number %}
-        {% set sds = p.sds_url %}
-        {% set label = p.label_url %}
-        {% set barcode = p.barcode_img_url %}
-        {% set uploaded = p.sds_uploaded_on %}
+        {# Support both row types: objects and tuples #}
+        {% set pid = (p.id if p.id is defined else p[0]) %}
+        {% set name = (p.name if p.name is defined else p[1]) %}
+        {% set epa  = (p.epa_number if p.epa_number is defined else (p[2] if p|length > 2 else None)) %}
 
-        {% set cutoff = today.replace(year=today.year - 3) %}
-        {% if uploaded %}
+        {% set sds   = (p.sds_key   if p.sds_key   is defined else (p.sds_url if p.sds_url is defined else None)) %}
+        {% set label = (p.label_key if p.label_key is defined else (p.label_url if p.label_url is defined else None)) %}
+        {% set barcode = (p.barcode_key if p.barcode_key is defined else (p.barcode_img_url if p.barcode_img_url is defined else None)) %}
+        {% set uploaded = (p.sds_uploaded_on if p.sds_uploaded_on is defined else None) %}
+
+        {# Status based on upload date if "today" provided; else "unknown" #}
+        {% if uploaded and today is defined %}
+          {% set cutoff = today.replace(year=today.year - 3) %}
           {% if uploaded < cutoff %}
-            {% set status = 'expired' %}
-            {% set status_text = '🔴 SDS Expired' %}
-            {% set badge_class = 'danger' %}
+            {% set status = 'expired' %}{% set status_text = '🔴 SDS Expired' %}{% set badge_class = 'danger' %}
           {% else %}
-            {% set status = 'valid' %}
-            {% set status_text = '✅ SDS Valid' %}
-            {% set badge_class = 'ok' %}
+            {% set status = 'valid' %}{% set status_text = '✅ SDS Valid' %}{% set badge_class = 'ok' %}
           {% endif %}
+        {% elif uploaded %}
+          {% set status = 'valid' %}{% set status_text = '✅ SDS Uploaded' %}{% set badge_class = 'ok' %}
         {% else %}
-          {% set status = 'unknown' %}
-          {% set status_text = '⚪ No SDS date' %}
-          {% set badge_class = 'warn' %}
+          {% set status = 'unknown' %}{% set status_text = '⚪ No SDS date' %}{% set badge_class = 'warn' %}
         {% endif %}
 
         <article class="card"
@@ -189,17 +140,13 @@
 
           <div class="links">
             {% if sds %}
-              <!-- Use presigned URL from route, or switch to always-fresh redirect below -->
-              <a href="{{ sds }}" target="_blank" rel="noopener" aria-label="Open SDS for {{ name }}">📄 SDS</a>
-              {# Alternatively: <a href="{{ url_for('sds_open', product_id=pid, kind='sds') }}" target="_blank" rel="noopener">📄 SDS</a> #}
+              <a href="{{ url_for('sds_open', product_id=pid, kind='sds') }}" target="_blank" rel="noopener" aria-label="Open SDS for {{ name }}">📄 SDS</a>
             {% endif %}
             {% if label %}
-              <a href="{{ label }}" target="_blank" rel="noopener" aria-label="Open Label for {{ name }}">🧾 Label</a>
-              {# Or: <a href="{{ url_for('sds_open', product_id=pid, kind='label') }}" target="_blank" rel="noopener">🧾 Label</a> #}
+              <a href="{{ url_for('sds_open', product_id=pid, kind='label') }}" target="_blank" rel="noopener" aria-label="Open Label for {{ name }}">🧾 Label</a>
             {% endif %}
             {% if barcode %}
-              <a href="{{ barcode }}" target="_blank" rel="noopener" aria-label="Open Barcode for {{ name }}">🧷 Barcode</a>
-              {# Or: <a href="{{ url_for('sds_open', product_id=pid, kind='barcode') }}" target="_blank" rel="noopener">🧷 Barcode</a> #}
+              <a href="{{ url_for('sds_open', product_id=pid, kind='barcode') }}" target="_blank" rel="noopener" aria-label="Open Barcode for {{ name }}">🧷 Barcode</a>
             {% endif %}
           </div>
         </article>
@@ -211,7 +158,7 @@
     </div>
 
     <p class="small-muted" style="margin-top:18px">
-      SDS validity is based on upload date ({{ today }}). Items older than 3 years are flagged as expired.
+      SDS validity is based on upload date{% if today is defined %} ({{ today }}){% endif %}. Items older than 3 years are flagged as expired.
     </p>
   </div>
 
@@ -254,9 +201,7 @@
       empty.style.display = visible === 0 ? '' : 'none';
     }
 
-    const debounce = (fn, ms=150) => {
-      let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
-    };
+    const debounce = (fn, ms=150) => { let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); }; };
 
     q.addEventListener('input', debounce(applyFilters, 120));
     [fSds, fLabel, fBarcode, fStatus].forEach(el => el.addEventListener('change', applyFilters));
