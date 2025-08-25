@@ -43,7 +43,10 @@ CANONICAL_HOST = os.environ.get("CANONICAL_HOST")  # e.g. "palmcoast-inventory.o
 
 @app.before_request
 def _enforce_host():
-    if CANONICAL_HOST and request.host != CANONICAL_HOST:
+    if not CANONICAL_HOST or request.host == CANONICAL_HOST:
+        return
+    # Only canonicalize safe methods; let POST/PUT/PATCH/DELETE proceed
+    if request.method in ("GET", "HEAD"):
         from urllib.parse import urlsplit, urlunsplit
         u = urlsplit(request.url)
         return redirect(urlunsplit((u.scheme, CANONICAL_HOST, u.path, u.query, u.fragment)), code=301)
