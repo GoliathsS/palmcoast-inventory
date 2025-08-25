@@ -2412,25 +2412,48 @@ def sds_portal():
 
     return render_template('sds_view.html', products=products, today=date.today())
 
-@app.route('/sds/open/<int:product_id>/<kind>')
+@app.get("/sds/<int:product_id>/<kind>")
 @login_required
-@role_required('TECH','ADMIN')
 def sds_open(product_id, kind):
-    kind = kind.lower()
-    if kind not in ("sds","label","barcode"): abort(400)
+    assert kind in ("sds", "label", "barcode")
+    conn = get_db_connection(); cur = conn.cursor()
+    cur.execute("""
+        SELECT sds_key, label_key, barcode_key,
+               COALESCE(sds_url, '') AS legacy_sds,
+               COALESCE(label_url, '') AS legacy_label,
+               COALESCE(barcode_img_url, '') AS legacy_barcode
+        FROM products WHERE id=%s
+    """, (product_id,))
+    row = cur.fetchone(); cur.close(); conn.close()
+    if not row: abort(404)
 
-    conn = get_db_connection()
-    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-    cur.execute("""SELECT sds_key,label_key,barcode_key,sds_url,label_url,barcode_img_url
-                   FROM products WHERE id=%s""", (product_id,))
-    r = cur.fetchone(); cur.close(); conn.close()
-    if not r: abort(404)
+    # Pick the right handle (prefer key, fallback to legacy URL)
+    idx = {"sds": 0, "label": 1, "barcode": 2}[kind]
+    handle = row[idx]
+    if not handle:
+        legacy = [row[3], row[4], row[5]][idx]
+        if not legacy: abort(404)
+        return redirect(legacy)  # legacy absolute URL
 
-    handle = {"sds": r["sds_key"] or r["sds_url"],
-              "label": r["label_key"] or r["label_url"],
-              "barcode": r["barcode_key"] or r["barcode_img_url"]}[kind]
-    url = _handle_to_presigned(handle, kind)
-    if not url: abort(404, f"No {kind} attached.")
+    # If handle looks like a full URL, just go there (legacy safety)
+    if isinstance(handle, str) and handle.startswith(("http://", "https://")):
+        return redirect(handle)
+
+    # Otherwise it's an S3 key → presign and redirect
+    key = handle  # e.g. "sds/123/sds.pdf"
+    bucket = os.environ.get("SDS_BUCKET", "palmcoast-sds")
+    s3 = boto3.client("s3", region_name=os.getenv("AWS_REGION", "us-east-2"))
+    ext = (key.rsplit(".", 1)[-1] or "").lower()
+    params = {"Bucket": bucket, "Key": key}
+    if ext == "pdf":
+        params["ResponseContentType"] = "application/pdf"
+        params["ResponseContentDisposition"] = f'inline; filename="{kind}.pdf"'
+    elif ext == "png":
+        params["ResponseContentType"] = "image/png"
+    elif ext in ("jpg", "jpeg"):
+        params["ResponseContentType"] = "image/jpeg"
+
+    url = s3.generate_presigned_url("get_object", Params=params, ExpiresIn=300)
     return redirect(url)
 
 @app.route('/static/uploads/<path:filename>')
