@@ -172,27 +172,31 @@ def _build_html(vehicle_name, due_miles, current_miles, plate, action_link, logo
 """
 
 def _ics_for_tomorrow(vehicle_name: str, action_link: str) -> str:
-    """All-day calendar reminder for tomorrow."""
+    from datetime import datetime, timedelta, date, timezone
     today = date.today()
     dtstart = (today + timedelta(days=1)).strftime("%Y%m%d")
     dtend = (today + timedelta(days=2)).strftime("%Y%m%d")
     uid = f"{int(datetime.now(timezone.utc).timestamp())}-{vehicle_name.replace(' ', '')}@palmcoast"
     now = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
     desc = f"Schedule oil change for {vehicle_name}. Update status: {action_link}"
-    return f"""BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:-//Palm Coast//Maintenance//EN
-CALSCALE:GREGORIAN
-BEGIN:VEVENT
-UID:{uid}
-DTSTAMP:{now}
-SUMMARY:Schedule Oil Change — {vehicle_name}
-DESCRIPTION:{desc}
-DTSTART;VALUE=DATE:{dtstart}
-DTEND;VALUE=DATE:{dtend}
-END:VEVENT
-END:VCALENDAR
-"""
+
+    lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Palm Coast//Maintenance//EN",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+        "BEGIN:VEVENT",
+        f"UID:{uid}",
+        f"DTSTAMP:{now}",
+        f"SUMMARY:Schedule Oil Change — {vehicle_name}",
+        f"DESCRIPTION:{desc}",
+        f"DTSTART;VALUE=DATE:{dtstart}",
+        f"DTEND;VALUE=DATE:{dtend}",
+        "END:VEVENT",
+        "END:VCALENDAR",
+    ]
+    return "\r\n".join(lines) + "\r\n"
 
 def send_maintenance_email(vehicle_id: int, vehicle_name: str, due_miles: int, current_miles: int, license_plate: str | None = None):
     if not GMAIL_USER or not GMAIL_APP_PASSWORD:
@@ -227,7 +231,13 @@ def send_maintenance_email(vehicle_id: int, vehicle_name: str, due_miles: int, c
 
     # Optional: attach .ics calendar file (nice touch)
     ics = _ics_for_tomorrow(vehicle_name, action_link)
-    msg.add_attachment(ics, maintype="text", subtype="calendar", filename="oil-change-reminder.ics")
+    msg.add_attachment(
+    ics,                          # <- str payload
+    subtype="calendar",
+    filename="oil-change-reminder.ics",
+    params={"method": "PUBLISH", "name": "oil-change-reminder.ics"},
+    headers=[("Content-Class", "urn:content-classes:calendarmessage")]
+    )
 
     try:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as server:
