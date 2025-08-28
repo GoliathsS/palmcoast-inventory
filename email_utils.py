@@ -17,6 +17,7 @@ RECIPIENTS = [
     "Cole@palmcoastpestcontrol.com",
     "Scott@palmcoastpestcontrol.com",
     "Victoria@palmcoastpestcontrol.com",
+    "Todd@palmcoastpestcontrol.com",
 ]
 
 def _severity(current_miles: int, due_miles: int) -> str:
