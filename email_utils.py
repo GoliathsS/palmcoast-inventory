@@ -16,6 +16,7 @@ BRAND_INK = os.getenv("BRAND_INK", "#0b1220")
 RECIPIENTS = [
     "Cole@palmcoastpestcontrol.com",
     "Scott@palmcoastpestcontrol.com",
+    "Victoria@palmcoastpestcontrol.com",
 ]
 
 def _severity(current_miles: int, due_miles: int) -> str:
