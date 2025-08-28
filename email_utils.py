@@ -233,11 +233,11 @@ def send_maintenance_email(vehicle_id: int, vehicle_name: str, due_miles: int, c
     # Optional: attach .ics calendar file (nice touch)
     ics = _ics_for_tomorrow(vehicle_name, action_link)
     msg.add_attachment(
-    ics,                          # <- str payload
-    subtype="calendar",
-    filename="oil-change-reminder.ics",
-    params={"method": "PUBLISH", "name": "oil-change-reminder.ics"},
-    headers=[("Content-Class", "urn:content-classes:calendarmessage")]
+        ics,  # str payload
+        subtype="calendar",
+        filename="oil-change-reminder.ics",
+        params={"method": "PUBLISH", "name": "oil-change-reminder.ics"},
+        headers=["Content-Class: urn:content-classes:calendarmessage"]  # <-- string header, not tuple
     )
 
     try:
