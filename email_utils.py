@@ -158,7 +158,7 @@ def _build_html(vehicle_name, due_miles, current_miles, plate, action_link, logo
           <tr>
             <td align="center" style="padding:0 24px 24px 24px;">
               <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#98a2b3;">
-                Palm Coast Pest Control • (561) 250-6261
+                Palm Coast Pest Control • (561) 575-4005
               </div>
             </td>
           </tr>
