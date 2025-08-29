@@ -230,7 +230,7 @@ def _upload_file_to_s3(file_storage, product_id: int, kind: str) -> str:
 
     key = _key_for(product_id, kind, filename)
 
-    # ensure we read from the beginning even if Werkzeug wrapped it
+    # Always rewind before upload
     try:
         file_storage.stream.seek(0)
     except Exception:
@@ -246,6 +246,9 @@ def _upload_file_to_s3(file_storage, product_id: int, kind: str) -> str:
             "CacheControl": "private, max-age=31536000",
         },
     )
+
+    # Verify object exists (catches perms/region issues immediately)
+    s3.head_object(Bucket=SDS_BUCKET, Key=key)
     return key
 
 # Ensure upload folders exist
@@ -2524,29 +2527,21 @@ def edit_sds():
 
         # Visibility: exact payload received (check Render logs once)
         app.logger.info(
-            "edit_sds POST: ct=%s, len=%s, form=%s, files=%s",
-            request.mimetype, request.content_length,
-            list(request.form.keys()), list(request.files.keys())
+            "edit_sds POST recv: pid=%s, filenames=%s",
+            product_id,
+            {
+                "sds_pdf":     getattr(sds_file, "filename", None),
+                "label_pdf":   getattr(label_file, "filename", None),
+                "barcode_img": getattr(barcode_file, "filename", None),
+            }
         )
 
-        # Normalize zero-length files to None to avoid weird parser states
-        def _nz(fs):  # returns fs if has a filename and nonzero length, else None
-            if not fs or not fs.filename:
-                return None
-            try:
-                pos = fs.stream.tell()
-                fs.stream.seek(0, 2)  # to end
-                size = fs.stream.tell()
-                fs.stream.seek(pos)
-                return fs if size > 0 else None
-            except Exception:
-                return fs  # if we can't tell size, let upload attempt handle it
+        # NOTE: Only check presence of filename; do NOT try to pre-measure stream size.
+        has_sds     = bool(sds_file and sds_file.filename)
+        has_label   = bool(label_file and label_file.filename)
+        has_barcode = bool(barcode_file and barcode_file.filename)
 
-        sds_file     = _nz(sds_file)
-        label_file   = _nz(label_file)
-        barcode_file = _nz(barcode_file)
-
-        if not any([epa_number, sds_file, label_file, barcode_file]):
+        if not any([epa_number, has_sds, has_label, has_barcode]):
             flash("Nothing to update. Choose a file or enter EPA #.", "warning")
             return redirect(url_for('edit_sds'))
 
@@ -2558,22 +2553,23 @@ def edit_sds():
                 cur.execute("UPDATE products SET epa_number=%s WHERE id=%s", (epa_number, product_id))
                 saved.append("EPA #")
 
-            if sds_file:
+            if has_sds:
                 key = _upload_file_to_s3(sds_file, product_id, "sds")
                 _update_product_key(product_id, "sds", key)
                 saved.append("SDS")
 
-            if label_file:
+            if has_label:
                 key = _upload_file_to_s3(label_file, product_id, "label")
                 _update_product_key(product_id, "label", key)
                 saved.append("Label")
 
-            if barcode_file:
+            if has_barcode:
                 key = _upload_file_to_s3(barcode_file, product_id, "barcode")
                 _update_product_key(product_id, "barcode", key)
                 saved.append("Barcode")
 
             conn.commit()
+            app.logger.info("edit_sds SUCCESS: pid=%s saved=%s", product_id, saved)
             flash(f"Saved: {', '.join(saved)}", "success")
 
         except Exception as e:
@@ -2585,9 +2581,6 @@ def edit_sds():
 
         return redirect(url_for('edit_sds'))
 
-    except BadRequest as e:
-        # Will be handled by the @app.errorhandler(BadRequest), but keep a guard here
-        raise
     except Exception as e:
         app.logger.exception("Unexpected error in edit_sds POST")
         flash(f"Unexpected error: {e}", "danger")
