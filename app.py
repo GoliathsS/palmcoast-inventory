@@ -41,6 +41,15 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 
 CANONICAL_HOST = os.environ.get("CANONICAL_HOST")  # e.g. "palmcoast-inventory.onrender.com"
 
+# Ensure live template reloads (prevents stale HTML on Render)
+app.config["TEMPLATES_AUTO_RELOAD"] = True
+
+# Show a clear message if a file is too large (50 MB cap already set)
+@app.errorhandler(413)
+def too_large(e):
+    flash("File too large. Limit is 50 MB.", "danger")
+    return redirect(url_for("edit_sds"))
+
 @app.before_request
 def _enforce_host():
     if not CANONICAL_HOST or request.host == CANONICAL_HOST:
@@ -2500,6 +2509,18 @@ def edit_sds():
     sds_file     = request.files.get('sds_pdf')
     label_file   = request.files.get('label_pdf')
     barcode_file = request.files.get('barcode_img')
+
+    # Require multipart so files actually arrive
+    if not (request.mimetype or "").startswith("multipart/"):
+        flash("Form submit was not multipart/form-data — files were not sent. Refresh and try again.", "danger")
+        return redirect(url_for('edit_sds'))
+
+    # Log exactly what arrived (check Render logs once)
+    app.logger.info(
+        "edit_sds POST: ct=%s, len=%s, form=%s, files=%s",
+        request.mimetype, request.content_length,
+        list(request.form.keys()), list(request.files.keys())
+    )
 
     # nothing to do? don't 400 — just flash and return
     if not any([
