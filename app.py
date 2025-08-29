@@ -41,13 +41,21 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 
 CANONICAL_HOST = os.environ.get("CANONICAL_HOST")  # e.g. "palmcoast-inventory.onrender.com"
 
-# Ensure live template reloads (prevents stale HTML on Render)
+# Make sure templates refresh and bad requests never look like "nothing happened"
 app.config["TEMPLATES_AUTO_RELOAD"] = True
 
-# Show a clear message if a file is too large (50 MB cap already set)
+from werkzeug.exceptions import BadRequest
+
 @app.errorhandler(413)
 def too_large(e):
     flash("File too large. Limit is 50 MB.", "danger")
+    return redirect(url_for("edit_sds"))
+
+@app.errorhandler(BadRequest)
+def handle_bad_request(e):
+    # Log full details and bounce back to the form with a visible message
+    app.logger.exception("400 Bad Request on %s: %s", request.path, getattr(e, "description", e))
+    flash("Bad request while processing the upload. Please try again.", "danger")
     return redirect(url_for("edit_sds"))
 
 @app.before_request
@@ -2489,7 +2497,6 @@ def uploaded_file(filename):
 @login_required
 @role_required('ADMIN')
 def edit_sds():
-    # GET: render form
     if request.method == 'GET':
         conn = get_db_connection(); cur = conn.cursor()
         cur.execute("SELECT id, name, epa_number FROM products ORDER BY name;")
@@ -2497,74 +2504,94 @@ def edit_sds():
         cur.close(); conn.close()
         return render_template('edit_sds.html', products=products)
 
-    # POST: process upload/update
-    product_id_raw = request.form.get('product_id', '').strip()
-    if not product_id_raw.isdigit():
-        flash("Please select a product.", "danger")
-        return redirect(url_for('edit_sds'))
-
-    product_id = int(product_id_raw)
-    epa_number = (request.form.get('epa_number') or "").strip()
-
-    sds_file     = request.files.get('sds_pdf')
-    label_file   = request.files.get('label_pdf')
-    barcode_file = request.files.get('barcode_img')
-
-    # Require multipart so files actually arrive
-    if not (request.mimetype or "").startswith("multipart/"):
-        flash("Form submit was not multipart/form-data — files were not sent. Refresh and try again.", "danger")
-        return redirect(url_for('edit_sds'))
-
-    # Log exactly what arrived (check Render logs once)
-    app.logger.info(
-        "edit_sds POST: ct=%s, len=%s, form=%s, files=%s",
-        request.mimetype, request.content_length,
-        list(request.form.keys()), list(request.files.keys())
-    )
-
-    # nothing to do? don't 400 — just flash and return
-    if not any([
-        epa_number,
-        (sds_file and sds_file.filename),
-        (label_file and label_file.filename),
-        (barcode_file and barcode_file.filename),
-    ]):
-        flash("Nothing to update. Choose a file or enter EPA #.", "warning")
-        return redirect(url_for('edit_sds'))
-
-    conn = get_db_connection(); cur = conn.cursor()
-    saved = []
+    # ----- POST -----
     try:
-        if epa_number:
-            cur.execute("UPDATE products SET epa_number=%s WHERE id=%s", (epa_number, product_id))
-            saved.append("EPA #")
+        product_id_raw = (request.form.get('product_id') or "").strip()
+        if not product_id_raw.isdigit():
+            flash("Please select a product.", "danger")
+            return redirect(url_for('edit_sds'))
+        product_id = int(product_id_raw)
 
-        if sds_file and sds_file.filename:
-            key = _upload_file_to_s3(sds_file, product_id, "sds")
-            _update_product_key(product_id, "sds", key)
-            saved.append("SDS")
+        # Must be multipart or files won't arrive
+        if not (request.mimetype or "").startswith("multipart/"):
+            flash("Form submit was not multipart/form-data — files were not sent. Refresh and try again.", "danger")
+            return redirect(url_for('edit_sds'))
 
-        if label_file and label_file.filename:
-            key = _upload_file_to_s3(label_file, product_id, "label")
-            _update_product_key(product_id, "label", key)
-            saved.append("Label")
+        epa_number  = (request.form.get('epa_number') or "").strip()
+        sds_file     = request.files.get('sds_pdf')
+        label_file   = request.files.get('label_pdf')
+        barcode_file = request.files.get('barcode_img')
 
-        if barcode_file and barcode_file.filename:
-            key = _upload_file_to_s3(barcode_file, product_id, "barcode")
-            _update_product_key(product_id, "barcode", key)
-            saved.append("Barcode")
+        # Visibility: exact payload received (check Render logs once)
+        app.logger.info(
+            "edit_sds POST: ct=%s, len=%s, form=%s, files=%s",
+            request.mimetype, request.content_length,
+            list(request.form.keys()), list(request.files.keys())
+        )
 
-        conn.commit()
-        flash(f"Saved: {', '.join(saved)}", "success")
+        # Normalize zero-length files to None to avoid weird parser states
+        def _nz(fs):  # returns fs if has a filename and nonzero length, else None
+            if not fs or not fs.filename:
+                return None
+            try:
+                pos = fs.stream.tell()
+                fs.stream.seek(0, 2)  # to end
+                size = fs.stream.tell()
+                fs.stream.seek(pos)
+                return fs if size > 0 else None
+            except Exception:
+                return fs  # if we can't tell size, let upload attempt handle it
 
+        sds_file     = _nz(sds_file)
+        label_file   = _nz(label_file)
+        barcode_file = _nz(barcode_file)
+
+        if not any([epa_number, sds_file, label_file, barcode_file]):
+            flash("Nothing to update. Choose a file or enter EPA #.", "warning")
+            return redirect(url_for('edit_sds'))
+
+        conn = get_db_connection(); cur = conn.cursor()
+        saved = []
+
+        try:
+            if epa_number:
+                cur.execute("UPDATE products SET epa_number=%s WHERE id=%s", (epa_number, product_id))
+                saved.append("EPA #")
+
+            if sds_file:
+                key = _upload_file_to_s3(sds_file, product_id, "sds")
+                _update_product_key(product_id, "sds", key)
+                saved.append("SDS")
+
+            if label_file:
+                key = _upload_file_to_s3(label_file, product_id, "label")
+                _update_product_key(product_id, "label", key)
+                saved.append("Label")
+
+            if barcode_file:
+                key = _upload_file_to_s3(barcode_file, product_id, "barcode")
+                _update_product_key(product_id, "barcode", key)
+                saved.append("Barcode")
+
+            conn.commit()
+            flash(f"Saved: {', '.join(saved)}", "success")
+
+        except Exception as e:
+            conn.rollback()
+            app.logger.exception("SDS/Label upload failed")
+            flash(f"Upload failed: {e}", "danger")
+        finally:
+            cur.close(); conn.close()
+
+        return redirect(url_for('edit_sds'))
+
+    except BadRequest as e:
+        # Will be handled by the @app.errorhandler(BadRequest), but keep a guard here
+        raise
     except Exception as e:
-        conn.rollback()
-        app.logger.exception("SDS/Label upload failed")
-        flash(f"Upload failed: {e}", "danger")
-    finally:
-        cur.close(); conn.close()
-
-    return redirect(url_for('edit_sds'))
+        app.logger.exception("Unexpected error in edit_sds POST")
+        flash(f"Unexpected error: {e}", "danger")
+        return redirect(url_for('edit_sds'))
 
 @app.route('/corrections', methods=['GET', 'POST'])
 @login_required
