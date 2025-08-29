@@ -16,7 +16,7 @@
 </head>
 <body>
   <div class="container">
-    <h2>Edit SDS, Label & Barcode Info</h2>
+    <h2>Edit SDS, Label &amp; Barcode Info</h2>
 
     <!-- Flash messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -32,14 +32,15 @@
       {% endif %}
     {% endwith %}
 
+    <!-- IMPORTANT: POST + multipart for files -->
     <form action="{{ url_for('edit_sds') }}" method="POST" enctype="multipart/form-data">
       <div class="mb-3">
         <label for="product_id" class="form-label">Select Product:</label>
         <select id="product_id" name="product_id" class="form-select" required>
+          {% set selected_id = (selected_product_id|string) if selected_product_id is defined else (request.form.product_id|string) %}
           {% for product in products %}
-            <!-- product[0]=id, product[1]=name -->
-            {% set selected_id = selected_product_id if selected_product_id is defined else request.form.product_id %}
-            <option value="{{ product[0] }}" {% if (selected_id|default('')) == (product[0]|string) %}selected{% endif %}>
+            <!-- product[0]=id (int), product[1]=name -->
+            <option value="{{ product[0] }}" {% if selected_id and (selected_id == (product[0]|string)) %}selected{% endif %}>
               {{ product[1] }}
             </option>
           {% endfor %}
@@ -48,28 +49,49 @@
 
       <div class="mb-3">
         <label for="epa_number" class="form-label">EPA Registration # (optional):</label>
-        <input id="epa_number" type="text" name="epa_number" class="form-control" placeholder="e.g. 12345-67"
-               value="{{ request.form.epa_number or '' }}">
+        <input id="epa_number"
+               type="text"
+               name="epa_number"
+               class="form-control"
+               placeholder="e.g. 12345-67"
+               value="{{ request.form.epa_number or '' }}"
+               autocapitalize="off" spellcheck="false">
       </div>
 
       <div class="mb-3">
         <label for="sds_pdf" class="form-label">Upload SDS PDF:</label>
-        <input id="sds_pdf" type="file" name="sds_pdf" class="form-control" accept=".pdf" autocomplete="off">
+        <input id="sds_pdf"
+               type="file"
+               name="sds_pdf"
+               class="form-control"
+               accept="application/pdf,.pdf"
+               autocomplete="off">
       </div>
 
       <div class="mb-3">
         <label for="label_pdf" class="form-label">Upload Product Label (PDF or Image):</label>
-        <input id="label_pdf" type="file" name="label_pdf" class="form-control" accept=".pdf,.png,.jpg,.jpeg" autocomplete="off">
+        <input id="label_pdf"
+               type="file"
+               name="label_pdf"
+               class="form-control"
+               accept="application/pdf,image/png,image/jpeg,.pdf,.png,.jpg,.jpeg"
+               autocomplete="off">
       </div>
 
       <div class="mb-4">
         <label for="barcode_img" class="form-label">Upload Barcode Image:</label>
-        <input id="barcode_img" type="file" name="barcode_img" class="form-control" accept="image/png,image/jpeg" autocomplete="off">
+        <input id="barcode_img"
+               type="file"
+               name="barcode_img"
+               class="form-control"
+               accept="image/png,image/jpeg,.png,.jpg,.jpeg"
+               autocomplete="off">
       </div>
 
-      <button type="submit" class="btn btn-primary w-100">📤 Upload & Save</button>
+      <button type="submit" class="btn btn-primary w-100">📤 Upload &amp; Save</button>
     </form>
   </div>
 </body>
 </html>
+
 
