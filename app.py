@@ -2507,84 +2507,123 @@ def edit_sds():
         cur.close(); conn.close()
         return render_template('edit_sds.html', products=products)
 
-    # ----- POST -----
-    try:
-        product_id_raw = (request.form.get('product_id') or "").strip()
-        if not product_id_raw.isdigit():
-            flash("Please select a product.", "danger")
-            return redirect(url_for('edit_sds'))
-        product_id = int(product_id_raw)
-
-        # Must be multipart or files won't arrive
-        if not (request.mimetype or "").startswith("multipart/"):
-            flash("Form submit was not multipart/form-data — files were not sent. Refresh and try again.", "danger")
-            return redirect(url_for('edit_sds'))
-
-        epa_number  = (request.form.get('epa_number') or "").strip()
-        sds_file     = request.files.get('sds_pdf')
-        label_file   = request.files.get('label_pdf')
-        barcode_file = request.files.get('barcode_img')
-
-        # Visibility: exact payload received (check Render logs once)
-        app.logger.info(
-            "edit_sds POST recv: pid=%s, filenames=%s",
-            product_id,
-            {
-                "sds_pdf":     getattr(sds_file, "filename", None),
-                "label_pdf":   getattr(label_file, "filename", None),
-                "barcode_img": getattr(barcode_file, "filename", None),
-            }
-        )
-
-        # NOTE: Only check presence of filename; do NOT try to pre-measure stream size.
-        has_sds     = bool(sds_file and sds_file.filename)
-        has_label   = bool(label_file and label_file.filename)
-        has_barcode = bool(barcode_file and barcode_file.filename)
-
-        if not any([epa_number, has_sds, has_label, has_barcode]):
-            flash("Nothing to update. Choose a file or enter EPA #.", "warning")
-            return redirect(url_for('edit_sds'))
-
-        conn = get_db_connection(); cur = conn.cursor()
-        saved = []
-
-        try:
-            if epa_number:
-                cur.execute("UPDATE products SET epa_number=%s WHERE id=%s", (epa_number, product_id))
-                saved.append("EPA #")
-
-            if has_sds:
-                key = _upload_file_to_s3(sds_file, product_id, "sds")
-                _update_product_key(product_id, "sds", key)
-                saved.append("SDS")
-
-            if has_label:
-                key = _upload_file_to_s3(label_file, product_id, "label")
-                _update_product_key(product_id, "label", key)
-                saved.append("Label")
-
-            if has_barcode:
-                key = _upload_file_to_s3(barcode_file, product_id, "barcode")
-                _update_product_key(product_id, "barcode", key)
-                saved.append("Barcode")
-
-            conn.commit()
-            app.logger.info("edit_sds SUCCESS: pid=%s saved=%s", product_id, saved)
-            flash(f"Saved: {', '.join(saved)}", "success")
-
-        except Exception as e:
-            conn.rollback()
-            app.logger.exception("SDS/Label upload failed")
-            flash(f"Upload failed: {e}", "danger")
-        finally:
-            cur.close(); conn.close()
-
+    # ----- POST (mirror old flow; just use S3 instead of disk) -----
+    product_id_raw = (request.form.get('product_id') or "").strip()
+    if not product_id_raw.isdigit():
+        flash("Please select a product.", "danger")
         return redirect(url_for('edit_sds'))
+    product_id = int(product_id_raw)
+
+    if not (request.mimetype or "").startswith("multipart/"):
+        flash("Form submit was not multipart/form-data — files were not sent.", "danger")
+        return redirect(url_for('edit_sds'))
+
+    epa_number  = (request.form.get('epa_number') or "").strip()
+    sds_file     = request.files.get('sds_pdf')
+    label_file   = request.files.get('label_pdf')
+    barcode_file = request.files.get('barcode_img')
+
+    has_sds     = bool(sds_file and sds_file.filename)
+    has_label   = bool(label_file and label_file.filename)
+    has_barcode = bool(barcode_file and barcode_file.filename)
+
+    app.logger.info("edit_sds oldflow pid=%s files=%s",
+        product_id, {
+            "sds_pdf": getattr(sds_file, "filename", None),
+            "label_pdf": getattr(label_file, "filename", None),
+            "barcode_img": getattr(barcode_file, "filename", None),
+        })
+
+    if not any([epa_number, has_sds, has_label, has_barcode]):
+        flash("Nothing to update. Choose a file or enter EPA #.", "warning")
+        return redirect(url_for('edit_sds'))
+
+    conn = get_db_connection(); cur = conn.cursor()
+    saved = []
+    try:
+        if epa_number:
+            cur.execute("UPDATE products SET epa_number=%s WHERE id=%s", (epa_number, product_id))
+            saved.append("EPA #")
+
+        if has_sds:
+            # S3 upload in the simplest, safest way (rewind and send)
+            try:
+                sds_file.stream.seek(0)
+            except Exception:
+                pass
+            key = _key_for(product_id, "sds", secure_filename(sds_file.filename))
+            s3.upload_fileobj(
+                Fileobj=sds_file.stream,
+                Bucket=SDS_BUCKET,
+                Key=key,
+                ExtraArgs={"ContentType": "application/pdf",
+                           "Metadata": {"product_id": str(product_id), "kind": "sds"},
+                           "CacheControl": "private, max-age=31536000"}
+            )
+            # verify & record
+            s3.head_object(Bucket=SDS_BUCKET, Key=key)
+            cur.execute("UPDATE products SET sds_key=%s, sds_uploaded_on=NOW() WHERE id=%s", (key, product_id))
+            saved.append("SDS")
+
+        if has_label:
+            try:
+                label_file.stream.seek(0)
+            except Exception:
+                pass
+            ext = (secure_filename(label_file.filename).rsplit(".", 1)[-1] or "").lower()
+            if ext not in {"pdf","png","jpg","jpeg"}:
+                raise ValueError("Label must be PDF/PNG/JPG")
+            key = _key_for(product_id, "label", secure_filename(label_file.filename))
+            s3.upload_fileobj(
+                Fileobj=label_file.stream,
+                Bucket=SDS_BUCKET,
+                Key=key,
+                ExtraArgs={"ContentType": _guess_content_type("label", label_file.filename),
+                           "Metadata": {"product_id": str(product_id), "kind": "label"},
+                           "CacheControl": "private, max-age=31536000"}
+            )
+            s3.head_object(Bucket=SDS_BUCKET, Key=key)
+            cur.execute("UPDATE products SET label_key=%s, label_uploaded_on=NOW() WHERE id=%s", (key, product_id))
+            saved.append("Label")
+
+        if has_barcode:
+            try:
+                barcode_file.stream.seek(0)
+            except Exception:
+                pass
+            ext = (secure_filename(barcode_file.filename).rsplit(".", 1)[-1] or "").lower()
+            if ext not in {"png","jpg","jpeg"}:
+                raise ValueError("Barcode must be PNG/JPG")
+            key = _key_for(product_id, "barcode", secure_filename(barcode_file.filename))
+            s3.upload_fileobj(
+                Fileobj=barcode_file.stream,
+                Bucket=SDS_BUCKET,
+                Key=key,
+                ExtraArgs={"ContentType": _guess_content_type("barcode", barcode_file.filename),
+                           "Metadata": {"product_id": str(product_id), "kind": "barcode"},
+                           "CacheControl": "private, max-age=31536000"}
+            )
+            s3.head_object(Bucket=SDS_BUCKET, Key=key)
+            cur.execute("UPDATE products SET barcode_key=%s, barcode_uploaded_on=NOW() WHERE id=%s", (key, product_id))
+            saved.append("Barcode")
+
+        conn.commit()
+        app.logger.info("edit_sds oldflow SUCCESS pid=%s saved=%s", product_id, saved)
+        flash(f"Saved: {', '.join(saved)}", "success")
 
     except Exception as e:
-        app.logger.exception("Unexpected error in edit_sds POST")
-        flash(f"Unexpected error: {e}", "danger")
-        return redirect(url_for('edit_sds'))
+        conn.rollback()
+        app.logger.exception("edit_sds oldflow FAILED pid=%s", product_id)
+        flash(f"Upload failed: {e}", "danger")
+    finally:
+        cur.close(); conn.close()
+
+    # re-render (not redirect) so you SEE the flash immediately
+    conn = get_db_connection(); cur = conn.cursor()
+    cur.execute("SELECT id, name, epa_number FROM products ORDER BY name;")
+    products = cur.fetchall()
+    cur.close(); conn.close()
+    return render_template('edit_sds.html', products=products, selected_product_id=str(product_id))
 
 @app.route('/corrections', methods=['GET', 'POST'])
 @login_required
