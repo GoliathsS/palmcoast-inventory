@@ -2423,7 +2423,7 @@ def sds_open(product_id, kind):
     conn = get_db_connection(); cur = conn.cursor()
     cur.execute("""
         SELECT sds_key, label_key, barcode_key,
-               COALESCE(sds_url, '') AS legacy_sds,
+               COALESCE(sds_url, '')  AS legacy_sds,
                COALESCE(label_url, '') AS legacy_label,
                COALESCE(barcode_img_url, '') AS legacy_barcode
         FROM products WHERE id=%s
@@ -2432,7 +2432,7 @@ def sds_open(product_id, kind):
     if not row:
         abort(404)
 
-    # pick handle (prefer S3 key, fall back to legacy absolute URL)
+    # Prefer S3 key, fall back to legacy absolute URL
     idx = {"sds": 0, "label": 1, "barcode": 2}[kind]
     handle = row[idx]
     if not handle:
@@ -2441,13 +2441,18 @@ def sds_open(product_id, kind):
             abort(404)
         return redirect(legacy)
 
-    # legacy full URL?
+    # Already a full URL?
     if isinstance(handle, str) and handle.startswith(("http://", "https://")):
         return redirect(handle)
 
-    # S3 key → presign with global client + bucket
-    key = handle  # e.g. "sds/123/sds.pdf"
+    # Support plain "key" or "s3://bucket/key"
     bucket = SDS_BUCKET
+    key = handle
+    if isinstance(handle, str) and handle.startswith("s3://"):
+        from urllib.parse import urlparse
+        u = urlparse(handle)
+        bucket = u.netloc or SDS_BUCKET
+        key = u.path.lstrip("/")
 
     ext = (key.rsplit(".", 1)[-1] or "").lower()
     params = {"Bucket": bucket, "Key": key}
@@ -2459,7 +2464,10 @@ def sds_open(product_id, kind):
     elif ext in ("jpg", "jpeg"):
         params["ResponseContentType"] = "image/jpeg"
 
-    url = s3.generate_presigned_url("get_object", Params=params, ExpiresIn=300)
+    try:
+        url = s3.generate_presigned_url("get_object", Params=params, ExpiresIn=300)
+    except Exception:
+        abort(404)
     return redirect(url)
 
 @app.route('/static/uploads/<path:filename>')
