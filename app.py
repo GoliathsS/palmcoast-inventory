@@ -76,7 +76,7 @@ app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB limit
 # Set up S3 client using environment variables
 s3 = boto3.client(
     's3',
-    region_name=os.environ.get("AWS_REGION"),
+    region_name=os.environ.get("AWS_REGION", "us-east-2"),
     aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
     aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY")
 )
@@ -2419,6 +2419,7 @@ def sds_portal():
 @login_required
 def sds_open(product_id, kind):
     assert kind in ("sds", "label", "barcode")
+
     conn = get_db_connection(); cur = conn.cursor()
     cur.execute("""
         SELECT sds_key, label_key, barcode_key,
@@ -2428,24 +2429,26 @@ def sds_open(product_id, kind):
         FROM products WHERE id=%s
     """, (product_id,))
     row = cur.fetchone(); cur.close(); conn.close()
-    if not row: abort(404)
+    if not row:
+        abort(404)
 
-    # Pick the right handle (prefer key, fallback to legacy URL)
+    # pick handle (prefer S3 key, fall back to legacy absolute URL)
     idx = {"sds": 0, "label": 1, "barcode": 2}[kind]
     handle = row[idx]
     if not handle:
         legacy = [row[3], row[4], row[5]][idx]
-        if not legacy: abort(404)
-        return redirect(legacy)  # legacy absolute URL
+        if not legacy:
+            abort(404)
+        return redirect(legacy)
 
-    # If handle looks like a full URL, just go there (legacy safety)
+    # legacy full URL?
     if isinstance(handle, str) and handle.startswith(("http://", "https://")):
         return redirect(handle)
 
-    # Otherwise it's an S3 key → presign and redirect
+    # S3 key → presign with global client + bucket
     key = handle  # e.g. "sds/123/sds.pdf"
-    bucket = os.environ.get("SDS_BUCKET", "palmcoast-sds")
-    s3 = boto3.client("s3", region_name=os.getenv("AWS_REGION", "us-east-2"))
+    bucket = SDS_BUCKET
+
     ext = (key.rsplit(".", 1)[-1] or "").lower()
     params = {"Bucket": bucket, "Key": key}
     if ext == "pdf":
