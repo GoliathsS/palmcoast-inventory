@@ -2,363 +2,302 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>SDS & Labels · Palm Coast</title>
+  <title>SDS & Labels · Field Mode</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"/>
-
   <style>
-    /* ——— Visual polish tuned for Palm Coast ——— */
     :root{
-      /* Safeguard tokens in case globals are missing */
-      --primary: #14532d;        /* Palm Coast green */
-      --primary-ink: #ffffff;
-      --surface-0: #0b1220;      /* dark ink (used for text if you run dark mode) */
-      --surface-1: #ffffff;      /* card/page */
-      --surface-2: #f8fafc;      /* subtle bg */
-      --border: #e6e7ec;
-      --text-1: #0b1220;
-      --text-2: #6c7280;
-      --success: #22c55e;
-      --warning: #f59e0b;
-      --danger: #ef4444;
-      --radius: 14px;
+      --pc-green:#14532d; --ink:#0b1220; --muted:#6c7280; --border:#e6e7ec; --bg:#f6f7fb; --card:#fff;
+      --ok:#16a34a; --warn:#f59e0b; --bad:#ef4444; --radius:14px;
     }
+    body{background:var(--bg); color:var(--ink)}
+    .container{max-width:1100px; margin:0 auto; padding:14px 16px 60px}
 
-    body{ background:var(--surface-2); color:var(--text-1) }
+    /* Header */
+    .hdr{position:sticky; top:0; z-index:20; backdrop-filter:blur(8px); background:color-mix(in oklab, var(--bg), transparent 10%); border-bottom:1px solid var(--border)}
+    .hdr-inner{display:flex; align-items:center; gap:10px; padding:10px 16px}
+    .logo{width:36px; height:36px; border-radius:8px; object-fit:cover; box-shadow:0 2px 8px rgba(0,0,0,.08)}
+    .title{margin:0; font-size:1.1rem; color:var(--pc-green)}
+    .subtitle{margin:1px 0 0; color:var(--muted); font-size:.92rem}
 
-    .container{ max-width:1100px; margin:0 auto; padding: 12px 16px 48px; }
+    .toolbar{display:grid; grid-template-columns:1fr; gap:.6rem; padding:10px 16px}
+    @media(min-width:820px){.toolbar{grid-template-columns: 1fr auto auto auto}}
 
-    /* Header with logo, title and coverage meter */
-    .header-wrap{ position:sticky; top:0; z-index:10; backdrop-filter: blur(8px); background:color-mix(in oklab, var(--surface-2), transparent 12%); border-bottom:1px solid var(--border); }
-    .header{ display:flex; align-items:center; gap:12px; padding:12px 16px; }
-    .logo{ width:36px; height:36px; border-radius:8px; object-fit:cover; box-shadow:0 2px 8px rgba(0,0,0,.08); }
-    .title{ margin:0; line-height:1.2; font-size:1.25rem; color:var(--primary) }
-    .sub{ margin:2px 0 0; color:var(--text-2); font-size:.95rem }
+    /* Search */
+    .search{position:relative}
+    .search input{width:100%; padding:12px 14px 12px 44px; border-radius:12px; border:1px solid var(--border); background:var(--card); font-weight:600}
+    .search .icon{position:absolute; left:14px; top:50%; transform:translateY(-50%); opacity:.6}
 
-    .kpis{ display:flex; gap:.5rem; flex-wrap:wrap; padding:0 16px 12px }
-    .chip{ display:inline-flex; align-items:center; gap:.45rem; padding:.4rem .65rem; border-radius:999px; background:var(--surface-1); color:var(--text-1); border:1px solid var(--border); font-weight:600; box-shadow:0 1px 6px rgba(0,0,0,.04) }
+    /* Toggle + sort */
+    .controls{display:flex; gap:.5rem; flex-wrap:wrap}
+    .select, .check, .btn{display:inline-flex; align-items:center; gap:.45rem; padding:8px 10px; border-radius:10px; background:var(--card); border:1px solid var(--border); font-weight:700}
+    .select select{border:none; background:transparent; font-weight:700; outline:none}
+    .btn.primary{background:var(--pc-green); color:#fff; border-color:color-mix(in oklab,var(--pc-green),#000 12%)}
 
-    .coverage{ padding:0 16px 14px }
-    .meter{ height:10px; background:#eef2f6; border:1px solid var(--border); border-radius:999px; overflow:hidden }
-    .meter > i{ display:block; height:100%; background:linear-gradient(90deg, var(--primary), #0ea5e9); }
-    .meter-label{ display:flex; justify-content:space-between; font-size:.85rem; color:var(--text-2); margin:6px 2px 0 }
+    /* Quick lanes */
+    .lanes{display:grid; gap:10px; padding:0 16px 10px}
+    .lane{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:10px}
+    .lane h4{margin:0 0 6px; font-size:.95rem; color:var(--muted)}
+    .chips{display:flex; gap:.5rem; overflow:auto; scroll-snap-type:x mandatory}
+    .chip{scroll-snap-align:start; display:inline-flex; align-items:center; gap:.4rem; padding:.45rem .65rem; background:#f1f5f9; border:1px solid var(--border); border-radius:999px; font-weight:700; white-space:nowrap}
 
-    /* Toolbar */
-    .toolbar{ display:grid; gap:.6rem; grid-template-columns: 1fr; padding:14px 16px; }
-    @media(min-width:820px){ .toolbar{ grid-template-columns: 1fr auto auto auto; align-items:center } }
+    /* Layout: sidebar filters + list */
+    .layout{display:grid; grid-template-columns: 1fr; gap:12px; padding:12px 16px}
+    @media(min-width:1000px){ .layout{grid-template-columns:260px 1fr} }
+    .side{position:sticky; top:126px; align-self:start; display:flex; flex-direction:column; gap:8px}
+    .side .block{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:10px}
+    .side .block h5{margin:0 0 6px; color:var(--muted); font-size:.92rem}
+    .side .flt{display:flex; flex-direction:column; gap:6px}
 
-    .search{ position:relative; }
-    .search input{ padding:10px 12px 10px 40px; border-radius:10px; border:1px solid var(--border); background:var(--surface-1); outline:none; width:100%; font-weight:600 }
-    .search .icon{ position:absolute; left:12px; top:50%; transform:translateY(-50%); opacity:.55; }
+    /* List rows */
+    .list{display:block}
+    .row{display:grid; grid-template-columns: 1fr auto; gap:10px; align-items:center; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:10px}
+    .row .name{margin:0; font-size:1.02rem}
+    .row .meta{color:var(--muted); font-size:.92rem}
+    .row .badges{display:flex; gap:.35rem; flex-wrap:wrap; margin-top:4px}
+    .badge{display:inline-flex; align-items:center; gap:.3rem; padding:.3rem .55rem; border-radius:999px; border:1px solid var(--border); font-size:.82rem; font-weight:800}
+    .ok{background:color-mix(in oklab, var(--ok), #fff 87%); color:#065f46; border-color:color-mix(in oklab, var(--ok), #000 14%)}
+    .warn{background:color-mix(in oklab, var(--warn), #fff 88%); color:#92400e; border-color:color-mix(in oklab, var(--warn), #000 14%)}
+    .bad{background:color-mix(in oklab, var(--bad), #fff 88%); color:#7f1d1d; border-color:color-mix(in oklab, var(--bad), #000 14%)}
 
-    .filters{ display:flex; gap:.5rem; flex-wrap:wrap; }
-    .filters .select, .filters .check, .filters .chipbtn{ display:flex; align-items:center; gap:.45rem; background:var(--surface-1); border:1px solid var(--border); padding:8px 10px; border-radius:10px; font-weight:600; color:var(--text-1) }
-    .filters .select select{ border:none; background:transparent; font-weight:600; color:inherit; outline:none }
-    .filters .chipbtn{ cursor:pointer; user-select:none }
-    .filters .chipbtn[aria-pressed="true"]{ outline:2px solid color-mix(in oklab, var(--primary), #000 10%); background: color-mix(in oklab, var(--primary), #fff 88%); }
+    .actions{display:flex; gap:.45rem; align-items:center}
+    .actions a{display:inline-flex; align-items:center; gap:.4rem; padding:.5rem .7rem; border:1px solid var(--border); border-radius:10px; background:var(--card); text-decoration:none; font-weight:800}
+    .star{cursor:pointer; border:none; background:transparent; font-size:1.1rem}
 
-    .btn.primary{ display:inline-flex; align-items:center; gap:.5rem; padding:.6rem .85rem; border-radius:10px; background:var(--primary); color:#fff; border:1px solid color-mix(in oklab, var(--primary), #000 12%); text-decoration:none; font-weight:700 }
+    /* Alpha index */
+    .alpha{position:fixed; right:6px; top:160px; display:flex; flex-direction:column; gap:2px; background:rgba(255,255,255,.6); backdrop-filter:blur(6px); padding:6px; border-radius:10px; border:1px solid var(--border)}
+    .alpha a{display:block; padding:2px 5px; font-weight:900; text-decoration:none; color:#475569}
 
-    /* Grid and cards */
-    .grid{ display:grid; gap:14px; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); padding:0 16px }
-    .card{ background:var(--surface-1); border:1px solid var(--border); border-radius:var(--radius); padding:14px; box-shadow:0 2px 12px rgba(0,0,0,.05); display:flex; flex-direction:column; gap:.55rem; position:relative }
-    .card h3{ margin:0; font-size:1.05rem; color:var(--text-1) }
-    .meta{ color:var(--text-2); font-size:.95rem }
-    .badges{ display:flex; gap:.4rem; flex-wrap:wrap; margin-top:.25rem }
-    .badge{ display:inline-flex; align-items:center; gap:.35rem; font-size:.82rem; font-weight:700; padding:.35rem .55rem; border-radius:999px; border:1px solid var(--border); background:var(--surface-2) }
-    .badge.ok{ background:color-mix(in oklab, var(--success), #fff 85%); color:#065f46; border-color:color-mix(in oklab, var(--success), #000 14%) }
-    .badge.warn{ background:color-mix(in oklab, var(--warning), #fff 86%); color:#92400e; border-color:color-mix(in oklab, var(--warning), #000 14%) }
-    .badge.danger{ background:color-mix(in oklab, var(--danger), #fff 86%); color:#7f1d1d; border-color:color-mix(in oklab, var(--danger), #000 14%) }
+    /* Command palette */
+    dialog{border:none; border-radius:14px; padding:0; width:min(720px, 92vw); box-shadow:0 20px 60px rgba(0,0,0,.25)}
+    .cmdk{background:var(--card); border:1px solid var(--border); border-radius:14px; overflow:hidden}
+    .cmdk input{width:100%; padding:14px; border:none; border-bottom:1px solid var(--border); outline:none; font-size:1.05rem}
+    .results{max-height:60vh; overflow:auto}
+    .res{display:flex; justify-content:space-between; padding:12px 14px; border-bottom:1px solid #f1f5f9}
+    .res strong{font-weight:800}
+    .kbd{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size:.8rem; color:#475569}
 
-    .links{ display:flex; flex-wrap:wrap; gap:.45rem; margin-top:.25rem }
-    .links a{ text-decoration:none; border:1px solid var(--border); padding:.5rem .66rem; border-radius:10px; background:var(--surface-1); color:var(--text-1); font-weight:700; transition: transform .12s ease, box-shadow .12s ease }
-    .links a:hover{ transform: translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,.08) }
-
-    .empty{ text-align:center; color:var(--text-2); padding:28px 12px; border:1px dashed var(--border); border-radius:12px; background:var(--surface-1); margin:12px 16px 0 }
-
-    .helper{ color:var(--text-2); font-size:.85rem; padding:10px 16px }
+    /* Field mode spacing for one-hand use on mobile */
+    @media(max-width:640px){
+      .row{grid-template-columns: 1fr;}
+      .actions{justify-content:space-between}
+      .alpha{display:none}
+    }
   </style>
 </head>
 <body>
-  <div class="header-wrap">
-    <div class="header container">
-      <img src="{{ url_for('static', filename='LOGO.jpg') }}" alt="Palm Coast" class="logo" loading="lazy"/>
+  <div class="hdr">
+    <div class="hdr-inner container">
+      <img src="{{ url_for('static', filename='LOGO.jpg') }}" alt="Palm Coast" class="logo"/>
       <div>
-        <h2 class="title">SDS & Label Portal</h2>
-        <p class="sub">Fast access to safety docs for field techs. Type <kbd>/</kbd> to search. Press <kbd>Esc</kbd> to clear.</p>
+        <h2 class="title">SDS & Label Portal — Field Mode</h2>
+        <p class="subtitle">Find any SDS in <strong>2 taps</strong>. Press <kbd>⌘/Ctrl + K</kbd> for quick search.</p>
       </div>
     </div>
-
-    {# ---- Counters: support new keys and legacy URL fields ---- #}
-    {% set counts = namespace(total=0, sds=0, label=0, barcode=0) %}
-    {% for p in products %}
-      {% set counts.total = counts.total + 1 %}
-      {% set sds_val = (p.sds_key if p.sds_key is defined else (p.sds_url if p.sds_url is defined else None)) %}
-      {% set label_val = (p.label_key if p.label_key is defined else (p.label_url if p.label_url is defined else None)) %}
-      {% set barcode_val = (p.barcode_key if p.barcode_key is defined else (p.barcode_img_url if p.barcode_img_url is defined else None)) %}
-      {% if sds_val %}{% set counts.sds = counts.sds + 1 %}{% endif %}
-      {% if label_val %}{% set counts.label = counts.label + 1 %}{% endif %}
-      {% if barcode_val %}{% set counts.barcode = counts.barcode + 1 %}{% endif %}
-    {% endfor %}
-
-    <div class="kpis container">
-      <span class="chip">📦 {{ counts.total }} products</span>
-      <span class="chip">📄 SDS: {{ counts.sds }}</span>
-      <span class="chip">🧾 Labels: {{ counts.label }}</span>
-      <span class="chip">🧷 Barcodes: {{ counts.barcode }}</span>
+    <div class="toolbar">
+      <div class="search"><span class="icon">🔎</span><input id="q" type="search" placeholder="Search: product, EPA #, alias…" autocomplete="off"></div>
+      <div class="controls">
+        <label class="check"><input type="checkbox" id="f-sds"> SDS</label>
+        <label class="check"><input type="checkbox" id="f-label"> Label</label>
+        <label class="check"><input type="checkbox" id="f-barcode"> Barcode</label>
+      </div>
+      <div class="controls">
+        <div class="select"><span>Status:</span>
+          <select id="f-status"><option value="all">All</option><option value="valid">Valid</option><option value="expired">Expired</option><option value="unknown">Unknown</option></select>
+        </div>
+        <div class="select"><span>Sort:</span>
+          <select id="f-sort"><option value="name">A → Z</option><option value="updated">Recently Updated</option><option value="missing">Missing first</option></select>
+        </div>
+      </div>
+      <div class="controls"><a class="btn primary" href="/edit-sds">🛠 Manage SDS</a></div>
     </div>
 
-    {% set pct = ( (counts.sds / counts.total) * 100 ) if counts.total else 0 %}
-    <div class="coverage container" aria-label="SDS coverage meter">
-      <div class="meter" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ pct|round(0, 'floor') }}">
-        <i style="width:{{ '%.0f' % pct }}%"></i>
-      </div>
-      <div class="meter-label"><span>SDS coverage</span><strong>{{ '%.0f' % pct }}%</strong></div>
+    <!-- Quick lanes: Favorites + Recent + Job Packs (localStorage driven) -->
+    <div class="lanes container">
+      <div class="lane" id="lane-fav"><h4>⭐ Favorites</h4><div class="chips" id="chips-fav"></div></div>
+      <div class="lane" id="lane-rec"><h4>🕑 Recent</h4><div class="chips" id="chips-rec"></div></div>
+      <div class="lane"><h4>📦 Job Packs</h4><div class="chips">
+        <a class="chip" href="#" data-pack='["Termidor SC","Alpine WSG","Taurus SC"]'>🏠 General Pest</a>
+        <a class="chip" href="#" data-pack='["Bifen 7.9%","Honor Guard","Cy-Kick"]'>🐜 Ants</a>
+        <a class="chip" href="#" data-pack='["SpeedZone","Celsius WG","Vessel"]'>🌿 Weed Control</a>
+      </div></div>
     </div>
   </div>
 
-  <div class="container">
-    <!-- Controls -->
-    <section class="toolbar" role="region" aria-label="Filters and actions">
-      <div class="search">
-        <span class="icon">🔎</span>
-        <input id="q" type="search" placeholder="Search by product name or EPA number…" aria-label="Search products" autocomplete="off">
-      </div>
-
-      <div class="filters" role="group" aria-label="Document filters">
-        <label class="check"><input type="checkbox" id="f-sds"> Has SDS</label>
-        <label class="check"><input type="checkbox" id="f-label"> Has Label</label>
-        <label class="check"><input type="checkbox" id="f-barcode"> Has Barcode</label>
-      </div>
-
-      <div class="filters" role="group" aria-label="Status and sort">
-        <div class="select">
-          <span>Status:</span>
-          <select id="f-status" aria-label="SDS status">
-            <option value="all" selected>All</option>
-            <option value="valid">Valid</option>
-            <option value="expired">Expired</option>
-            <option value="unknown">Unknown</option>
-          </select>
-        </div>
-        <div class="select">
-          <span>Sort:</span>
-          <select id="f-sort" aria-label="Sort order">
-            <option value="name">A → Z</option>
-            <option value="updated">Recently Updated</option>
-            <option value="status">Status (Missing first)</option>
-          </select>
+  <div class="container layout">
+    <aside class="side">
+      <div class="block">
+        <h5>Categories</h5>
+        <div class="flt">
+          <label><input type="checkbox" class="cat" value="Pest"> Pest</label>
+          <label><input type="checkbox" class="cat" value="Lawn"> Lawn</label>
+          <label><input type="checkbox" class="cat" value="Wildlife"> Wildlife</label>
         </div>
       </div>
-
-      <div class="filters" role="group" aria-label="Categories">
-        <button class="chipbtn" data-cat="Pest" aria-pressed="false">🪳 Pest</button>
-        <button class="chipbtn" data-cat="Lawn" aria-pressed="false">🌿 Lawn</button>
-        <button class="chipbtn" data-cat="Wildlife" aria-pressed="false">🦝 Wildlife</button>
+      <div class="block">
+        <h5>Truck</h5>
+        <div class="flt">
+          <input id="truck" type="text" placeholder="Truck ID (e.g., 12)">
+          <small class="muted">Append <code>?truck=12</code> to URL to pre-filter.</small>
+        </div>
       </div>
+    </aside>
 
-      <div class="filters">
-        <a href="/edit-sds" class="btn primary">🛠 Manage SDS Library</a>
-      </div>
-    </section>
+    <main>
+      <nav class="alpha" aria-label="Jump to letter" id="alpha"></nav>
+      <section id="list" class="list" aria-live="polite">
+      {% set last = '' %}
+      {% for p in products|sort(attribute='name') if p.name is defined %}
+        {% set first = (p.name[0]|upper) %}
+        {% if first != last %}
+          <h3 id="L{{ first }}" style="margin:10px 0 6px; color:#475569">{{ first }}</h3>
+          {% set last = first %}
+        {% endif %}
+        {% set pid = p.id %}
+        {% set name = p.name %}
+        {% set epa = p.epa_number %}
+        {% set sds = p.sds_key or p.sds_url %}
+        {% set label = p.label_key or p.label_url %}
+        {% set barcode = p.barcode_key or p.barcode_img_url %}
+        {% set uploaded = p.sds_uploaded_on %}
+        {% set category = p.category or 'Unknown' %}
 
-    <!-- Grid -->
-    <section id="grid" class="grid" aria-live="polite">
-      {% for p in products %}
-        {# Support both row types: objects and tuples #}
-        {% set pid = (p.id if p.id is defined else p[0]) %}
-        {% set name = (p.name if p.name is defined else p[1]) %}
-        {% set epa  = (p.epa_number if p.epa_number is defined else (p[2] if p|length > 2 else None)) %}
-
-        {% set sds   = (p.sds_key   if p.sds_key   is defined else (p.sds_url if p.sds_url is defined else None)) %}
-        {% set label = (p.label_key if p.label_key is defined else (p.label_url if p.label_url is defined else None)) %}
-        {% set barcode = (p.barcode_key if p.barcode_key is defined else (p.barcode_img_url if p.barcode_img_url is defined else None)) %}
-        {% set uploaded = (p.sds_uploaded_on if p.sds_uploaded_on is defined else None) %}
-        {% set category = (p.category if p.category is defined else (p[3] if p|length > 3 else 'Unknown')) %}
-
-        {# Status based on upload date if "today" provided; else "unknown" #}
         {% if uploaded and today is defined %}
           {% set cutoff = today.replace(year=today.year - 3) %}
           {% if uploaded < cutoff %}
-            {% set status = 'expired' %}{% set status_text = '🔴 SDS Expired' %}{% set badge_class = 'danger' %}
+            {% set status='expired' %}{% set badge='bad' %}{% set status_text='SDS Expired' %}
           {% else %}
-            {% set status = 'valid' %}{% set status_text = '✅ SDS Valid' %}{% set badge_class = 'ok' %}
+            {% set status='valid' %}{% set badge='ok' %}{% set status_text='SDS Valid' %}
           {% endif %}
         {% elif uploaded %}
-          {% set status = 'valid' %}{% set status_text = '✅ SDS Uploaded' %}{% set badge_class = 'ok' %}
+          {% set status='valid' %}{% set badge='ok' %}{% set status_text='SDS Uploaded' %}
         {% else %}
-          {% set status = 'unknown' %}{% set status_text = '⚪ No SDS date' %}{% set badge_class = 'warn' %}
+          {% set status='unknown' %}{% set badge='warn' %}{% set status_text='No SDS date' %}
         {% endif %}
 
-        <article class="card"
-          data-name="{{ name|lower }}"
-          data-epa="{{ (epa or '')|lower }}"
-          data-sds="{{ 1 if sds else 0 }}"
-          data-label="{{ 1 if label else 0 }}"
-          data-barcode="{{ 1 if barcode else 0 }}"
-          data-status="{{ status }}"
-          data-updated="{{ uploaded or '' }}"
-          data-category="{{ category }}"
-          data-sds-href="{% if sds %}{{ url_for('sds_open', product_id=pid, kind='sds') }}{% endif %}"
-        >
-          <h3>{{ name }}</h3>
-          <div class="meta">
-            {% if epa %}EPA Reg #: <strong>{{ epa }}</strong> · {% endif %}
-            Category: <strong>{{ category }}</strong>
+        <article class="row" data-name="{{ name|lower }}" data-epa="{{ (epa or '')|lower }}" data-sds="{{ 1 if sds else 0 }}" data-label="{{ 1 if label else 0 }}" data-barcode="{{ 1 if barcode else 0 }}" data-status="{{ status }}" data-updated="{{ uploaded or '' }}" data-category="{{ category }}">
+          <div>
+            <h4 class="name">{{ name }}</h4>
+            <div class="meta">{% if epa %}EPA: <strong>{{ epa }}</strong> · {% endif %}Category: <strong>{{ category }}</strong></div>
+            <div class="badges">
+              <span class="badge {{ badge }}">{{ status_text }}{% if uploaded %} · {{ uploaded }}{% endif %}</span>
+              <span class="badge {{ sds and 'ok' or 'warn' }}">{{ sds and 'SDS' or 'No SDS' }}</span>
+              <span class="badge {{ label and 'ok' or 'warn' }}">{{ label and 'Label' or 'No Label' }}</span>
+              <span class="badge {{ barcode and 'ok' or 'warn' }}">{{ barcode and 'Barcode' or 'No Barcode' }}</span>
+            </div>
           </div>
-
-          <div class="badges">
-            <span class="badge {{ badge_class }}">{{ status_text }}{% if uploaded %} · {{ uploaded }}{% endif %}</span>
-            {% if sds %}<span class="badge ok">SDS</span>{% else %}<span class="badge warn">No SDS</span>{% endif %}
-            {% if label %}<span class="badge ok">Label</span>{% else %}<span class="badge warn">No Label</span>{% endif %}
-            {% if barcode %}<span class="badge ok">Barcode</span>{% else %}<span class="badge warn">No Barcode</span>{% endif %}
-          </div>
-
-          <div class="links">
-            {% if sds %}
-              <a href="{{ url_for('sds_open', product_id=pid, kind='sds') }}" target="_blank" rel="noopener" aria-label="Open SDS for {{ name }}">📄 SDS</a>
-              <a href="#" class="copy" data-kind="sds" aria-label="Copy SDS link for {{ name }}">🔗 Copy SDS</a>
-            {% endif %}
-            {% if label %}
-              <a href="{{ url_for('sds_open', product_id=pid, kind='label') }}" target="_blank" rel="noopener" aria-label="Open Label for {{ name }}">🧾 Label</a>
-            {% endif %}
-            {% if barcode %}
-              <a href="{{ url_for('sds_open', product_id=pid, kind='barcode') }}" target="_blank" rel="noopener" aria-label="Open Barcode for {{ name }}">🧷 Barcode</a>
-            {% endif %}
+          <div class="actions">
+            {% if sds %}<a href="{{ url_for('sds_open', product_id=pid, kind='sds') }}" target="_blank" class="act sds" data-name="{{ name }}">📄 SDS</a>{% endif %}
+            {% if label %}<a href="{{ url_for('sds_open', product_id=pid, kind='label') }}" target="_blank" class="act lab" data-name="{{ name }}">🧾 Label</a>{% endif %}
+            {% if barcode %}<a href="{{ url_for('sds_open', product_id=pid, kind='barcode') }}" target="_blank" class="act bar" data-name="{{ name }}">🧷 Barcode</a>{% endif %}
+            <button class="star" title="Toggle favorite" aria-label="Favorite" data-name="{{ name }}">☆</button>
           </div>
         </article>
       {% endfor %}
-    </section>
-
-    <div id="empty" class="empty" style="display:none">
-      No products match your filters. Try clearing filters or changing your search.
-    </div>
-
-    <p class="helper">SDS validity is based on upload date{% if today is defined %} ({{ today }}){% endif %}. Items older than 3 years are flagged as expired. Press <kbd>/</kbd> to search, <kbd>Esc</kbd> to clear filters.</p>
+      </section>
+    </main>
   </div>
 
+  <!-- Command palette (Cmd/Ctrl+K) -->
+  <dialog id="cmd">
+    <div class="cmdk">
+      <input id="cmdq" placeholder="Type a product, EPA #, or action…" />
+      <div id="cmdres" class="results"></div>
+      <div style="display:flex; justify-content:space-between; padding:8px 12px" class="kbd"><span>Enter → open SDS · Tab → cycle</span><span>Esc to close</span></div>
+    </div>
+  </dialog>
+
   <script>
-    // ——— Fast client-side filtering + sorting + small UX niceties ———
-    const $ = sel => document.querySelector(sel);
-    const $$ = sel => Array.from(document.querySelectorAll(sel));
+    const $ = s=>document.querySelector(s), $$ = s=>Array.from(document.querySelectorAll(s));
+    const q=$('#q'), fSds=$('#f-sds'), fLabel=$('#f-label'), fBarcode=$('#f-barcode'), fStatus=$('#f-status'), fSort=$('#f-sort');
+    const cards=$$('#list .row'), chipsFav=$('#chips-fav'), chipsRec=$('#chips-rec');
 
-    const q = $('#q');
-    const fSds = $('#f-sds');
-    const fLabel = $('#f-label');
-    const fBarcode = $('#f-barcode');
-    const fStatus = $('#f-status');
-    const fSort = $('#f-sort');
-    const catButtons = $$('.chipbtn');
-    const grid = $('#grid');
-    const cards = $$('#grid .card');
-    const empty = $('#empty');
+    // Alpha index
+    const letters = [...new Set($$('#list h3[id^="L"]').map(h => h.id.replace('L','')))].sort();
+    const alpha = $('#alpha');
+    letters.forEach(l => { const a=document.createElement('a'); a.href='#L'+l; a.textContent=l; alpha.appendChild(a); });
 
-    // Persist filters in localStorage
-    const LS_KEY = 'sds_filters_v2';
-    function saveFilters(){
-      const data = {
-        term: q.value || '',
-        sds: fSds.checked, label: fLabel.checked, barcode: fBarcode.checked,
-        status: fStatus.value, sort: fSort.value,
-        cats: catButtons.filter(b => b.getAttribute('aria-pressed') === 'true').map(b => b.dataset.cat)
-      };
-      localStorage.setItem(LS_KEY, JSON.stringify(data));
-    }
-    function loadFilters(){
-      try{
-        const data = JSON.parse(localStorage.getItem(LS_KEY)||'{}');
-        if(data.term) q.value = data.term;
-        if('sds' in data) fSds.checked = data.sds;
-        if('label' in data) fLabel.checked = data.label;
-        if('barcode' in data) fBarcode.checked = data.barcode;
-        if(data.status) fStatus.value = data.status;
-        if(data.sort) fSort.value = data.sort;
-        if(Array.isArray(data.cats)){
-          catButtons.forEach(b => b.setAttribute('aria-pressed', String(data.cats.includes(b.dataset.cat))));
-        }
-      }catch(e){ /* ignore */ }
-    }
+    // Favorites & Recents
+    const FAV_KEY='sds_favorites_v3', REC_KEY='sds_recent_v3';
+    function favs(){ try{return JSON.parse(localStorage.getItem(FAV_KEY)||'[]')}catch{return[]} }
+    function setFavs(v){ localStorage.setItem(FAV_KEY, JSON.stringify(v)); renderFavs(); }
+    function recents(){ try{return JSON.parse(localStorage.getItem(REC_KEY)||'[]')}catch{return[]} }
+    function pushRecent(name){ const arr=recents().filter(n=>n!==name); arr.unshift(name); localStorage.setItem(REC_KEY, JSON.stringify(arr.slice(0,12))); renderRecents(); }
 
-    function applyFilters(){
-      const term = (q.value || '').trim().toLowerCase();
-      const wantSds = fSds.checked;
-      const wantLabel = fLabel.checked;
-      const wantBarcode = fBarcode.checked;
-      const status = fStatus.value; // all|valid|expired|unknown
-      const cats = new Set( catButtons.filter(b => b.getAttribute('aria-pressed') === 'true').map(b => b.dataset.cat) );
+    function renderFavs(){ chipsFav.innerHTML=''; favs().forEach(n=>{ const el=document.createElement('a'); el.className='chip'; el.textContent=n; el.href='#'; el.onclick=(e)=>{e.preventDefault(); jumpTo(n)}; chipsFav.appendChild(el); }); }
+    function renderRecents(){ chipsRec.innerHTML=''; recents().forEach(n=>{ const el=document.createElement('a'); el.className='chip'; el.textContent=n; el.href='#'; el.onclick=(e)=>{e.preventDefault(); jumpTo(n)}; chipsRec.appendChild(el); }); }
 
-      let visible = 0;
-      cards.forEach(card => {
-        const name = card.dataset.name;
-        const epa = card.dataset.epa;
-        const hasSds = card.dataset.sds === '1';
-        const hasLabel = card.dataset.label === '1';
-        const hasBarcode = card.dataset.barcode === '1';
-        const st = card.dataset.status;
-        const cat = card.dataset.category || 'Unknown';
+    function jumpTo(name){ const c=cards.find(c=>c.dataset.name===name.toLowerCase()); if(!c) return; c.scrollIntoView({behavior:'smooth', block:'center'}); c.animate([{outline:'2px solid #0ea5e9'},{outline:'0px solid transparent'}],{duration:900}); }
 
-        const textMatch = !term || name.includes(term) || (epa && epa.includes(term));
-        const sdsMatch = !wantSds || hasSds;
-        const labelMatch = !wantLabel || hasLabel;
-        const barcodeMatch = !wantBarcode || hasBarcode;
-        const statusMatch = (status === 'all') || (st === status);
-        const catMatch = (cats.size === 0) || cats.has(cat);
+    // Star favorite
+    $('#list').addEventListener('click', (e)=>{
+      const star = e.target.closest('.star'); if(!star) return;
+      const name=star.dataset.name; const list=favs();
+      const i=list.indexOf(name); if(i>=0){ list.splice(i,1); star.textContent='☆'; } else { list.unshift(name); star.textContent='★'; }
+      setFavs(list.slice(0,20));
+    });
 
-        const show = textMatch && sdsMatch && labelMatch && barcodeMatch && statusMatch && catMatch;
-        card.style.display = show ? '' : 'none';
-        if (show) visible++;
+    // Mark stars on load
+    function paintStars(){ const f=new Set(favs()); $$('.star').forEach(b=> b.textContent = f.has(b.dataset.name)?'★':'☆'); }
+
+    // Track recents when open SDS/Label
+    $$('#list .actions a.act').forEach(a=> a.addEventListener('click', ()=> pushRecent(a.dataset.name)) );
+
+    // Filters
+    function apply(){
+      const term=(q.value||'').trim().toLowerCase();
+      const cats = new Set($$('.cat:checked').map(c=>c.value));
+      let visible=0;
+      cards.forEach(c=>{
+        const name=c.dataset.name, epa=c.dataset.epa, cat=c.dataset.category||'Unknown';
+        const st=c.dataset.status;
+        const show = (!term || name.includes(term) || (epa && epa.includes(term))) &&
+          (!fSds.checked || c.dataset.sds==='1') && (!fLabel.checked || c.dataset.label==='1') && (!fBarcode.checked || c.dataset.barcode==='1') &&
+          (fStatus.value==='all' || st===fStatus.value) && (cats.size===0 || cats.has(cat));
+        c.style.display = show? 'grid':'none'; if(show) visible++;
       });
-
-      // Sorting (works on visible nodes only by re-inserting)
-      const cmp = {
-        name: (a,b) => a.dataset.name.localeCompare(b.dataset.name),
-        updated: (a,b) => (b.dataset.updated || '').localeCompare(a.dataset.updated || ''),
-        status: (a,b) => (a.dataset.sds === '1' ? 1:0) - (b.dataset.sds === '1' ? 1:0) // missing first
-      }[fSort.value] || ((a,b)=>0);
-
-      // Rebuild order
-      const visibleCards = cards.filter(c => c.style.display !== 'none');
-      visibleCards.sort(cmp).forEach(c => grid.appendChild(c));
-
-      empty.style.display = visible === 0 ? '' : 'none';
-      saveFilters();
+      // sort
+      const cmp = { name:(a,b)=>a.dataset.name.localeCompare(b.dataset.name), updated:(a,b)=>(b.dataset.updated||'').localeCompare(a.dataset.updated||''), missing:(a,b)=>(a.dataset.sds==='1')-(b.dataset.sds==='1') }[fSort.value] || (()=>0);
+      cards.filter(c=>c.style.display!=='none').sort(cmp).forEach(c=>c.parentNode.appendChild(c));
     }
 
-    // Debounce helper
-    const debounce = (fn, ms=150) => { let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); }; };
+    [q,fSds,fLabel,fBarcode,fStatus,fSort, ...$$('.cat')].forEach(el=>el.addEventListener('input', apply));
+    apply(); renderFavs(); renderRecents(); paintStars();
 
-    // Event wiring
-    q.addEventListener('input', debounce(applyFilters, 120));
-    [fSds, fLabel, fBarcode, fStatus, fSort].forEach(el => el.addEventListener('change', applyFilters));
-    catButtons.forEach(b => b.addEventListener('click', () => { const on = b.getAttribute('aria-pressed') === 'true'; b.setAttribute('aria-pressed', String(!on)); applyFilters(); }));
+    // Command palette
+    const dlg=$('#cmd'), cmdq=$('#cmdq'), cmdres=$('#cmdres');
+    function openCmd(){ dlg.showModal(); cmdq.value=''; drawCmd(''); cmdq.focus(); }
+    function closeCmd(){ dlg.close(); }
+    window.addEventListener('keydown', (e)=>{ if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){ e.preventDefault(); openCmd(); } });
+    dlg.addEventListener('close', ()=> cmdres.innerHTML='');
 
-    // Keyboard shortcuts: / to focus search, Esc to clear all
-    window.addEventListener('keydown', (e) => {
-      if(e.key === '/' && document.activeElement !== q){ e.preventDefault(); q.focus(); q.select(); }
-      if(e.key === 'Escape'){
-        q.value=''; fSds.checked=fLabel.checked=fBarcode.checked=false; fStatus.value='all'; catButtons.forEach(b=>b.setAttribute('aria-pressed','false')); applyFilters();
-      }
-    });
+    function drawCmd(qs){
+      cmdres.innerHTML='';
+      const items = cards.map(c=>({name:c.dataset.name, epa:c.dataset.epa, el:c}));
+      const term=qs.trim().toLowerCase();
+      const score = (s)=>{
+        if(!term) return 0; if(s===term) return 100; if(s.startsWith(term)) return 70; if(s.includes(term)) return 40; return 0;
+      };
+      items
+        .map(o=>({o, sc: Math.max(score(o.name), score(o.epa||'')) }))
+        .filter(v=>v.sc>0 || !term)
+        .sort((a,b)=>b.sc-a.sc || a.o.name.localeCompare(b.o.name))
+        .slice(0,40)
+        .forEach(v=>{
+          const row=document.createElement('div'); row.className='res';
+          row.innerHTML=`<div><strong>${v.o.name}</strong><div class="kbd">EPA ${v.o.epa||'—'}</div></div><div class="kbd">Enter → SDS</div>`;
+          row.onclick=()=>{ closeCmd(); const btn=v.o.el.querySelector('.actions .sds'); if(btn) btn.click(); else jumpTo(v.o.name); };
+          cmdres.appendChild(row);
+        });
+    }
+    cmdq.addEventListener('input', ()=> drawCmd(cmdq.value));
+    dlg.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeCmd(); });
 
-    // Copy SDS link
-    grid.addEventListener('click', async (e) => {
-      const a = e.target.closest('a.copy');
-      if(!a) return;
-      e.preventDefault();
-      const card = e.target.closest('.card');
-      const href = card?.dataset?.sdsHref || card?.getAttribute('data-sds-href');
-      if(!href){ alert('No SDS link for this product.'); return; }
-      try{ await navigator.clipboard.writeText(location.origin + href); a.textContent = '✅ Copied'; setTimeout(()=> a.textContent = '🔗 Copy SDS', 1400); }
-      catch{ alert('Copy failed'); }
-    });
+    // Job Packs: filters by a short curated list
+    $$('.lane [data-pack]').forEach(ch=> ch.addEventListener('click', (e)=>{ e.preventDefault(); const lst=JSON.parse(ch.dataset.pack||'[]').map(x=>x.toLowerCase()); q.value=''; $$('.cat').forEach(c=>c.checked=false); [fSds,fLabel,fBarcode].forEach(c=>c.checked=false); fStatus.value='all'; cards.forEach(c=>{ c.style.display = lst.includes(c.dataset.name) ? 'grid':'none'; }); }));
 
-    // Load + apply initial state
-    loadFilters();
-    applyFilters();
-
-    // Optional: gentle A2HS prompt if installed as PWA is desired
-    let deferPrompt;
-    window.addEventListener('beforeinstallprompt', (e) => { deferPrompt = e; /* you can show a custom button and call deferPrompt.prompt() */ });
+    // Truck prefilter via URL ?truck=12
+    (function(){ const u=new URL(location.href); const t=u.searchParams.get('truck'); if(t){ $('#truck').value=t; document.title += ` · Truck ${t}`; }})();
   </script>
 </body>
 </html>
