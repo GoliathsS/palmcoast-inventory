@@ -54,9 +54,12 @@
     .side .block h5{margin:0 0 6px; color:var(--muted); font-size:.92rem}
     .side .flt{display:flex; flex-direction:column; gap:6px}
 
-    /* List rows */
-    .list{}
-    .row{display:grid; grid-template-columns: 1fr auto; gap:10px; align-items:center; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:10px}
+    /* List as grid (fills space) */
+    .list{ display:grid; grid-template-columns:1fr; gap:10px; }
+    @media (min-width:1100px){ .list{ grid-template-columns:1fr 1fr; } }
+    .list h3{ grid-column:1 / -1; margin:6px 0 2px; color:#475569; }
+
+    .row{display:grid; grid-template-columns: 1fr auto; gap:10px; align-items:center; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; margin:0}
     .row .name{margin:0; font-size:1.02rem}
     .row .meta{color:var(--muted); font-size:.92rem}
     .row .badges{display:flex; gap:.35rem; flex-wrap:wrap; margin-top:4px}
@@ -74,19 +77,17 @@
     .alpha{position:fixed; right:6px; top:160px; display:flex; flex-direction:column; gap:2px; background:rgba(255,255,255,.65); backdrop-filter:blur(6px); padding:6px; border-radius:10px; border:1px solid var(--border)}
     .alpha a{display:block; padding:2px 5px; font-weight:900; text-decoration:none; color:#475569}
 
+    /* Sticky section headers */
+    .list h3.sticky{
+      position:sticky; top:100px; /* adjust to your header+toolbar height */
+      background: color-mix(in oklab, var(--bg), #fff 40%);
+      padding: 2px 6px; border-radius: 6px; z-index: 1;
+    }
+
     /* Bottom dock (mobile) */
     .dock{position:fixed; z-index:40; left:0; right:0; bottom:0; background:rgba(255,255,255,.9); backdrop-filter:blur(8px); border-top:1px solid var(--border); padding:8px 10px}
     .dock .row{display:flex; gap:8px; justify-content:space-between}
     .toggle{display:inline-flex; align-items:center; gap:.4rem; padding:.5rem .7rem; border-radius:10px; border:1px solid var(--border); background:#fff; font-weight:900}
-
-    /* Command palette */
-    dialog{border:none; border-radius:14px; padding:0; width:min(720px, 92vw); box-shadow:0 20px 60px rgba(0,0,0,.25)}
-    .cmdk{background:var(--card); border:1px solid var(--border); border-radius:14px; overflow:hidden}
-    .cmdk input{width:100%; padding:14px; border:none; border-bottom:1px solid var(--border); outline:none; font-size:1.05rem}
-    .results{max-height:60vh; overflow:auto}
-    .res{display:flex; justify-content:space-between; padding:12px 14px; border-bottom:1px solid #f1f5f9}
-    .res strong{font-weight:800}
-    .kbd{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size:.8rem; color:#475569}
 
     @media(max-width:720px){
       .layout{grid-template-columns:1fr}
@@ -156,7 +157,7 @@
         {% for p in products|sort(attribute='name') if p.name is defined %}
           {% set first = (p.name[0]|upper) %}
           {% if first != last %}
-            <h3 id="L{{ first }}" style="margin:10px 0 6px; color:#475569">{{ first }}</h3>
+            <h3 id="L{{ first }}" class="sticky">{{ first }}</h3>
             {% set last = first %}
           {% endif %}
           {% set pid = p.id %}
@@ -234,13 +235,28 @@
     const cards=$$('#list .row');
     const ac=$('#ac'), acList=$('#acList');
 
-    // Build alpha rail
-    const letters = [...new Set($$('#list h3[id^="L"]').map(h => h.id.replace('L','')))].sort();
+    // Build alpha rail once
     const alpha = $('#alpha');
+    const letters = [...new Set($$('#list h3[id^="L"]').map(h => h.id.slice(1)))]
+      .filter(l => /^[A-Z]$/.test(l)).sort();
     letters.forEach(l => { const a=document.createElement('a'); a.href='#L'+l; a.textContent=l; alpha.appendChild(a); });
 
-    // Filtering
     function visibleCards(){ return cards.filter(c=>c.style.display!== 'none'); }
+
+    // Collapse section headers with no visible rows
+    function collapseLetterHeaders(){
+      const headers = $$('#list h3[id^="L"]');
+      headers.forEach(h => {
+        let el = h.nextElementSibling, hasVisible = false;
+        while (el && el.tagName !== 'H3') {
+          if (el.classList.contains('row') && el.style.display !== 'none') { hasVisible = true; break; }
+          el = el.nextElementSibling;
+        }
+        h.style.display = hasVisible ? '' : 'none';
+      });
+    }
+
+    // Filtering + sorting
     function apply(){
       const term=(q.value||'').trim().toLowerCase();
       const cats = new Set($$('.cat:checked').map(c=>c.value));
@@ -251,13 +267,21 @@
           (fStatus.value==='all' || st===fStatus.value) && (cats.size===0 || cats.has(cat));
         c.style.display = show? 'grid':'none';
       });
-      // sort
       const cmp = {
         name:(a,b)=>a.dataset.name.localeCompare(b.dataset.name),
         updated:(a,b)=>(b.dataset.updated||'').localeCompare(a.dataset.updated||''),
         missing:(a,b)=>(a.dataset.sds==='1')-(b.dataset.sds==='1')
       }[fSort.value] || (()=>0);
       visibleCards().sort(cmp).forEach(c=>c.parentNode.appendChild(c));
+
+      // Toggle alpha rail + headers only when A→Z is active
+      const alphaOn = (fSort.value === 'name');
+      alpha.style.display = alphaOn ? '' : 'none';
+      $$('#list h3[id^="L"]').forEach(h => h.style.display = alphaOn ? h.style.display : 'none');
+
+      // If A→Z, hide empty headers
+      if(alphaOn) collapseLetterHeaders();
+
       drawAC();
     }
 
@@ -319,7 +343,7 @@
     $('#t-barcode').addEventListener('click', ()=>{ fBarcode.checked=!fBarcode.checked; apply(); });
     $('#t-missing').addEventListener('click', ()=>{ fSort.value = (fSort.value==='missing' ? 'name' : 'missing'); apply(); });
 
-    // Command palette (optional power users)
+    // Command palette (power users)
     const dlg=$('#cmd'), cmdq=$('#cmdq'), cmdres=$('#cmdres');
     function openCmd(){ dlg.showModal(); cmdq.value=''; drawCmd(''); cmdq.focus(); }
     function closeCmd(){ dlg.close(); }
@@ -333,7 +357,7 @@
       const score = (s)=>{ if(!term) return 0; if(s===term) return 100; if(s.startsWith(term)) return 70; if(s.includes(term)) return 40; return 0; };
       items.map(o=>({o, sc: Math.max(score(o.name), score(o.epa||''))})).filter(v=>v.sc>0 || !term).sort((a,b)=>b.sc-a.sc || a.o.name.localeCompare(b.o.name)).slice(0,40).forEach(v=>{
         const row=document.createElement('div'); row.className='res';
-        row.innerHTML=`<div><strong>${v.o.name}</strong><div class="kbd">EPA ${v.o.epa||'—'}</div></div><div class="kbd">Enter → SDS • Shift+Enter → Label</div>`;
+        row.innerHTML=`<div><strong>${v.o.name}</strong><div class=\"kbd\">EPA ${v.o.epa||'—'}</div></div><div class=\"kbd\">Enter → SDS • Shift+Enter → Label</div>`;
         row.onclick=()=>{ closeCmd(); if(window.event && window.event.shiftKey && v.o.label) v.o.label.click(); else if(v.o.sds) v.o.sds.click(); else v.o.el.scrollIntoView({behavior:'smooth', block:'center'}); };
         cmdres.appendChild(row);
       });
