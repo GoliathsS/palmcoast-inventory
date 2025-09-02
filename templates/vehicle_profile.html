@@ -592,14 +592,22 @@
   </main>
 
   <!-- ===== Sticky Bottom Actions ===== -->
-  <div class="sticky-actions">
-    <div class="container py-2 d-flex gap-2 justify-content-between">
-      <a href="/vehicles" class="btn btn-outline-secondary w-50" aria-label="Back to vehicles">← Vehicles</a>
-      {% if is_admin %}
+  {% if is_admin %}
+    <div class="sticky-actions" role="navigation" aria-label="Admin actions">
+      <div class="container py-2 d-flex gap-2 justify-content-between">
+        <a href="/vehicles" class="btn btn-outline-secondary w-50" aria-label="Back to vehicles">← Vehicles</a>
         <a href="/vehicle-inspection/{{ vehicle[0] }}" class="btn btn-success w-50" aria-label="Start a new inspection">Start Inspection</a>
-      {% endif %}
+      </div>
     </div>
-  </div>
+  {% elif is_tech %}
+    <div class="sticky-actions" role="navigation" aria-label="Tech actions">
+      <div class="container py-2">
+        <a href="{{ url_for('tech_home') }}" class="btn btn-outline-secondary w-100" aria-label="Back to Tech Home">
+          ← Back to Tech Home
+        </a>
+      </div>
+    </div>
+  {% endif %}
 
   <!-- ===== Footer ===== -->
   <footer class="container py-4 small-muted">
