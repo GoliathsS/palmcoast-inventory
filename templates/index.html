@@ -410,41 +410,69 @@
   </div>
 
   <!-- Scripts -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script type="module">
     import { BrowserMultiFormatReader } from 'https://cdn.jsdelivr.net/npm/@zxing/browser@latest/+esm';
 
-    const videoElem = document.getElementById("scannerPreview");
-    const scannerModal = new bootstrap.Modal(document.getElementById("scannerModal"));
-    const closeModalBtn = document.getElementById("closeModalBtn");
-    const beep = document.getElementById("beep-sound");
-    const codeReader = new BrowserMultiFormatReader();
+    const scannerModalEl = document.getElementById("scannerModal");
+    const scannerModal   = new bootstrap.Modal(scannerModalEl, { backdrop: 'static' });
+    const videoElem      = document.getElementById("scannerPreview");
+    const closeModalBtn  = document.getElementById("closeModalBtn");
+    const beep           = document.getElementById("beep-sound");
+    const reader         = new BrowserMultiFormatReader();
 
-    async function startScanInto(targetId){
-      const input = document.getElementById(targetId);
-      if (!input) return;
-
-      scannerModal.show();
+    async function decodeOnceSmart(videoEl){
+      // iOS-friendly path: request *rear* camera via facingMode constraints first
       try {
-        // Prefer rear camera when available (iOS labels often include "Back")
-        const devices = await codeReader.listVideoInputDevices();
-        const back = devices.find(d => /back|rear/i.test(d.label))?.deviceId
-                  ?? devices.at(-1)?.deviceId; // fallback: last camera
-        const result = await codeReader.decodeOnceFromVideoDevice(back, videoElem);
-        input.value = result.getText();
-        beep?.play();
-      } catch (err) {
-        console.error("Scan failed:", err);
-      } finally {
-        scannerModal.hide();
-        codeReader.reset();
+        return await reader.decodeOnceFromConstraints(
+          { video: { facingMode: { ideal: "environment" } } },
+          videoEl
+        );
+      } catch (e) {
+        // Fallback: enumerate devices and pick one that looks like "back/rear"
+        try {
+          const devices = await reader.listVideoInputDevices();
+          const backId = devices.find(d => /back|rear/i.test(d.label))?.deviceId
+                      ?? devices.at(-1)?.deviceId;
+          return await reader.decodeOnceFromVideoDevice(backId, videoEl);
+        } catch (e2) {
+          throw e2;
+        }
       }
     }
 
-    // Existing Add-Product scan button
+    function startScanInto(targetInputId){
+      const input = document.getElementById(targetInputId);
+      if (!input) return;
+
+      // Start scanning *after* the modal is fully visible — important on iOS
+      const onShown = async () => {
+        scannerModalEl.removeEventListener('shown.bs.modal', onShown);
+        try {
+          const result = await decodeOnceSmart(videoElem);
+          input.value = result.getText();
+          beep?.play();
+        } catch (err) {
+          console.error("Scan failed:", err);
+          // Helpful messages for common iOS cases
+          if (err?.name === 'NotAllowedError') {
+            alert('Camera permission is blocked. In Settings → Safari → Camera, allow access.');
+          } else if (err?.name === 'NotReadableError') {
+            alert('Camera is in use by another app. Close other camera apps and try again.');
+          }
+        } finally {
+          reader.reset();          // stop the camera
+          scannerModal.hide();     // close the scanner modal
+        }
+      };
+
+      scannerModalEl.addEventListener('shown.bs.modal', onShown, { once: true });
+      scannerModal.show();
+    }
+
+    // Existing Add-Product scan button -> scans into #barcode-field
     document.getElementById("scan-btn")?.addEventListener("click", () => startScanInto("barcode-field"));
 
-    // New: any button with .js-scan-into can launch the camera for its target input
+    // New: any button with .js-scan-into scans into its target input
     document.addEventListener("click", (e) => {
       const btn = e.target.closest(".js-scan-into");
       if (!btn) return;
@@ -453,7 +481,8 @@
       startScanInto(targetId);
     });
 
-    closeModalBtn?.addEventListener("click", () => codeReader.reset());
+    // Safety: if user closes modal manually, stop the camera
+    closeModalBtn?.addEventListener("click", () => reader.reset());
   </script>
 
   <script>
