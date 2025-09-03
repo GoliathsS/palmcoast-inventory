@@ -233,7 +233,7 @@ def guess_symbology(code: str) -> str | None:
     return None
 
 def _ensure_barcode_alias_table_once():
-    """Create product_barcodes + indexes and backfill from products.barcode."""
+    """Create product_ + indexes and backfill from products.barcode."""
     conn = get_db_connection(); cur = conn.cursor()
     try:
         cur.execute("""
@@ -1333,6 +1333,65 @@ def tech_requests_queue():
 def scan():
     technicians = get_all_technicians()
     return render_template("scanner.html", technicians=technicians)
+
+@app.get("/products/<int:product_id>/barcodes-fragment")
+@login_required
+@role_required('ADMIN')
+def barcodes_fragment(product_id):
+    conn = get_db_connection(); cur = conn.cursor()
+    try:
+        cur.execute("""
+          SELECT id, code, symbology, is_active, is_primary, notes,
+                 to_char(created_at, 'YYYY-MM-DD') as created_at,
+                 to_char(archived_at, 'YYYY-MM-DD') as archived_at
+          FROM product_barcodes
+          WHERE product_id=%s
+          ORDER BY is_primary DESC, is_active DESC, created_at DESC NULLS LAST
+        """, (product_id,))
+        rows = cur.fetchall()
+    finally:
+        cur.close(); conn.close()
+
+    from flask import render_template_string
+    html = render_template_string("""
+    {% if rows %}
+      <ul class="list-group">
+        {% for r in rows %}
+          {% set id, code, sym, is_active, is_primary, notes, created_at, archived_at = r %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <div>
+              <div class="fw-semibold">
+                <code>{{ code }}</code>
+                {% if is_primary %}<span class="badge bg-success ms-2">Primary</span>{% endif %}
+                {% if not is_active %}<span class="badge bg-warning text-dark ms-2">Retired</span>{% endif %}
+              </div>
+              <div class="text-muted small">
+                {{ sym or '—' }} · Added {{ created_at or '—' }}
+                {% if archived_at %} · Retired {{ archived_at }}{% endif %}
+                {% if notes %} · {{ notes }}{% endif %}
+              </div>
+            </div>
+            <div class="btn-group">
+              {% if is_active and not is_primary %}
+                <a href="#" class="btn btn-sm btn-outline-primary js-barcode-action"
+                   data-action="/admin/products/{{ product_id }}/barcodes/{{ id }}/primary">Set Primary</a>
+              {% endif %}
+              {% if is_active %}
+                <a href="#" class="btn btn-sm btn-outline-danger js-barcode-action"
+                   data-action="/admin/products/{{ product_id }}/barcodes/{{ id }}/archive">Retire</a>
+              {% else %}
+                <a href="#" class="btn btn-sm btn-outline-secondary js-barcode-action"
+                   data-action="/admin/products/{{ product_id }}/barcodes/{{ id }}/unarchive">Reactivate</a>
+              {% endif %}
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="text-muted">No barcodes yet.</div>
+    {% endif %}
+    """, rows=rows, product_id=product_id)
+    return html
 
 @app.route("/add-product", methods=["POST"])
 @login_required
