@@ -352,140 +352,26 @@
           {% endif %}
         </div>
 
-        <!-- CEU & Training (UPGRADED) -->
-        <div class="panel" role="region" aria-label="CEU & Training">
-          <h2>CEU &amp; Training</h2>
-
-          {# ---- Overview chips (computed server-side; safe fallbacks included) ---- #}
-          {% set ceu_required = (ceu.required_total if ceu and ceu.required_total is not none else 0) %}
-          {% set ceu_earned   = (ceu.earned_total   if ceu and ceu.earned_total   is not none else 0) %}
-          {% set ceu_remaining = (ceu_required - ceu_earned if ceu_required and ceu_required > ceu_earned else 0) %}
-          {% set renew_by = ceu.renew_by if ceu and ceu.renew_by else None %}
-          {% set status = ceu.status if ceu and ceu.status else ('ok' if ceu_remaining == 0 else ('due_soon' if ceu_remaining <= 2 else 'open')) %}
-          {% set cycle = ceu.cycle_label if ceu and ceu.cycle_label else '' %}
-
-          <div class="row" style="gap:10px; margin: 6px 0 10px">
-            <span class="pill" title="Hours earned this cycle">
-              <span class="dot"></span> Earned: <strong style="margin-left:6px">{{ ceu_earned }}</strong> / {{ ceu_required }}
-              {% if cycle %}<span class="subtle" style="margin-left:8px">({{ cycle }})</span>{% endif %}
-            </span>
-            <span class="pill" title="Hours remaining to renew">
-              <span class="dot"></span> Remaining: <strong style="margin-left:6px">{{ ceu_remaining }}</strong>
-            </span>
-            <span class="pill" title="Renewal deadline">
-              <span class="dot"></span> Renew by:
-              <strong style="margin-left:6px">{{ renew_by.strftime('%Y-%m-%d') if renew_by else '—' }}</strong>
-            </span>
-            {% if status == 'ok' %}
-              <span class="badge badge-ok">On Track</span>
-            {% elif status == 'due_soon' %}
-              <span class="badge badge-warn">Due Soon</span>
+         <!-- CEU & Training Records -->
+          <div class="panel" role="region" aria-label="CEU & Training">
+            <h2>CEU &amp; Training Records</h2>
+            {% if training %}
+              <ul class="list">
+                {% for t in training %}
+                <li class="row" style="justify-content:space-between;align-items:center">
+                  <div>
+                    <a href="{{ t.url }}" target="_blank" style="font-weight:700;text-decoration:none">{{ t.title }}</a>
+                    {% if t.ceu_hours %}<span class="subtle"> · {{ t.ceu_hours }} CEU</span>{% endif %}
+                    {% if t.expires_on %}<div class="subtle">Expires {{ t.expires_on.strftime('%Y-%m-%d') }}</div>{% endif %}
+                  </div>
+                  <a class="btn" href="{{ t.url }}" target="_blank">Open</a>
+                </li>
+                {% endfor %}
+              </ul>
             {% else %}
-              <span class="badge badge-crit">Incomplete</span>
+              <div class="subtle">No records available.</div>
             {% endif %}
           </div>
-
-          {# ---- Progress bar ---- #}
-          {% set pct = ( (ceu_earned / ceu_required) * 100 ) if ceu_required > 0 else 0 %}
-          <div aria-label="CEU progress" style="margin:8px 0 14px">
-            <div style="height:10px; background:#f1f5f9; border:1px solid var(--border); border-radius:999px; overflow:hidden">
-              <div style="height:100%; width: {{ pct|round(0,'floor') }}%; background:linear-gradient(90deg,var(--brand),var(--brand-2));"></div>
-            </div>
-            <div class="subtle" style="margin-top:6px">{{ pct|round(0,'floor') }}% complete</div>
-          </div>
-
-          {# ---- Quick add form (tech self-serve) ---- #}
-          <form method="POST" action="{{ url_for('training_add') }}" enctype="multipart/form-data"
-                class="grid" style="gap:10px; margin-bottom:12px" aria-label="Add external training">
-            <div class="row" style="gap:10px; width:100%">
-              <input class="btn" style="flex:2; text-align:left" type="text" name="title" placeholder="Course title" required>
-              <input class="btn" style="flex:1; text-align:left" type="text" name="provider" placeholder="Provider (e.g., NPMA)">
-              <input class="btn" style="width:120px" type="number" step="0.25" min="0" name="ceu_hours" placeholder="Hours" required>
-              <select class="btn" name="category" style="width:180px">
-                <option value="">Category (optional)</option>
-                <option value="core">Core</option>
-                <option value="general">General</option>
-                <option value="structural">Structural</option>
-                <option value="other">Other</option>
-              </select>
-              <input class="btn" style="width:170px" type="date" name="completed_on" required>
-            </div>
-            <div class="row" style="gap:10px; width:100%">
-              <input class="btn" style="flex:1" type="url" name="url" placeholder="Course link (optional)">
-              <input class="btn" style="flex:1" type="file" name="certificate_file" accept="application/pdf,image/*" title="Upload certificate (PDF/Image)">
-              <button class="btn btn-primary" style="min-width:180px">Add Training</button>
-            </div>
-          </form>
-
-          {# ---- Records list ---- #}
-          {% set records = training_records if training_records is defined else training %}
-          {% if records %}
-            <ul class="list">
-              {% for t in records %}
-                {# normalize fields to support both old and new shapes #}
-                {% set rid = t.id if t.id is defined else loop.index %}
-                {% set title = t.title %}
-                {% set provider = t.provider if t.provider is defined else (t.source if t.source is defined else '') %}
-                {% set hours = t.ceu_hours if t.ceu_hours is defined else (t.hours if t.hours is defined else '') %}
-                {% set category = t.category if t.category is defined else '' %}
-                {% set completed_on = t.completed_on if t.completed_on is defined else (t.completed_at if t.completed_at is defined else None) %}
-                {% set cert = t.certificate_url if t.certificate_url is defined else (t.certificate if t.certificate is defined else None) %}
-                {% set url = t.url if t.url is defined else None %}
-                {% set status = t.status if t.status is defined else ('verified' if cert else 'pending') %}
-                {% set notes = t.notes if t.notes is defined else None %}
-              <li class="row" style="justify-content:space-between; align-items:flex-start">
-                <div>
-                  <div style="font-weight:700">
-                    {% if url %}<a href="{{ url }}" target="_blank" style="text-decoration:none">{{ title }}</a>{% else %}{{ title }}{% endif %}
-                    {% if provider %}<span class="subtle"> · {{ provider }}</span>{% endif %}
-                    {% if category %}<span class="subtle"> · {{ category|capitalize }}</span>{% endif %}
-                  </div>
-                  <div class="subtle" style="margin-top:2px">
-                    {{ hours }} CEU{% if hours != 1 %}s{% endif %}
-                    {% if completed_on %} · Completed {{ completed_on.strftime('%Y-%m-%d') }}{% endif %}
-                    {% if notes %} · {{ notes }}{% endif %}
-                  </div>
-                  {% if cert %}
-                    <div class="row" style="gap:8px; margin-top:6px">
-                      <a class="btn" href="{{ cert }}" target="_blank">View Certificate</a>
-                    </div>
-                  {% else %}
-                    <form method="POST" action="{{ url_for('training_upload_certificate', record_id=rid) }}"
-                          enctype="multipart/form-data" class="row" style="gap:8px; margin-top:6px">
-                      <input class="btn" type="file" name="certificate_file" accept="application/pdf,image/*" required>
-                      <button class="btn">Upload Certificate</button>
-                    </form>
-                  {% endif %}
-                </div>
-
-                <div style="text-align:right;min-width:160px">
-                  {% if status == 'verified' %}
-                    <span class="badge badge-ok">Verified</span>
-                  {% elif status == 'rejected' %}
-                    <span class="badge badge-crit" title="Please fix and re-submit">Rejected</span>
-                  {% else %}
-                    <span class="badge badge-warn">Pending Review</span>
-                  {% endif %}
-
-                  {# Admin actions #}
-                  {% if is_admin %}
-                    <div class="row" style="gap:6px; margin-top:8px; justify-content:flex-end">
-                      <form method="POST" action="{{ url_for('training_verify', record_id=rid) }}">
-                        <button class="btn">Verify</button>
-                      </form>
-                      <form method="POST" action="{{ url_for('training_reject', record_id=rid) }}">
-                        <button class="btn btn-danger">Reject</button>
-                      </form>
-                    </div>
-                  {% endif %}
-                </div>
-              </li>
-              {% endfor %}
-            </ul>
-          {% else %}
-            <div class="subtle">No training records available.</div>
-          {% endif %}
-        </div>
 
         <!-- Emergency (UPGRADED) -->
         <div id="emergency" class="panel" role="region" aria-label="Emergency">
