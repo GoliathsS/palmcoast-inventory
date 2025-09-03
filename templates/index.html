@@ -341,9 +341,13 @@
                     <form class="add-barcode-form" method="POST"
                           action="/admin/products/{{ product[0] }}/barcodes/add">
                       <div class="row g-2 align-items-center">
-                        <div class="col-12">
+                        <div class="col-12 position-relative">
                           <label class="form-label mb-1">Scan or paste new barcode</label>
-                          <input type="text" name="code" class="form-control" placeholder="e.g., 012345678905" required>
+                          <input type="text" name="code" class="form-control"
+                                 id="code-input-{{ product[0] }}" placeholder="e.g., 012345678905" required>
+                          <button type="button"
+                                  class="btn btn-sm btn-outline-secondary position-absolute top-0 end-0 mt-1 me-1 js-scan-into"
+                                  data-target="code-input-{{ product[0] }}">📷</button>
                         </div>
                         <div class="col-12 col-md-7">
                           <input type="text" name="notes" class="form-control" placeholder="Notes (optional)">
@@ -408,31 +412,48 @@
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script type="module">
-    // ZXing barcode scanning
     import { BrowserMultiFormatReader } from 'https://cdn.jsdelivr.net/npm/@zxing/browser@latest/+esm';
-    const barcodeField = document.getElementById("barcode-field");
-    const scanBtn = document.getElementById("scan-btn");
+
     const videoElem = document.getElementById("scannerPreview");
-    const modalElem = new bootstrap.Modal(document.getElementById("scannerModal"));
+    const scannerModal = new bootstrap.Modal(document.getElementById("scannerModal"));
     const closeModalBtn = document.getElementById("closeModalBtn");
     const beep = document.getElementById("beep-sound");
+    const codeReader = new BrowserMultiFormatReader();
 
-    let codeReader = new BrowserMultiFormatReader();
+    async function startScanInto(targetId){
+      const input = document.getElementById(targetId);
+      if (!input) return;
 
-    scanBtn.addEventListener("click", async () => {
-      modalElem.show();
+      scannerModal.show();
       try {
-        const result = await codeReader.decodeOnceFromVideoDevice(undefined, videoElem);
-        barcodeField.value = result.getText();
+        // Prefer rear camera when available (iOS labels often include "Back")
+        const devices = await codeReader.listVideoInputDevices();
+        const back = devices.find(d => /back|rear/i.test(d.label))?.deviceId
+                  ?? devices.at(-1)?.deviceId; // fallback: last camera
+        const result = await codeReader.decodeOnceFromVideoDevice(back, videoElem);
+        input.value = result.getText();
         beep?.play();
       } catch (err) {
         console.error("Scan failed:", err);
       } finally {
-        modalElem.hide();
+        scannerModal.hide();
         codeReader.reset();
       }
+    }
+
+    // Existing Add-Product scan button
+    document.getElementById("scan-btn")?.addEventListener("click", () => startScanInto("barcode-field"));
+
+    // New: any button with .js-scan-into can launch the camera for its target input
+    document.addEventListener("click", (e) => {
+      const btn = e.target.closest(".js-scan-into");
+      if (!btn) return;
+      e.preventDefault();
+      const targetId = btn.getAttribute("data-target");
+      startScanInto(targetId);
     });
-    closeModalBtn.addEventListener("click", () => codeReader.reset());
+
+    closeModalBtn?.addEventListener("click", () => codeReader.reset());
   </script>
 
   <script>
