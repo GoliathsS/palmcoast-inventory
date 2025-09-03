@@ -233,43 +233,52 @@ def guess_symbology(code: str) -> str | None:
     return None
 
 def _ensure_barcode_alias_table_once():
-    """Create product_barcodes + unique indexes and backfill from products.barcode."""
+    """Create product_barcodes + indexes and backfill from products.barcode."""
     conn = get_db_connection(); cur = conn.cursor()
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS product_barcodes (
-            id SERIAL PRIMARY KEY,
-            product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
-            code TEXT NOT NULL,
-            symbology TEXT,
-            is_active BOOLEAN NOT NULL DEFAULT TRUE,
-            is_primary BOOLEAN NOT NULL DEFAULT FALSE,
-            notes TEXT,
-            added_by INTEGER,
-            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-            archived_at TIMESTAMPTZ
-        );
-    """)
-    -- Create unique per-product to allow ON CONFLICT upserts
-    cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_prod_code ON product_barcodes (product_id, code);")
-    -- Ensure a barcode cannot be active for two products at once
-    cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_code_active ON product_barcodes (code) WHERE is_active;")
-
-    # Backfill primaries from products.barcode
-    cur.execute("SELECT id, COALESCE(barcode,'') FROM products;")
-    rows = cur.fetchall()
-    for pid, raw in rows:
-        code = normalize_barcode(raw)
-        if not code:
-            continue
+    try:
         cur.execute("""
-            INSERT INTO product_barcodes (product_id, code, symbology, is_active, is_primary)
-            VALUES (%s, %s, %s, TRUE, TRUE)
-            ON CONFLICT (product_id, code) DO UPDATE
-               SET is_active = EXCLUDED.is_active,
-                   is_primary = TRUE,
-                   archived_at = NULL;
-        """, (pid, code, guess_symbology(code)))
-    conn.commit(); cur.close(); conn.close()
+            CREATE TABLE IF NOT EXISTS product_barcodes (
+                id SERIAL PRIMARY KEY,
+                product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+                code TEXT NOT NULL,
+                symbology TEXT,
+                is_active BOOLEAN NOT NULL DEFAULT TRUE,
+                is_primary BOOLEAN NOT NULL DEFAULT FALSE,
+                notes TEXT,
+                added_by INTEGER,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                archived_at TIMESTAMPTZ
+            )
+        """)
+        # Create unique per-product to allow ON CONFLICT upserts
+        cur.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS ux_prod_code "
+            "ON product_barcodes (product_id, code)"
+        )
+        # Ensure a barcode cannot be active for two products at once
+        cur.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS ux_code_active "
+            "ON product_barcodes (code) WHERE is_active"
+        )
+
+        # Backfill primaries from products.barcode
+        cur.execute("SELECT id, COALESCE(barcode,'') FROM products")
+        rows = cur.fetchall()
+        for pid, raw in rows:
+            code = normalize_barcode(raw)
+            if not code:
+                continue
+            cur.execute("""
+                INSERT INTO product_barcodes (product_id, code, symbology, is_active, is_primary)
+                VALUES (%s, %s, %s, TRUE, TRUE)
+                ON CONFLICT (product_id, code) DO UPDATE
+                   SET is_active = EXCLUDED.is_active,
+                       is_primary = TRUE,
+                       archived_at = NULL
+            """, (pid, code, guess_symbology(code)))
+        conn.commit()
+    finally:
+        cur.close(); conn.close()
 
 def _upload_file_to_s3(file_storage, product_id: int, kind: str) -> str:
     filename = secure_filename(file_storage.filename or "")
