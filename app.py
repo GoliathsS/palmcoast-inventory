@@ -1418,6 +1418,35 @@ def archive_barcode(product_id, barcode_id):
         cur.close(); conn.close()
     return redirect(url_for('index'))
 
+@app.post("/admin/products/<int:product_id>/barcodes/<int:barcode_id>/unarchive")
+@login_required
+@role_required('ADMIN')
+def unarchive_barcode(product_id, barcode_id):
+    conn = get_db_connection(); cur = conn.cursor()
+    try:
+        cur.execute("SELECT code FROM product_barcodes WHERE id=%s AND product_id=%s", (barcode_id, product_id))
+        row = cur.fetchone()
+        if not row: abort(404)
+        code = row[0]
+        cur.execute("""
+            SELECT 1 FROM product_barcodes
+             WHERE code=%s AND is_active=TRUE AND product_id<>%s
+             LIMIT 1
+        """, (code, product_id))
+        if cur.fetchone():
+            flash("Cannot reactivate: this code is active on another product.", "danger")
+        else:
+            cur.execute("""
+                UPDATE product_barcodes
+                   SET is_active=TRUE, archived_at=NULL
+                 WHERE id=%s AND product_id=%s
+            """, (barcode_id, product_id))
+            conn.commit()
+            flash("Barcode reactivated.", "success")
+    finally:
+        cur.close(); conn.close()
+    return ("", 204)  # no content (AJAX)
+
 @app.post("/admin/products/<int:product_id>/barcodes/add")
 @login_required
 @role_required('ADMIN')
