@@ -73,8 +73,8 @@
       line-height:1;
       padding:.35rem .5rem;
       box-shadow:0 2px 8px rgba(220,53,69,.3);
-      display:none;         /* hidden when 0 */
-      min-width:1.45rem;    /* nice round pill for 1-digit */
+      display:none;
+      min-width:1.45rem;
       text-align:center;
     }
 
@@ -231,7 +231,7 @@
               <th>Status</th>
               <th>Price</th>
               <th>Category</th>
-              <th style="min-width:120px;">Actions</th>
+              <th style="min-width:160px;">Actions</th>
             </tr>
           </thead>
           <tbody id="productsBody">
@@ -263,6 +263,7 @@
               </td>
               <td>
                 <button class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#editModal{{ product[0] }}">✏️ Edit</button>
+                <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#barcodeModal{{ product[0] }}">🏷 Barcodes</button>
                 <form action="/delete-product/{{ product[0] }}" method="post" style="display:inline-block" onsubmit="return confirm('Are you sure?')">
                   <button class="btn btn-sm btn-outline-danger">🗑 Delete</button>
                 </form>
@@ -320,6 +321,54 @@
                       <button type="submit" class="btn btn-primary">Save Changes</button>
                     </div>
                   </form>
+                </div>
+              </div>
+            </div>
+
+            <!-- Manage Barcodes Modal -->
+            <div class="modal fade barcode-modal" id="barcodeModal{{ product[0] }}" tabindex="-1"
+                 aria-labelledby="barcodeModalLabel{{ product[0] }}" aria-hidden="true"
+                 data-product-id="{{ product[0] }}">
+              <div class="modal-dialog">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title" id="barcodeModalLabel{{ product[0] }}">Manage Barcodes — {{ product[1] }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+
+                  <div class="modal-body">
+                    <!-- Add barcode (separate form; not nested inside Edit form) -->
+                    <form class="add-barcode-form" method="POST"
+                          action="/admin/products/{{ product[0] }}/barcodes/add">
+                      <div class="row g-2 align-items-center">
+                        <div class="col-12">
+                          <label class="form-label mb-1">Scan or paste new barcode</label>
+                          <input type="text" name="code" class="form-control" placeholder="e.g., 012345678905" required>
+                        </div>
+                        <div class="col-12 col-md-7">
+                          <input type="text" name="notes" class="form-control" placeholder="Notes (optional)">
+                        </div>
+                        <div class="col-6 col-md-3 form-check ms-2">
+                          <input class="form-check-input" type="checkbox" id="primary{{ product[0] }}" name="is_primary" value="1">
+                          <label class="form-check-label" for="primary{{ product[0] }}">Set as primary</label>
+                        </div>
+                        <div class="col-12 col-md-2 text-end">
+                          <button class="btn btn-success w-100">Add</button>
+                        </div>
+                      </div>
+                    </form>
+
+                    <hr class="my-3">
+
+                    <!-- Existing barcodes list (loaded via AJAX) -->
+                    <div id="barcodeList-{{ product[0] }}">
+                      <div class="text-muted">Loading barcodes…</div>
+                    </div>
+                  </div>
+
+                  <div class="modal-footer">
+                    <small class="text-muted">Tip: Primary = code shown in the table. Retired codes still scan (legacy fallback).</small>
+                  </div>
                 </div>
               </div>
             </div>
@@ -387,7 +436,7 @@
   </script>
 
   <script>
-    // Service worker (optional PWA goodness)
+    // Service worker (optional PWA)
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/static/service-worker.js').catch(()=>{});
     }
@@ -488,8 +537,9 @@
             <td>${rowBadge(Number(p[3]||0), Number(p[4]||0))}</td>
             <td>$${fmtMoney(p[5])}</td>
             <td>${catBadge(p[7] ?? '')}</td>
-            <td>
+            <td style="min-width:160px;">
               <button class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#editModal${p[0]}">✏️ Edit</button>
+              <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#barcodeModal${p[0]}">🏷 Barcodes</button>
               <form action="/delete-product/${p[0]}" method="post" style="display:inline-block" onsubmit="return confirm('Are you sure?')">
                 <button class="btn btn-sm btn-outline-danger">🗑 Delete</button>
               </form>
@@ -531,6 +581,56 @@
         });
       }
     });
+  </script>
+
+  <!-- Manage Barcodes loader (AJAX fragment + actions) -->
+  <script>
+    // Load barcodes list when the modal opens, and wire the forms/buttons inside it.
+    document.querySelectorAll('.barcode-modal').forEach(modalEl => {
+      modalEl.addEventListener('shown.bs.modal', async () => {
+        const productId = modalEl.dataset.productId;
+        const listEl = modalEl.querySelector('#barcodeList-' + productId);
+        await loadBarcodes(productId, listEl);
+      });
+
+      // Intercept Add Barcode submit to POST via fetch and refresh list
+      const addForm = modalEl.querySelector('.add-barcode-form');
+      addForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const productId = modalEl.dataset.productId;
+        const listEl = modalEl.querySelector('#barcodeList-' + productId);
+
+        const formData = new FormData(addForm);
+        const res = await fetch(addForm.action, {
+          method: 'POST',
+          body: formData,
+          credentials: 'same-origin'
+        });
+        // Endpoint may redirect; ignore body and just refresh the list
+        await loadBarcodes(productId, listEl);
+        addForm.reset();
+      });
+    });
+
+    async function loadBarcodes(productId, listEl){
+      try{
+        const res = await fetch(`/products/${productId}/barcodes-fragment`, { credentials:'same-origin' });
+        listEl.innerHTML = await res.text();
+
+        // Wire "Set Primary / Retire / Reactivate" buttons (they have .js-barcode-action)
+        listEl.querySelectorAll('.js-barcode-action').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const url = btn.getAttribute('data-action');
+            await fetch(url, { method:'POST', credentials:'same-origin' });
+            await loadBarcodes(productId, listEl);
+          });
+        });
+      }catch(e){
+        listEl.innerHTML = `<div class="text-danger">Failed to load barcodes.</div>`;
+        console.warn(e);
+      }
+    }
   </script>
 
   <footer class="container text-center py-4 text-muted" style="font-size:.9rem;">
