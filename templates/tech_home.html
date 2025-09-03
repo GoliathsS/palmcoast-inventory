@@ -56,6 +56,13 @@
       box-shadow:var(--shadow);
       padding:18px;
     }
+    /* lightweight inner card for details */
+    .subpanel{
+      background:#fff;
+      border:1px dashed var(--border);
+      border-radius:12px;
+      padding:12px;
+    }
 
     h2{margin:0 0 12px;font-size:1.2rem;letter-spacing:-.01em}
     .subtle{color:var(--muted)}
@@ -88,9 +95,10 @@
     .btn{
       display:inline-flex;align-items:center;justify-content:center;
       border:1px solid var(--border);background:#fff;border-radius:10px;
-      padding:8px 12px;text-decoration:none;color:#111;font-weight:600;min-height:44px
+      padding:8px 12px;text-decoration:none;color:#111;font-weight:600;min-height:44px;cursor:pointer
     }
     .btn:hover{box-shadow:var(--shadow)}
+    .btn[disabled], .btn:disabled{opacity:.5;cursor:not-allowed}
     .btn-primary{background:linear-gradient(90deg,var(--brand),var(--brand-2));color:#fff;border:none}
     .btn-danger{border-color:#fecaca;background:#fee2e2}
     .badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:.8rem}
@@ -102,7 +110,7 @@
     .list li:first-child{border-top:none}
 
     /* Accessibility */
-    a:focus-visible, .tile:focus-visible, .logout:focus-visible{outline:none;box-shadow:var(--ring)}
+    a:focus-visible, .tile:focus-visible, .logout:focus-visible, .btn:focus-visible{outline:none;box-shadow:var(--ring)}
 
     /* ---- Mobile polish + blurred cards ---- */
     @media (max-width: 720px) {
@@ -265,7 +273,7 @@
 
         <!-- Pre-Inspection Checklist -->
         <div class="panel" role="region" aria-label="Pre-Inspection Checklist">
-          <h2>Pre‑Inspection Checklist</h2>
+          <h2>Pre-Inspection Checklist</h2>
           <form method="POST" action="{{ url_for('checklist_add') }}" class="row" style="gap:10px;margin-top:6px;margin-bottom:10px">
             <input class="btn" style="flex:1;text-align:left" type="text" name="label" placeholder="Add item (e.g., Wash vehicle)" required>
             <input class="btn" style="width:200px" type="date" name="due_at">
@@ -365,23 +373,103 @@
           {% endif %}
         </div>
 
-        <!-- Emergency -->
+        <!-- Emergency (UPGRADED) -->
         <div id="emergency" class="panel" role="region" aria-label="Emergency">
           <h2>Emergency</h2>
-          <div class="subtle" style="margin-bottom:8px">Spill procedures, poison control, nearest hospitals.</div>
-          {% if emergency %}
-            <ul class="list">
-              {% for e in emergency %}
-              <li>
-                <div style="font-weight:700;text-transform:uppercase">{{ e.kind }}</div>
-                <div>{{ e.name }}{% if e.phone %} · <a href="tel:{{ e.phone }}">{{ e.phone }}</a>{% endif %}</div>
-                {% if e.notes %}<div class="subtle">{{ e.notes }}</div>{% endif %}
-              </li>
-              {% endfor %}
-            </ul>
-          {% else %}
-            <div class="subtle">No emergency contacts configured.</div>
-          {% endif %}
+          <div class="subtle" style="margin-bottom:12px">
+            One-tap help, live directions, and quick procedures.
+          </div>
+
+          <!-- Panic actions -->
+          <div class="row" style="gap:10px; margin-bottom:12px">
+            <a href="tel:911" class="btn btn-danger" style="flex:1; font-weight:800">🚨 Call 911</a>
+            <a href="tel:18002221222" class="btn btn-danger" style="flex:1">☠️ Poison Control</a>
+            {% if office_phone %}
+              <a href="tel:{{ office_phone }}" class="btn" style="flex:1">🏢 Office {{ office_phone }}</a>
+            {% endif %}
+          </div>
+
+          <!-- Location-aware actions -->
+          <div class="row" style="gap:10px; margin-bottom:14px">
+            <a id="btnNearestER" class="btn" style="flex:1" target="_blank" rel="noopener">🧭 Open Nearest ER</a>
+            <a id="btnShareSMS" class="btn" style="flex:1">📍 Share My Location (SMS)</a>
+          </div>
+
+          <!-- Quick procedures -->
+          <div class="grid" style="gap:12px">
+            <details class="subpanel">
+              <summary style="font-weight:700; cursor:pointer">Chemical Spill — Immediate Steps</summary>
+              <ol class="subtle" style="margin-top:8px">
+                <li>Isolate area; keep people away. Ventilate if safe.</li>
+                <li>Wear PPE; avoid contact. Stop leak if you can safely.</li>
+                <li>Contain with absorbent. Prevent entry to drains/water.</li>
+                <li>Use product SDS for cleanup/disposal specifics.</li>
+                <li>Report to office/supervisor and complete incident log.</li>
+              </ol>
+              <div class="row" style="gap:8px; margin-top:8px">
+                <a class="btn" href="{{ url_for('sds_portal') }}">Open SDS Portal</a>
+                {% if admin_emergency_url %}<a class="btn" href="{{ admin_emergency_url }}">Manage Procedures</a>{% endif %}
+              </div>
+            </details>
+
+            <details class="subpanel">
+              <summary style="font-weight:700; cursor:pointer">Exposure / Eye Contact</summary>
+              <ol class="subtle" style="margin-top:8px">
+                <li>Remove contaminated clothing; rinse skin with water.</li>
+                <li><strong>Eyes:</strong> Use eyewash, rinse continuously for 15 minutes.</li>
+                <li>Call Poison Control; seek medical attention as needed.</li>
+                <li>Bring product label/SDS to healthcare provider.</li>
+              </ol>
+              <!-- Eye-wash timer -->
+              <div style="margin-top:10px">
+                <div class="subtle">Eye-Rinse Timer</div>
+                <div id="rinseTimer" style="font-size:1.6rem;font-weight:800;letter-spacing:.5px">15:00</div>
+                <div class="row" style="gap:8px; margin-top:6px">
+                  <button id="startRinse" type="button" class="btn">Start 15:00</button>
+                  <button id="resetRinse" type="button" class="btn">Reset</button>
+                </div>
+              </div>
+            </details>
+
+            <details class="subpanel">
+              <summary style="font-weight:700; cursor:pointer">Vehicle Accident</summary>
+              <ol class="subtle" style="margin-top:8px">
+                <li>Move to safety; call 911 for injuries.</li>
+                <li>Exchange info; take photos; notify office.</li>
+                <li>Do not admit fault; wait for instructions.</li>
+              </ol>
+              <div class="row" style="gap:8px; margin-top:8px">
+                {% if incident_url %}<a class="btn" href="{{ incident_url }}">Start Incident Report</a>{% endif %}
+                {% if office_phone %}<a class="btn" href="tel:{{ office_phone }}">Call Office</a>{% endif %}
+              </div>
+            </details>
+          </div>
+
+          <!-- Contacts (from your `emergency` list) -->
+          <div style="margin-top:12px">
+            <h3 style="margin:0 0 8px; font-size:1.05rem">Key Contacts</h3>
+            {% if emergency %}
+              <ul class="list">
+                {% for e in emergency %}
+                  <li>
+                    <div style="font-weight:700; text-transform:uppercase">{{ e.kind }}</div>
+                    <div>
+                      {{ e.name }}
+                      {% if e.phone %} · <a href="tel:{{ e.phone }}">{{ e.phone }}</a>{% endif %}
+                    </div>
+                    {% if e.notes %}<div class="subtle">{{ e.notes }}</div>{% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <div class="subtle">No emergency contacts configured.</div>
+            {% endif %}
+            {% if admin_emergency_url %}
+              <div class="row" style="gap:8px; margin-top:8px">
+                <a class="btn" href="{{ admin_emergency_url }}">Manage Contacts</a>
+              </div>
+            {% endif %}
+          </div>
         </div>
 
         <!-- Vehicle Inspection & Maintenance Status -->
@@ -426,5 +514,94 @@
   </div>
 
   <div class="footer">© {{ current_year or '' }} Palm Coast • All rights reserved</div>
+
+  <!-- Emergency helpers -->
+  <script>
+    // --- Detect platform (for Apple Maps vs Google Maps) ---
+    const isApple = /iPad|iPhone|Mac/i.test(navigator.userAgent);
+
+    // --- Nearest ER + Share Location buttons ---
+    const erBtn = document.getElementById('btnNearestER');
+    const smsBtn = document.getElementById('btnShareSMS');
+
+    // Fallback links if location blocked
+    const fallbackER = isApple
+      ? 'maps://?q=Emergency%20Room'
+      : 'https://www.google.com/maps/search/?api=1&query=Emergency%20Room%20near%20me';
+
+    const officeSms = '{{ office_sms or "" }}'; // e.g., +15615551212 (E.164)
+    const smsBase   = officeSms ? ('sms:' + officeSms) : 'sms:';
+
+    function setFallbacks(){
+      if (erBtn && !erBtn.getAttribute('href')) erBtn.setAttribute('href', fallbackER);
+      if (smsBtn && !smsBtn.getAttribute('href')) smsBtn.setAttribute('href', smsBase);
+    }
+
+    function setWithLocation(lat, lng){
+      // ER directions (Apple Maps vs Google Maps)
+      const mapsLink = isApple
+        ? `maps://?q=Emergency%20Room&ll=${lat},${lng}`
+        : `https://www.google.com/maps/dir/?api=1&origin=${lat},${lng}&destination=Emergency%20Room`;
+      if (erBtn) erBtn.setAttribute('href', mapsLink);
+
+      // SMS with live location + map link
+      const body = encodeURIComponent(`EMERGENCY: My location is https://maps.google.com/?q=${lat},${lng}`);
+      const smsLink = `${smsBase}${smsBase.includes('?') ? '&' : '?'}body=${body}`;
+      if (smsBtn) smsBtn.setAttribute('href', smsLink);
+    }
+
+    // Try geolocation
+    try {
+      if ('geolocation' in navigator){
+        navigator.geolocation.getCurrentPosition(
+          pos => {
+            const { latitude, longitude } = pos.coords || {};
+            if (latitude && longitude) setWithLocation(latitude.toFixed(6), longitude.toFixed(6));
+            else setFallbacks();
+          },
+          () => setFallbacks(),
+          { enableHighAccuracy: true, timeout: 5000, maximumAge: 15000 }
+        );
+      } else {
+        setFallbacks();
+      }
+    } catch { setFallbacks(); }
+
+    // --- Eye-rinse 15:00 timer ---
+    (function(){
+      const display = document.getElementById('rinseTimer');
+      const start   = document.getElementById('startRinse');
+      const reset   = document.getElementById('resetRinse');
+
+      let remaining = 15 * 60; // seconds
+      let tid = null;
+
+      function render(){
+        const m = Math.floor(remaining / 60);
+        const s = remaining % 60;
+        if (display) display.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+      }
+
+      function tick(){
+        if (remaining > 0){ remaining--; render(); }
+        else { clearInterval(tid); tid = null; }
+      }
+
+      if (start){
+        start.addEventListener('click', () => {
+          if (tid) return;
+          if (remaining <= 0) remaining = 15 * 60;
+          render();
+          tid = setInterval(tick, 1000);
+        });
+      }
+      if (reset){
+        reset.addEventListener('click', () => {
+          clearInterval(tid); tid = null; remaining = 15 * 60; render();
+        });
+      }
+      render();
+    })();
+  </script>
 </body>
 </html>
