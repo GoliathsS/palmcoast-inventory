@@ -221,6 +221,56 @@ def _update_product_key(product_id: int, kind: str, key: str):
     cur.execute(f"UPDATE products SET {col}=%s, {ts}=NOW() WHERE id=%s", (key, product_id))
     conn.commit(); cur.close(); conn.close()
 
+def normalize_barcode(raw: str) -> str:
+    """Digits-only, preserve leading zeros, trim to 32."""
+    return re.sub(r"\D", "", raw or "")[:32]
+
+def guess_symbology(code: str) -> str | None:
+    n = len(code)
+    if n == 12: return "UPC"
+    if n == 13: return "EAN13"
+    if n == 14: return "GTIN14"
+    return None
+
+def _ensure_barcode_alias_table_once():
+    """Create product_barcodes + unique indexes and backfill from products.barcode."""
+    conn = get_db_connection(); cur = conn.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS product_barcodes (
+            id SERIAL PRIMARY KEY,
+            product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+            code TEXT NOT NULL,
+            symbology TEXT,
+            is_active BOOLEAN NOT NULL DEFAULT TRUE,
+            is_primary BOOLEAN NOT NULL DEFAULT FALSE,
+            notes TEXT,
+            added_by INTEGER,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            archived_at TIMESTAMPTZ
+        );
+    """)
+    -- Create unique per-product to allow ON CONFLICT upserts
+    cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_prod_code ON product_barcodes (product_id, code);")
+    -- Ensure a barcode cannot be active for two products at once
+    cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_code_active ON product_barcodes (code) WHERE is_active;")
+
+    # Backfill primaries from products.barcode
+    cur.execute("SELECT id, COALESCE(barcode,'') FROM products;")
+    rows = cur.fetchall()
+    for pid, raw in rows:
+        code = normalize_barcode(raw)
+        if not code:
+            continue
+        cur.execute("""
+            INSERT INTO product_barcodes (product_id, code, symbology, is_active, is_primary)
+            VALUES (%s, %s, %s, TRUE, TRUE)
+            ON CONFLICT (product_id, code) DO UPDATE
+               SET is_active = EXCLUDED.is_active,
+                   is_primary = TRUE,
+                   archived_at = NULL;
+        """, (pid, code, guess_symbology(code)))
+    conn.commit(); cur.close(); conn.close()
+
 def _upload_file_to_s3(file_storage, product_id: int, kind: str) -> str:
     filename = secure_filename(file_storage.filename or "")
     if not filename:
@@ -267,13 +317,13 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "YOUR_RENDER_POSTGRES_CONNECTION_S
 def get_db_connection():
     return psycopg2.connect(DATABASE_URL)
 
-# Run column guard once on import (Flask 3-safe)
 try:
     with app.app_context():
         _ensure_product_columns_once()
-        app.logger.info("SDS columns ensured.")
+        _ensure_barcode_alias_table_once()   # ✅ new
+        app.logger.info("SDS + Barcode alias tables ensured.")
 except Exception as e:
-    app.logger.warning(f"SDS column ensure failed: {e}")
+    app.logger.warning(f"Init ensure failed: {e}")
 
 class LoginUser(UserMixin):
     def __init__(self, row):
@@ -1280,30 +1330,122 @@ def scan():
 @role_required('ADMIN')
 def add_product():
     name = request.form["name"]
-    barcode = request.form["barcode"]
+    raw_barcode = request.form.get("barcode", "")
     min_stock = int(request.form["min_stock"])
     cost_per_unit = float(request.form.get("cost_per_unit", 0))
     siteone_sku = request.form.get("siteone_sku", "").strip()
     category = request.form.get("category", "Pest")
 
-    # defaults for partials math
     units_per_item = 1
     unit_cost = cost_per_unit
     in_stock = 0
     units_remaining = 0
 
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("""
-        INSERT INTO products (
-            name, barcode, stock, min_stock, cost_per_unit,
-            siteone_sku, category, units_per_item, unit_cost, units_remaining, is_archived
-        ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s, FALSE)
-    """, (name, barcode, in_stock, min_stock, cost_per_unit,
-          siteone_sku, category, units_per_item, unit_cost, units_remaining))
-    conn.commit()
+    conn = get_db_connection(); cur = conn.cursor()
+    try:
+        # Normalize & keep legacy column in sync with primary
+        code = normalize_barcode(raw_barcode)
+
+        cur.execute("""
+            INSERT INTO products (
+                name, barcode, stock, min_stock, cost_per_unit,
+                siteone_sku, category, units_per_item, unit_cost, units_remaining, is_archived
+            ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s, FALSE)
+            RETURNING id
+        """, (name, code, in_stock, min_stock, cost_per_unit,
+              siteone_sku, category, units_per_item, unit_cost, units_remaining))
+        product_id = cur.fetchone()[0]
+
+        if code:
+            # Make this the primary active barcode
+            cur.execute("""
+                INSERT INTO product_barcodes (product_id, code, symbology, is_active, is_primary, added_by)
+                VALUES (%s, %s, %s, TRUE, TRUE, %s)
+                ON CONFLICT (product_id, code) DO UPDATE
+                   SET is_active = TRUE, is_primary = TRUE, archived_at = NULL;
+            """, (product_id, code, guess_symbology(code), getattr(current_user, "id", None)))
+
+        conn.commit()
+    except Exception:
+        conn.rollback(); cur.close(); conn.close()
+        raise
     cur.close(); conn.close()
-    return redirect("/")
+    return redirect(url_for('index'))
+
+@app.post("/admin/products/<int:product_id>/barcodes/<int:barcode_id>/primary")
+@login_required
+@role_required('ADMIN')
+def set_primary_barcode(product_id, barcode_id):
+    conn = get_db_connection(); cur = conn.cursor()
+    try:
+        cur.execute("UPDATE product_barcodes SET is_primary=FALSE WHERE product_id=%s", (product_id,))
+        cur.execute("""
+            UPDATE product_barcodes
+               SET is_primary=TRUE, is_active=TRUE, archived_at=NULL
+             WHERE id=%s AND product_id=%s
+        """, (barcode_id, product_id))
+        # sync legacy column
+        cur.execute("SELECT code FROM product_barcodes WHERE id=%s", (barcode_id,))
+        new_code = cur.fetchone()[0]
+        cur.execute("UPDATE products SET barcode=%s WHERE id=%s", (normalize_barcode(new_code), product_id))
+        conn.commit()
+    finally:
+        cur.close(); conn.close()
+    return redirect(url_for('index'))
+
+@app.post("/admin/products/<int:product_id>/barcodes/<int:barcode_id>/archive")
+@login_required
+@role_required('ADMIN')
+def archive_barcode(product_id, barcode_id):
+    conn = get_db_connection(); cur = conn.cursor()
+    try:
+        cur.execute("""
+            UPDATE product_barcodes
+               SET is_active=FALSE, is_primary=FALSE, archived_at=NOW()
+             WHERE id=%s AND product_id=%s
+        """, (barcode_id, product_id))
+        conn.commit()
+    finally:
+        cur.close(); conn.close()
+    return redirect(url_for('index'))
+
+@app.post("/admin/products/<int:product_id>/barcodes/add")
+@login_required
+@role_required('ADMIN')
+def add_barcode(product_id):
+    code = normalize_barcode(request.form.get("code",""))
+    notes = (request.form.get("notes") or "").strip()
+    make_primary = bool(request.form.get("is_primary"))
+    if not code:
+        flash("Invalid barcode.", "danger")
+        return redirect(url_for('index'))
+
+    conn = get_db_connection(); cur = conn.cursor()
+    try:
+        # prevent stealing an active code from another product
+        cur.execute("""
+            SELECT product_id FROM product_barcodes
+             WHERE code=%s AND is_active=TRUE AND product_id<>%s
+             LIMIT 1
+        """, (code, product_id))
+        if cur.fetchone():
+            flash("That barcode is already active on another product.", "danger")
+        else:
+            if make_primary:
+                cur.execute("UPDATE product_barcodes SET is_primary=FALSE WHERE product_id=%s", (product_id,))
+            cur.execute("""
+                INSERT INTO product_barcodes (product_id, code, symbology, is_active, is_primary, notes, added_by)
+                VALUES (%s, %s, %s, TRUE, %s, %s, %s)
+                ON CONFLICT (product_id, code) DO UPDATE
+                   SET is_active=TRUE, is_primary=EXCLUDED.is_primary, notes=EXCLUDED.notes, archived_at=NULL
+            """, (product_id, code, guess_symbology(code), make_primary, notes, getattr(current_user,"id",None)))
+            if make_primary:
+                cur.execute("UPDATE products SET barcode=%s WHERE id=%s", (code, product_id))
+            conn.commit()
+            flash("Barcode saved.", "success")
+    finally:
+        cur.close(); conn.close()
+    return redirect(url_for('index'))
 
 @app.route('/edit-product/<int:product_id>', methods=['POST'])
 @login_required
@@ -1311,33 +1453,52 @@ def add_product():
 def edit_product(product_id):
     data = request.form
     name = data['name']
-    barcode = data['barcode']
+    raw_barcode = data.get('barcode', '')
     min_stock = int(data['min_stock'])
     cost_per_unit = float(data.get('cost_per_unit', 0.0))
     category = data.get('category', 'Pest')
     siteone_sku = data.get('siteone_sku', '').strip()
     units_per_item = int(data.get('units_per_item', 1))
-
-    # Safely calculate unit cost
     unit_cost = round(cost_per_unit / units_per_item, 2) if units_per_item else 0.0
 
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("""
-        UPDATE products
-        SET name=%s,
-            barcode=%s,
-            min_stock=%s,
-            cost_per_unit=%s,
-            category=%s,
-            siteone_sku=%s,
-            units_per_item=%s,
-            unit_cost=%s
-        WHERE id=%s
-    """, (name, barcode, min_stock, cost_per_unit, category, siteone_sku, units_per_item, unit_cost, product_id))
-    conn.commit()
-    cur.close()
-    conn.close()
+    code = normalize_barcode(raw_barcode)
+
+    conn = get_db_connection(); cur = conn.cursor()
+    try:
+        # Update base fields (keep legacy column synced with the intended primary code)
+        cur.execute("""
+            UPDATE products
+               SET name=%s, barcode=%s, min_stock=%s, cost_per_unit=%s,
+                   category=%s, siteone_sku=%s, units_per_item=%s, unit_cost=%s
+             WHERE id=%s
+        """, (name, code, min_stock, cost_per_unit, category, siteone_sku, units_per_item, unit_cost, product_id))
+
+        if code:
+            # Block activating a code already active on a different product
+            cur.execute("""
+                SELECT product_id FROM product_barcodes
+                 WHERE code=%s AND is_active=TRUE AND product_id<>%s
+                 LIMIT 1
+            """, (code, product_id))
+            conflict = cur.fetchone()
+            if conflict:
+                flash("This barcode is already active on another product.", "danger")
+            else:
+                # Make this primary for this product
+                cur.execute("UPDATE product_barcodes SET is_primary=FALSE WHERE product_id=%s", (product_id,))
+                cur.execute("""
+                    INSERT INTO product_barcodes (product_id, code, symbology, is_active, is_primary, added_by)
+                    VALUES (%s, %s, %s, TRUE, TRUE, %s)
+                    ON CONFLICT (product_id, code) DO UPDATE
+                       SET is_active = TRUE, is_primary = TRUE, archived_at = NULL
+                """, (product_id, code, guess_symbology(code), getattr(current_user, "id", None)))
+
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        cur.close(); conn.close()
+        raise
+    cur.close(); conn.close()
     return redirect(url_for('index'))
 
 @app.route('/delete-product/<int:product_id>', methods=['POST'])
@@ -1385,23 +1546,47 @@ def export_products():
 @role_required('ADMIN')
 def scan_action():
     from datetime import datetime
+    payload = request.get_json(force=True) or {}
+    raw_input = payload.get('barcode', '')
+    direction = (payload.get('direction') or '').lower()
+    technician = (payload.get('technician') or '').strip()
 
-    barcode = request.json['barcode']
-    direction = request.json['direction'].lower()
-    technician = request.json.get('technician', '').strip()
+    # Normalize scanned code (digits only) and keep legacy around for fallback
+    code = normalize_barcode(raw_input)
 
     conn = get_db_connection()
     cur = conn.cursor()
 
     try:
-        # Fetch product
-        cur.execute("SELECT id, stock, units_per_item, units_remaining, unit_cost FROM products WHERE barcode=%s", (barcode,))
+        # 1) Find by ACTIVE alias first
+        cur.execute("""
+            SELECT p.id, p.stock, p.units_per_item, p.units_remaining, p.unit_cost
+              FROM product_barcodes b
+              JOIN products p ON p.id = b.product_id
+             WHERE b.code = %s AND b.is_active = TRUE
+             LIMIT 1
+        """, (code,))
         result = cur.fetchone()
 
+        # 2) Fallbacks: legacy primary column, then retired alias
         if not result:
-            log.info("❌ Product not found for barcode: %s", barcode)
-            cur.close()
-            conn.close()
+            cur.execute("SELECT id, stock, units_per_item, units_remaining, unit_cost FROM products WHERE barcode = %s", (raw_input,))
+            result = cur.fetchone()
+
+        if not result:
+            cur.execute("""
+                SELECT p.id, p.stock, p.units_per_item, p.units_remaining, p.unit_cost
+                  FROM product_barcodes b
+                  JOIN products p ON p.id = b.product_id
+                 WHERE b.code = %s AND b.is_active = FALSE
+                 ORDER BY b.archived_at DESC NULLS LAST
+                 LIMIT 1
+            """, (code,))
+            result = cur.fetchone()
+
+        if not result:
+            log.info("❌ Product not found for scanned code: %s (norm=%s)", raw_input, code)
+            cur.close(); conn.close()
             return jsonify({'status': 'not_found'})
 
         product_id, stock, units_per_item, units_remaining, unit_cost = result
@@ -1411,9 +1596,7 @@ def scan_action():
 
         if direction == 'out':
             if units_remaining <= 0:
-                log.info("⚠️ Not enough units for product %s", product_id)
-                cur.close()
-                conn.close()
+                cur.close(); conn.close()
                 return jsonify({'status': 'not_enough_units'})
             units_remaining -= 1
         else:
@@ -1429,40 +1612,29 @@ def scan_action():
         # Log the scan
         timestamp = datetime.now().isoformat()
         logged_cost = unit_cost if direction == 'out' else round(unit_cost * units_per_item, 2)
-
         cur.execute(
             "INSERT INTO scan_logs (product_id, action, timestamp, technician, unit_cost) VALUES (%s, %s, %s, %s, %s)",
             (product_id, direction, timestamp, technician, logged_cost)
         )
 
-        # 🚚 Lookup technician and vehicle by ID
+        # Vehicle inventory logic (unchanged)
         technician_id = None
         vehicle_id = None
-
         if technician:
-            log.info("🔍 Technician passed in (ID): %s", technician)
             try:
                 cur.execute("SELECT id, vehicle_id FROM technicians WHERE id = %s", (int(technician),))
                 tech_row = cur.fetchone()
-                log.info("👤 Technician row: %s", tech_row)
                 if tech_row:
-                    technician_id = tech_row[0]
-                    vehicle_id = tech_row[1]
-                    log.info("✅ Found technician ID: %s, vehicle ID: %s", technician_id, vehicle_id)
-                else:
-                    log.info("❌ Technician ID %s not found in DB", technician)
+                    technician_id, vehicle_id = tech_row[0], tech_row[1]
             except Exception as e:
-                log.error("❌ Error fetching technician: %s", e)
+                log.error("Technician lookup error: %s", e)
 
-        # 🚚 Update vehicle inventory only if scanning out and vehicle is assigned
         if direction == 'out' and vehicle_id:
-            log.info("🚚 Updating vehicle inventory for vehicle %s and product %s", vehicle_id, product_id)
             cur.execute("""
                 SELECT quantity FROM vehicle_inventory
                 WHERE vehicle_id = %s AND product_id = %s
             """, (vehicle_id, product_id))
             existing = cur.fetchone()
-            log.info("📦 Existing inventory row: %s", existing)
 
             if existing:
                 cur.execute("""
@@ -1473,28 +1645,22 @@ def scan_action():
                         expires_on = CURRENT_DATE + INTERVAL '7 days'
                     WHERE vehicle_id = %s AND product_id = %s
                 """, (1, vehicle_id, product_id))
-                log.info("🔁 Replaced quantity with 1 and set expires_on to +7 days")
             else:
                 cur.execute("""
                     INSERT INTO vehicle_inventory (vehicle_id, product_id, quantity, last_updated, last_scanned, expires_on)
                     VALUES (%s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_DATE + INTERVAL '7 days')
                 """, (vehicle_id, product_id, 1))
-                log.info("➕ Inserted product with expires_on +7 days")
-        else:
-            log.info("⚠️ Vehicle inventory not updated: direction=%s, vehicle_id=%s", direction, vehicle_id)
 
         conn.commit()
-        log.info("✅ Scan and inventory update completed for product %s", product_id)
         return jsonify({'status': 'success'})
 
     except Exception as e:
-        log.error("❌ ERROR in /scan-action: %s", e)
         conn.rollback()
+        log.error("ERROR in /scan-action: %s", e)
         return jsonify({'status': 'error', 'message': str(e)})
 
     finally:
-        cur.close()
-        conn.close()
+        cur.close(); conn.close()
 
 @app.route('/assign-technician/<int:vehicle_id>', methods=['POST'])
 @login_required
