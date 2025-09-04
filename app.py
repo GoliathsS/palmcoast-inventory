@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, send_from_directory, session, abort, send_file, flash
 import psycopg2
 import psycopg2.extras
-import os
+import os, mimetypes
 import boto3
 import fitz  # PyMuPDF
 import re
@@ -14,6 +14,7 @@ import json
 from dotenv import load_dotenv
 load_dotenv()
 from io import TextIOWrapper
+from uuid import uuid4
 from urllib.parse import urlparse
 from werkzeug.utils import secure_filename
 from datetime import datetime, date
@@ -173,6 +174,28 @@ def _ensure_product_columns_once():
 
     cur.close(); conn.close()
     MIGRATED_SDS_COLS = True
+
+
+BUGS_BUCKET = os.environ.get("BUGS_BUCKET") or "palmcoast-bugs"
+s3 = boto3.client("s3")
+
+IMG_EXTS = {"png", "jpg", "jpeg"}
+
+def _img_ext_ok(filename: str) -> bool:
+    ext = (filename.rsplit(".", 1)[-1] or "").lower()
+    return ext in IMG_EXTS
+
+def _bug_key_for(tech_id: int, filename: str) -> str:
+    ext = (filename.rsplit(".", 1)[-1] or "jpg").lower()
+    if ext not in IMG_EXTS: ext = "jpg"
+    return f"bugs/{tech_id or 'anon'}/{uuid4().hex}.{ext}"
+
+def _presigned(bucket: str, key: str, expires=900):
+    return s3.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": bucket, "Key": key},
+        ExpiresIn=expires
+    )
 
 def _handle_to_presigned(handle: str | None, kind: str, expires: int = 1800) -> str | None:
     if not handle:
@@ -3421,6 +3444,51 @@ def inventory_analytics():
         technicians=technicians,
         tech_chemical_table=tech_chemical_table
     )
+
+@app.post("/tech/bug-report")
+@login_required
+def bug_report_upload():
+    files = request.files.getlist("photos")
+    files = [f for f in (files or []) if f and f.filename]
+    if not files:
+        flash("No photos selected", "error")
+        return redirect(url_for("tech_portal"))
+
+    if len(files) > 5:
+        files = files[:5]
+
+    suspected = (request.form.get("suspected_pest") or "").strip() or None
+    notes = (request.form.get("notes") or "").strip() or None
+
+    lat = request.form.get("lat"); lng = request.form.get("lng")
+    try:
+        lat = float(lat) if lat else None
+        lng = float(lng) if lng else None
+    except ValueError:
+        lat = lng = None
+
+    conn = get_db_connection(); cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO bug_reports (tech_id, suspected_pest, notes, lat, lng)
+        VALUES (%s, %s, %s, %s, %s)
+        RETURNING id
+    """, (getattr(current_user, "id", None), suspected, notes, lat, lng))
+    report_id = cur.fetchone()[0]
+
+    for f in files:
+        if not _img_ext_ok(f.filename):
+            continue
+        key = _bug_key_for(getattr(current_user, "id", 0), f.filename)
+        ctype = mimetypes.guess_type(f.filename)[0] or "application/octet-stream"
+        s3.upload_fileobj(
+            f, BUGS_BUCKET, key,
+            ExtraArgs={"ContentType": ctype}
+        )
+        cur.execute("INSERT INTO bug_photos (report_id, s3_key) VALUES (%s, %s)", (report_id, key))
+
+    conn.commit(); cur.close(); conn.close()
+    flash("Bug photos uploaded. Thanks!", "ok")
+    return redirect(url_for("tech_portal"))
 
 @app.route('/static/debug')
 def view_debug_output():
