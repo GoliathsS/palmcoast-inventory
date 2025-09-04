@@ -329,9 +329,9 @@
             </div>
           </form>
 
-          <!-- Add a sale (updated fields) -->
+          <!-- Add a sale (Initial Price + Source included) -->
           <form method="POST" action="{{ url_for('commission_new') }}" enctype="multipart/form-data" class="grid" style="gap:10px;margin-bottom:12px">
-            <!-- Optional date + required customer -->
+            <!-- Date + Customer -->
             <div class="row" style="gap:10px">
               <input class="btn" type="date" name="sold_on" value="{{ current_date or '' }}" style="width:170px" />
               <input class="btn" type="text" name="customer_name" placeholder="Customer name" autocomplete="off" required style="flex:1" />
@@ -348,19 +348,20 @@
               <input class="btn" type="text" name="street_address" placeholder="Street Address" autocomplete="off" style="flex:1" />
             </div>
 
-            <!-- Service sold + price + frequency + estimator -->
-            <div class="row" style="gap:10px; align-items:center">
+            <!-- Service + Initial + Ongoing + Frequency + Source + Estimator -->
+            <div class="row" style="gap:10px; align-items:center; flex-wrap:wrap">
               {% if service_options %}
-                <select class="btn" name="service_type" required style="flex:1">
+                <select class="btn" name="service_type" required style="flex:1;min-width:220px">
                   {% for s in service_options %}
                     <option value="{{ s.code }}">{{ s.label }}</option>
                   {% endfor %}
                 </select>
               {% else %}
-                <input class="btn" type="text" name="service_type" placeholder="Service Sold (e.g., Quarterly Pest)" required style="flex:1" />
+                <input class="btn" type="text" name="service_type" placeholder="Service Sold (e.g., Quarterly Pest)" required style="flex:1;min-width:220px" />
               {% endif %}
 
-              <input class="btn" type="number" step="0.01" min="0" name="amount" id="comm_amount" placeholder="Price ($)" required style="width:160px" />
+              <input class="btn" type="number" step="0.01" min="0" name="initial_amount" id="comm_initial" placeholder="Initial Price ($)" style="width:170px" />
+              <input class="btn" type="number" step="0.01" min="0" name="amount" id="comm_amount" placeholder="Ongoing Price ($)" required style="width:170px" />
 
               <select class="btn" name="frequency" required style="width:180px">
                 <option value="" disabled selected>Frequency…</option>
@@ -372,12 +373,23 @@
                 <option>Annual</option>
               </select>
 
-              <div class="btn" id="comm_preview" aria-live="polite" style="min-width:220px">
+              <input class="btn" type="text" name="source" list="sourceOptions" placeholder="Source (e.g., Referral)" autocomplete="off" style="width:200px" />
+              <datalist id="sourceOptions">
+                <option value="Door-to-door"></option>
+                <option value="Web"></option>
+                <option value="Referral"></option>
+                <option value="Inbound call"></option>
+                <option value="Technician upsell"></option>
+                <option value="Flyer/Ad"></option>
+                <option value="Other"></option>
+              </datalist>
+
+              <div class="btn" id="comm_preview" aria-live="polite" style="min-width:260px">
                 Est. Commission ({{ default_commission_rate or 10 }}%): $0.00
               </div>
             </div>
 
-            <textarea class="btn" name="notes" rows="2" placeholder="Notes (lead source, upsell details, etc.)"></textarea>
+            <textarea class="btn" name="notes" rows="2" placeholder="Notes (lead source details, scope, etc.)"></textarea>
 
             <div class="row" style="gap:10px;align-items:center">
               <input class="btn" type="file" name="attachment" accept=".pdf,image/*" style="flex:1" />
@@ -396,12 +408,17 @@
                     <span class="subtle">— {{ c.customer_name }}</span>
                   </div>
                   <div class="subtle">
-                    Price: ${{ '{:,.2f}'.format(c.amount) }} ·
+                    {% if c.initial_amount and c.initial_amount > 0 %}
+                      Initial: ${{ '{:,.2f}'.format(c.initial_amount) }} ·
+                    {% endif %}
+                    Ongoing: ${{ '{:,.2f}'.format(c.amount) }} ·
                     Freq: {{ c.frequency or '—' }} ·
                     Paid via: {{ 'CC' if c.payment_method == 'cc' else ('Check' if c.payment_method == 'check' else '—') }}
+                    {% if c.source %} · Source: {{ c.source }}{% endif %}
                   </div>
                   <div class="subtle">
-                    Commission ({{ default_commission_rate or 10 }}%): <strong>${{ '{:,.2f}'.format(c.commission_amount) }}</strong>
+                    Commission ({{ default_commission_rate or 10 }}%):
+                    <strong>${{ '{:,.2f}'.format(c.commission_amount) }}</strong>
                   </div>
                   {% if c.account_number or c.street_address %}
                     <div class="subtle">
@@ -410,7 +427,9 @@
                       {% if c.street_address %}{{ c.street_address }}{% endif %}
                     </div>
                   {% endif %}
-                  {% if c.notes %}<div class="subtle" style="max-width:560px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.notes }}</div>{% endif %}
+                  {% if c.notes %}
+                    <div class="subtle" style="max-width:560px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.notes }}</div>
+                  {% endif %}
                 </div>
                 <div class="row" style="gap:8px;align-items:center">
                   {% if c.paid %}
@@ -860,18 +879,26 @@
     })();
   </script>
 
-  <!-- Commission estimator (uses default rate only) -->
+  <!-- Commission estimator (Initial + Ongoing, using default rate) -->
   <script>
     (function(){
+      const initial = document.getElementById('comm_initial');
       const amt = document.getElementById('comm_amount');
       const out = document.getElementById('comm_preview');
-      const DEFAULT_RATE = parseFloat('{{ default_commission_rate or 0 }}') || 0;
-      function fmt(n){ return (isFinite(n) ? n : 0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
+      const RATE = parseFloat('{{ default_commission_rate or 10 }}') || 10;
+
+      function num(v){ const n = parseFloat(v); return isFinite(n) ? n : 0; }
+      function money(n){ return (n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
       function render(){
-        const a = parseFloat(amt?.value || '0');
-        const c = a * (DEFAULT_RATE/100);
-        if (out) out.textContent = `Est. Commission (${DEFAULT_RATE}%): $${fmt(c)}`;
+        const i = num(initial?.value || '0');
+        const a = num(amt?.value || '0');
+        const ci = i * (RATE/100);
+        const ca = a * (RATE/100);
+        const total = ci + ca;
+        if (out) out.textContent = `Est. Commission (${RATE}%): $${money(ci)} init + $${money(ca)} recur = $${money(total)}`;
       }
+      initial?.addEventListener('input', render);
       amt?.addEventListener('input', render);
       render();
     })();
