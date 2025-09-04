@@ -303,6 +303,108 @@
 
       <!-- Right Column -->
       <div class="grid" style="gap:18px">
+
+        <!-- Sales & Commissions (Personal Ledger) -->
+        <div class="panel" role="region" aria-label="Sales & Commissions">
+          <h2>Sales &amp; Commissions</h2>
+
+          <!-- Filters + Summary -->
+          <form method="GET" action="{{ url_for('tech_portal') }}" class="row" style="gap:10px;align-items:center;margin-bottom:10px">
+            <input class="btn" type="month" name="m" value="{{ selected_month or '' }}" style="width:180px" aria-label="Month">
+            <button class="btn" type="submit">Apply</button>
+            <a class="btn" href="{{ url_for('commission_export_csv', m=selected_month) }}">Export CSV</a>
+            <div class="row" style="gap:8px;margin-left:auto">
+              <span class="pill" title="Month-to-date booked sales">
+                💵 MTD Sales: <strong>${{ '{:,.2f}'.format(comm_summary.mtd_sales or 0) }}</strong>
+              </span>
+              <span class="pill" title="Calculated commission for this month">
+                ✅ MTD Commission: <strong>${{ '{:,.2f}'.format(comm_summary.mtd_commission or 0) }}</strong>
+              </span>
+              <span class="pill" title="Commission for entries not marked paid">
+                ⏳ Unpaid: <strong>${{ '{:,.2f}'.format(comm_summary.unpaid_commission or 0) }}</strong>
+              </span>
+              <span class="pill" title="Year-to-date commission you marked paid">
+                🧾 YTD Paid: <strong>${{ '{:,.2f}'.format(comm_summary.ytd_commission_paid or 0) }}</strong>
+              </span>
+            </div>
+          </form>
+
+          <!-- Add a sale -->
+          <form method="POST" action="{{ url_for('commission_new') }}" enctype="multipart/form-data" class="grid" style="gap:10px;margin-bottom:12px">
+            <div class="row" style="gap:10px">
+              <input class="btn" type="date" name="sold_on" value="{{ current_date or '' }}" required style="width:170px" />
+              <input class="btn" type="text" name="customer_name" placeholder="Customer name" autocomplete="off" required style="flex:1" />
+            </div>
+            <div class="row" style="gap:10px">
+              {% if service_options %}
+                <select class="btn" name="service_type" required style="flex:1">
+                  {% for s in service_options %}
+                    <option value="{{ s.code }}">{{ s.label }}</option>
+                  {% endfor %}
+                </select>
+              {% else %}
+                <input class="btn" type="text" name="service_type" placeholder="Service (e.g., Quarterly Pest)" required style="flex:1" />
+              {% endif %}
+
+              <input class="btn" type="number" step="0.01" min="0" name="amount" id="comm_amount" placeholder="Sale amount ($)" required style="width:180px" />
+              <input class="btn" type="number" step="0.01" min="0" max="100" name="commission_rate" id="comm_rate" value="{{ default_commission_rate or 10 }}" style="width:140px" aria-label="Rate (%)" />
+              <div class="btn" id="comm_preview" aria-live="polite" style="width:200px">Est. Commission: $0.00</div>
+            </div>
+
+            <textarea class="btn" name="notes" rows="2" placeholder="Notes (lead source, upsell details, etc.)"></textarea>
+
+            <div class="row" style="gap:10px;align-items:center">
+              <label class="btn" style="display:inline-flex;gap:8px;align-items:center">
+                <input type="checkbox" name="paid" /> Mark Paid
+              </label>
+              <input class="btn" type="file" name="attachment" accept=".pdf,image/*" style="flex:1" />
+              <button class="btn btn-primary" type="submit">Add Sale</button>
+            </div>
+          </form>
+
+          <!-- Recent entries (selected month) -->
+          {% if comm_entries %}
+            <ul class="list">
+              {% for c in comm_entries %}
+              <li class="row" style="justify-content:space-between;align-items:flex-start">
+                <div>
+                  <div style="font-weight:700">
+                    {{ c.sold_on.strftime('%Y-%m-%d') }} · {{ c.service_type }}
+                    <span class="subtle">— {{ c.customer_name }}</span>
+                  </div>
+                  <div class="subtle">
+                    Sale: ${{ '{:,.2f}'.format(c.amount) }} · Rate: {{ '{:.2f}'.format(c.commission_rate) }}% ·
+                    Commission: <strong>${{ '{:,.2f}'.format(c.commission_amount) }}</strong>
+                  </div>
+                  {% if c.notes %}<div class="subtle" style="max-width:560px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.notes }}</div>{% endif %}
+                </div>
+                <div class="row" style="gap:8px;align-items:center">
+                  {% if c.paid %}
+                    <span class="badge badge-ok">Paid</span>
+                  {% else %}
+                    <span class="badge badge-warn">Unpaid</span>
+                  {% endif %}
+
+                  <form method="POST" action="{{ url_for('commission_toggle_paid', entry_id=c.id) }}">
+                    <button class="btn" type="submit">{{ 'Mark Unpaid' if c.paid else 'Mark Paid' }}</button>
+                  </form>
+
+                  {% if c.attachment_id %}
+                    <a class="btn" href="{{ url_for('commission_media_proxy', att_id=c.attachment_id) }}" target="_blank" rel="noopener noreferrer">Attachment</a>
+                  {% endif %}
+
+                  <form method="POST" action="{{ url_for('commission_delete', entry_id=c.id) }}" onsubmit="return confirm('Delete this entry? This will also delete the attachment.');">
+                    <button class="btn" type="submit">Delete</button>
+                  </form>
+                </div>
+              </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <div class="subtle">No entries for this month.</div>
+          {% endif %}
+        </div>
+
         <!-- Technician Requests -->
         <div class="panel" role="region" aria-label="Technician Requests">
           <h2>Technician Requests</h2>
@@ -721,6 +823,25 @@
           );
         });
       }
+    })();
+  </script>
+
+  <!-- Commission estimator -->
+  <script>
+    (function(){
+      const amt = document.getElementById('comm_amount');
+      const rate = document.getElementById('comm_rate');
+      const out = document.getElementById('comm_preview');
+      function fmt(n){ return (isFinite(n) ? n : 0).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}); }
+      function render(){
+        const a = parseFloat(amt?.value || '0');
+        const r = parseFloat(rate?.value || '0');
+        const c = a * (r/100);
+        if (out) out.textContent = `Est. Commission: $${fmt(c)}`;
+      }
+      amt?.addEventListener('input', render);
+      rate?.addEventListener('input', render);
+      render();
     })();
   </script>
 </body>
