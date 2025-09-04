@@ -8,18 +8,10 @@
   <meta name="color-scheme" content="light" />
   <style>
     :root{
-      --page:#f7f7f9;        /* background */
-      --card:#ffffff;        /* panels */
-      --border:#e6e7eb;      /* strokes */
-      --text:#0b1220;        /* primary */
-      --muted:#6b7280;       /* secondary */
-      --brand:#0ea5e9;       /* blue */
-      --brand-2:#10b981;     /* green */
-      --good:#16a34a;        /* status */
+      --page:#f7f7f9; --card:#ffffff; --border:#e6e7eb; --text:#0b1220; --muted:#6b7280;
+      --brand:#0ea5e9; --brand-2:#10b981; --good:#16a34a;
       --shadow:0 8px 24px rgba(17,24,39,.08), 0 2px 6px rgba(17,24,39,.06);
-      --radius:16px;
-      --ring:0 0 0 4px rgba(14,165,233,.15);
-      --header-h:64px;
+      --radius:16px; --ring:0 0 0 4px rgba(14,165,233,.15); --header-h:64px;
     }
     *{box-sizing:border-box}
     html,body{height:100%;margin:0}
@@ -56,7 +48,6 @@
       box-shadow:var(--shadow);
       padding:18px;
     }
-    /* lightweight inner card for details */
     .subpanel{
       background:#fff;
       border:1px dashed var(--border);
@@ -111,14 +102,20 @@
 
     /* Accessibility */
     a:focus-visible, .tile:focus-visible, .logout:focus-visible, .btn:focus-visible{outline:none;box-shadow:var(--ring)}
+    #rinseTimer[aria-live]{outline:0}
 
-    /* ---- Mobile polish + blurred cards ---- */
+    /* Motion preference */
+    @media (prefers-reduced-motion: reduce){
+      .tile{transition:none}
+      .tile:hover{transform:none;box-shadow:var(--shadow)}
+    }
+
+    /* Mobile polish */
     @media (max-width: 720px) {
-      .grid-2, .grid-3 { grid-template-columns: 1fr; }   /* stack columns */
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
       .tiles { grid-template-columns: 1fr; gap: 12px; }
       .tile { min-height: 120px; padding: 16px; }
       .panel, .tile {
-        /* subtle frosted look on iOS while scrolling */
         background: rgba(255,255,255,.8);
         backdrop-filter: saturate(1.1) blur(10px);
         -webkit-backdrop-filter: saturate(1.1) blur(10px);
@@ -129,7 +126,7 @@
       .tile p, .subtle { font-size: clamp(14px, 3.4vw, 15px); }
     }
 
-    /* Anchor offset so sticky header doesn't cover it */
+    /* Anchor offset for sticky header */
     #emergency { scroll-margin-top: calc(var(--header-h) + 18px); }
 
     @supports (padding-top: constant(safe-area-inset-top)) {
@@ -229,7 +226,7 @@
       </div>
     </section>
 
-    <!-- Main grid: left (notifications + checklist), right (requests + docs + vehicle status) -->
+    <!-- Main grid -->
     <section class="grid grid-2">
       <!-- Left Column -->
       <div class="grid" style="gap:18px">
@@ -257,7 +254,7 @@
                 <div>
                   {% if not n.is_read %}
                   <form method="POST" action="{{ url_for('ack_notification', nid=n.id) }}">
-                    <button class="btn">Mark Read</button>
+                    <button class="btn" type="submit">Mark Read</button>
                   </form>
                   {% else %}
                   <span class="badge badge-ok">Done</span>
@@ -275,9 +272,9 @@
         <div class="panel" role="region" aria-label="Pre-Inspection Checklist">
           <h2>Pre-Inspection Checklist</h2>
           <form method="POST" action="{{ url_for('checklist_add') }}" class="row" style="gap:10px;margin-top:6px;margin-bottom:10px">
-            <input class="btn" style="flex:1;text-align:left" type="text" name="label" placeholder="Add item (e.g., Wash vehicle)" required>
+            <input class="btn" style="flex:1;text-align:left" type="text" name="label" placeholder="Add item (e.g., Wash vehicle)" required autocomplete="off">
             <input class="btn" style="width:200px" type="date" name="due_at">
-            <button class="btn btn-primary">Add</button>
+            <button class="btn btn-primary" type="submit">Add</button>
           </form>
 
           {% if checklist %}
@@ -286,7 +283,7 @@
               <li class="row" style="justify-content:space-between;align-items:center">
                 <div class="row" style="align-items:center;gap:10px">
                   <form method="POST" action="{{ url_for('checklist_toggle', item_id=c.id) }}">
-                    <button class="btn" title="Toggle" aria-label="Toggle">{{ '☑' if c.is_done else '☐' }}</button>
+                    <button class="btn" title="Toggle" aria-label="Toggle" type="submit">{{ '☑' if c.is_done else '☐' }}</button>
                   </form>
                   <div>
                     <div{% if c.is_done %} class="subtle" style="text-decoration:line-through"{% endif %}>
@@ -316,7 +313,7 @@
               <option value="other">Other</option>
             </select>
             <textarea class="btn" name="description" rows="2" placeholder="Describe what you need…" required></textarea>
-            <button class="btn btn-primary">Submit Request</button>
+            <button class="btn btn-primary" type="submit">Submit Request</button>
           </form>
 
           {% if requests_rows %}
@@ -335,7 +332,7 @@
                   {% if r.status == 'open' %}
                     {% if is_admin %}
                       <form method="POST" action="{{ url_for('tech_request_close', req_id=r.id) }}">
-                        <button class="btn">Close</button>
+                        <button class="btn" type="submit">Close</button>
                       </form>
                     {% else %}
                       <span class="badge badge-warn">Open</span>
@@ -352,28 +349,82 @@
           {% endif %}
         </div>
 
-         <!-- CEU & Training Records -->
-          <div class="panel" role="region" aria-label="CEU & Training">
-            <h2>CEU &amp; Training Records</h2>
-            {% if training %}
-              <ul class="list">
-                {% for t in training %}
-                <li class="row" style="justify-content:space-between;align-items:center">
-                  <div>
-                    <a href="{{ t.url }}" target="_blank" style="font-weight:700;text-decoration:none">{{ t.title }}</a>
-                    {% if t.ceu_hours %}<span class="subtle"> · {{ t.ceu_hours }} CEU</span>{% endif %}
-                    {% if t.expires_on %}<div class="subtle">Expires {{ t.expires_on.strftime('%Y-%m-%d') }}</div>{% endif %}
-                  </div>
-                  <a class="btn" href="{{ t.url }}" target="_blank">Open</a>
-                </li>
-                {% endfor %}
-              </ul>
-            {% else %}
-              <div class="subtle">No records available.</div>
-            {% endif %}
-          </div>
+        <!-- CEU & Training Records -->
+        <div class="panel" role="region" aria-label="CEU & Training">
+          <h2>CEU &amp; Training Records</h2>
+          {% if training %}
+            <ul class="list">
+              {% for t in training %}
+              <li class="row" style="justify-content:space-between;align-items:center">
+                <div>
+                  <a href="{{ t.url }}" target="_blank" rel="noopener noreferrer" style="font-weight:700;text-decoration:none">{{ t.title }}</a>
+                  {% if t.ceu_hours %}<span class="subtle"> · {{ t.ceu_hours }} CEU</span>{% endif %}
+                  {% if t.expires_on %}<div class="subtle">Expires {{ t.expires_on.strftime('%Y-%m-%d') }}</div>{% endif %}
+                </div>
+                <a class="btn" href="{{ t.url }}" target="_blank" rel="noopener noreferrer">Open</a>
+              </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <div class="subtle">No records available.</div>
+          {% endif %}
+        </div>
 
-        <!-- Emergency (UPGRADED) -->
+        <!-- Field Bug Photos -->
+        <div class="panel" role="region" aria-label="Field Bug Photos">
+          <h2>Field Bug Photos</h2>
+          <form method="POST" action="{{ url_for('bug_report_upload') }}" enctype="multipart/form-data" class="grid" style="gap:10px;margin-bottom:12px">
+            <div class="row" style="gap:10px; align-items:center">
+              <input class="btn" type="file" id="photosInput" name="photos" accept="image/*" capture="environment" multiple required style="flex:1" />
+            </div>
+
+            <div class="row" style="gap:10px">
+              <input class="btn" type="text" name="suspected_pest" placeholder="Suspected pest (optional)" autocomplete="off" style="flex:1" />
+              <button type="button" id="btnAttachLocation" class="btn" title="Attach GPS">📍 Add Location</button>
+            </div>
+
+            <textarea class="btn" name="notes" rows="2" placeholder="Notes (where found, behavior, host plant, etc.)"></textarea>
+
+            <!-- hidden geolocation fields -->
+            <input type="hidden" id="bug_lat" name="lat" />
+            <input type="hidden" id="bug_lng" name="lng" />
+
+            <div id="photoPreview" class="row" style="gap:8px"></div>
+
+            <div class="row" style="gap:10px">
+              <button class="btn btn-primary" type="submit">Upload</button>
+              <div class="subtle">Max 5 photos · JPG/PNG · Originals stored securely</div>
+            </div>
+          </form>
+
+          {% if bug_reports %}
+            <h3 style="margin:6px 0 8px;font-size:1.05rem">Recent submissions</h3>
+            <ul class="list">
+              {% for br in bug_reports %}
+                <li class="row" style="justify-content:space-between;align-items:center">
+                  <div class="row" style="gap:10px;align-items:center">
+                    {% if br.photo_id %}
+                      <img src="{{ url_for('bug_media_proxy', photo_id=br.photo_id) }}" alt="Bug photo" style="width:64px;height:64px;object-fit:cover;border-radius:10px;border:1px solid var(--border)" loading="lazy" referrerpolicy="no-referrer">
+                    {% endif %}
+                    <div>
+                      <div style="font-weight:700">{{ br.suspected_pest or 'Unspecified' }}</div>
+                      <div class="subtle">{{ br.created_at.strftime('%Y-%m-%d %H:%M') }} · {{ br.status|capitalize }}</div>
+                      {% if br.notes %}<div class="subtle" style="max-width:520px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ br.notes }}</div>{% endif %}
+                    </div>
+                  </div>
+                  {% if br.lat and br.lng %}
+                    <a class="btn" target="_blank" rel="noopener noreferrer"
+                       href="https://maps.google.com/?q={{ br.lat }},{{ br.lng }}">Map</a>
+                  {% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <div class="subtle">No submissions yet.</div>
+          {% endif %}
+        </div>
+
+        <!-- Emergency -->
         <div id="emergency" class="panel" role="region" aria-label="Emergency">
           <h2>Emergency</h2>
           <div class="subtle" style="margin-bottom:12px">
@@ -391,7 +442,7 @@
 
           <!-- Location-aware actions -->
           <div class="row" style="gap:10px; margin-bottom:14px">
-            <a id="btnNearestER" class="btn" style="flex:1" target="_blank" rel="noopener">🧭 Open Nearest ER</a>
+            <a id="btnNearestER" class="btn" style="flex:1" target="_blank" rel="noopener noreferrer">🧭 Open Nearest ER</a>
             <a id="btnShareSMS" class="btn" style="flex:1">📍 Share My Location (SMS)</a>
           </div>
 
@@ -423,7 +474,7 @@
               <!-- Eye-wash timer -->
               <div style="margin-top:10px">
                 <div class="subtle">Eye-Rinse Timer</div>
-                <div id="rinseTimer" style="font-size:1.6rem;font-weight:800;letter-spacing:.5px">15:00</div>
+                <div id="rinseTimer" aria-live="polite" style="font-size:1.6rem;font-weight:800;letter-spacing:.5px">15:00</div>
                 <div class="row" style="gap:8px; margin-top:6px">
                   <button id="startRinse" type="button" class="btn">Start 15:00</button>
                   <button id="resetRinse" type="button" class="btn">Reset</button>
@@ -445,7 +496,7 @@
             </details>
           </div>
 
-          <!-- Contacts (from your `emergency` list) -->
+          <!-- Contacts -->
           <div style="margin-top:12px">
             <h3 style="margin:0 0 8px; font-size:1.05rem">Key Contacts</h3>
             {% if emergency %}
@@ -517,7 +568,7 @@
 
   <!-- Emergency helpers -->
   <script>
-    // --- Detect platform (for Apple Maps vs Google Maps) ---
+    // --- Detect platform (Apple Maps support) ---
     const isApple = /iPad|iPhone|Mac/i.test(navigator.userAgent);
 
     // --- Nearest ER + Share Location buttons ---
@@ -550,6 +601,9 @@
       if (smsBtn) smsBtn.setAttribute('href', smsLink);
     }
 
+    // Initialize with safe fallbacks first
+    setFallbacks();
+
     // Try geolocation
     try {
       if ('geolocation' in navigator){
@@ -557,15 +611,12 @@
           pos => {
             const { latitude, longitude } = pos.coords || {};
             if (latitude && longitude) setWithLocation(latitude.toFixed(6), longitude.toFixed(6));
-            else setFallbacks();
           },
-          () => setFallbacks(),
+          () => { /* keep fallbacks */ },
           { enableHighAccuracy: true, timeout: 5000, maximumAge: 15000 }
         );
-      } else {
-        setFallbacks();
       }
-    } catch { setFallbacks(); }
+    } catch { /* keep fallbacks */ }
 
     // --- Eye-rinse 15:00 timer ---
     (function(){
@@ -583,8 +634,20 @@
       }
 
       function tick(){
-        if (remaining > 0){ remaining--; render(); }
-        else { clearInterval(tid); tid = null; }
+        if (remaining > 0){
+          remaining--;
+          render();
+        } else {
+          clearInterval(tid);
+          tid = null;
+          try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const o = ctx.createOscillator(); const g = ctx.createGain();
+            o.connect(g); g.connect(ctx.destination);
+            o.type = 'sine'; o.frequency.value = 880; g.gain.value = 0.05;
+            o.start(); setTimeout(()=>{ o.stop(); ctx.close(); }, 400);
+          } catch {}
+        }
       }
 
       if (start){
@@ -601,6 +664,63 @@
         });
       }
       render();
+    })();
+  </script>
+
+  <!-- Bug photo previews + geolocation -->
+  <script>
+    (() => {
+      const MAX_FILES = 5;
+      const previews = document.getElementById('photoPreview');
+      const input = document.getElementById('photosInput');
+      const btnLoc = document.getElementById('btnAttachLocation');
+      const latEl = document.getElementById('bug_lat');
+      const lngEl = document.getElementById('bug_lng');
+
+      if (input){
+        input.addEventListener('change', () => {
+          previews.innerHTML = '';
+          const raw = Array.from(input.files || []);
+          const files = raw.slice(0, MAX_FILES);
+
+          if (raw.length > MAX_FILES){
+            alert(`Please select up to ${MAX_FILES} photos.`);
+            const dt = new DataTransfer();
+            files.forEach(f => dt.items.add(f));
+            input.files = dt.files;
+          }
+
+          files.forEach(file => {
+            if (!file.type.startsWith('image/')) return;
+            const img = document.createElement('img');
+            img.alt = 'Preview';
+            img.style.cssText = 'width:72px;height:72px;object-fit:cover;border-radius:10px;border:1px solid var(--border)';
+            const reader = new FileReader();
+            reader.onload = e => img.src = e.target.result;
+            reader.readAsDataURL(file);
+            previews.appendChild(img);
+          });
+        });
+      }
+
+      if (btnLoc){
+        btnLoc.addEventListener('click', () => {
+          if (!navigator.geolocation) return alert('Geolocation not available.');
+          navigator.geolocation.getCurrentPosition(
+            pos => {
+              const { latitude, longitude } = pos.coords || {};
+              if (latitude && longitude){
+                latEl.value = latitude.toFixed(6);
+                lngEl.value = longitude.toFixed(6);
+                btnLoc.textContent = '📍 Location Attached';
+                btnLoc.disabled = true;
+              }
+            },
+            () => alert('Unable to get location. Check permissions.'),
+            { enableHighAccuracy: true, timeout: 6000, maximumAge: 15000 }
+          );
+        });
+      }
     })();
   </script>
 </body>
