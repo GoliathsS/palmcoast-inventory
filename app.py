@@ -3461,7 +3461,7 @@ def commission_toggle_paid(entry_id):
     conn.commit(); cur.close(); conn.close()
     if not row: abort(404)
     flash("Marked as {}".format("paid" if row[0] else "unpaid"), "ok")
-    return redirect(url_for("tech_portal"))
+    return redirect(url_for("tech_home"))
 
 @app.post("/tech/commission/<int:entry_id>/delete")
 @login_required
@@ -3490,7 +3490,7 @@ def commission_delete(entry_id):
     except Exception: pass
 
     flash("Entry deleted.", "ok")
-    return redirect(url_for("tech_portal"))
+    return redirect(url_for("tech_home"))
 
 @app.get("/tech/commission/export.csv")
 @login_required
@@ -3699,7 +3699,7 @@ def bug_report_upload():
     files = [f for f in (files or []) if f and f.filename]
     if not files:
         flash("No photos selected", "error")
-        return redirect(url_for("tech_portal"))
+        return redirect(url_for("tech_home"))
 
     if len(files) > 5:
         files = files[:5]
@@ -3735,7 +3735,7 @@ def bug_report_upload():
 
     conn.commit(); cur.close(); conn.close()
     flash("Bug photos uploaded. Thanks!", "ok")
-    return redirect(url_for("tech_portal"))
+    return redirect(url_for("tech_home"))
 
 @app.route('/static/debug')
 def view_debug_output():
