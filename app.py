@@ -3384,35 +3384,58 @@ def update_production():
 @app.post("/tech/commission/new")
 @login_required
 def commission_new():
-    sold_on = request.form.get("sold_on")
-    customer_name = (request.form.get("customer_name") or "").strip()
-    service_type = (request.form.get("service_type") or "").strip()
-    amount = request.form.get("amount") or "0"
-    rate = request.form.get("commission_rate") or "10"
-    notes = (request.form.get("notes") or "").strip()
-    att = request.files.get("attachment")
-    paid_checked = request.form.get("paid") is not None
-
     from datetime import date, datetime
-    try: sold_on = datetime.strptime(sold_on, "%Y-%m-%d").date()
-    except Exception: sold_on = date.today()
-    try: amount = round(float(amount), 2)
-    except Exception: amount = 0.0
-    try: rate = round(float(rate), 2)
-    except Exception: rate = 10.0
+    import mimetypes
 
-    commission = round(amount * (rate / 100.0), 2)
+    # Form fields
+    customer_name  = (request.form.get("customer_name") or "").strip()
+    payment_method = (request.form.get("payment_method") or "").strip().lower()  # 'cc' | 'check'
+    account_number = (request.form.get("account_number") or "").strip()
+    street_address = (request.form.get("street_address") or "").strip()
+    service_type   = (request.form.get("service_type") or "").strip()
+    amount_raw     = (request.form.get("amount") or "0").strip()
+    frequency      = (request.form.get("frequency") or "").strip()
+    notes          = (request.form.get("notes") or "").strip()
+    sold_on_raw    = (request.form.get("sold_on") or "").strip()
+    att            = request.files.get("attachment")
+
+    # Parse + defaults
+    try:
+        sold_on = datetime.strptime(sold_on_raw, "%Y-%m-%d").date()
+    except Exception:
+        sold_on = date.today()
+
+    try:
+        amount = round(float(amount_raw), 2)
+    except Exception:
+        amount = 0.0
+
+    # Use your default commission rate (passed to template / could be config/env)
+    DEFAULT_RATE = float(os.environ.get("DEFAULT_COMMISSION_RATE", "10"))
+    commission = round(amount * (DEFAULT_RATE / 100.0), 2)
+
+    # Basic validation for payment method
+    if payment_method not in ("cc", "check", ""):
+        payment_method = ""
 
     conn = get_db_connection(); cur = conn.cursor()
     cur.execute("""
         INSERT INTO commission_entries
-          (tech_id, sold_on, customer_name, service_type, amount, commission_rate, commission_amount, paid, paid_at, notes, status)
-        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,CASE WHEN %s THEN now() ELSE NULL END,%s,'self')
+          (tech_id, sold_on, customer_name, service_type, amount,
+           commission_rate, commission_amount, paid, paid_at, notes, status,
+           payment_method, account_number, street_address, frequency)
+        VALUES (%s,%s,%s,%s,%s,
+                %s,%s,FALSE,NULL,%s,'self',
+                %s,%s,%s,%s)
         RETURNING id
-    """, (getattr(current_user,"id",None), sold_on, customer_name, service_type,
-          amount, rate, commission, paid_checked, paid_checked, notes))
+    """, (
+        getattr(current_user,"id",None), sold_on, customer_name, service_type, amount,
+        DEFAULT_RATE, commission, notes,
+        payment_method or None, account_number or None, street_address or None, frequency or None
+    ))
     entry_id = cur.fetchone()[0]
 
+    # Optional attachment to S3
     if att and att.filename:
         key = _comm_key_for(getattr(current_user,"id",0), att.filename)
         ctype = mimetypes.guess_type(att.filename)[0] or "application/octet-stream"
@@ -3421,7 +3444,7 @@ def commission_new():
 
     conn.commit(); cur.close(); conn.close()
     flash("Sale recorded.", "ok")
-    return redirect(url_for("tech_portal"))
+    return redirect(url_for("tech_home"))  # or tech_portal if you aliased endpoint
 
 @app.post("/tech/commission/<int:entry_id>/toggle_paid")
 @login_required
@@ -3486,18 +3509,26 @@ def commission_export_csv():
 
     conn = get_db_connection(); cur = conn.cursor()
     cur.execute("""
-      SELECT sold_on, customer_name, service_type, amount, commission_rate, commission_amount, paid, notes
-      FROM commission_entries
-      WHERE tech_id=%s AND sold_on BETWEEN %s AND %s
-      ORDER BY sold_on ASC, id ASC
+      SELECT sold_on, customer_name, service_type, amount, commission_rate, commission_amount,
+             paid, notes, payment_method, account_number, street_address, frequency
+        FROM commission_entries
+       WHERE tech_id=%s AND sold_on BETWEEN %s AND %s
+       ORDER BY sold_on ASC, id ASC
     """, (getattr(current_user,"id",None), start_dt, end_dt))
     rows = cur.fetchall(); cur.close(); conn.close()
 
     buf = io.StringIO()
     w = csv.writer(buf)
-    w.writerow(["Date","Customer","Service","Amount","Rate %","Commission","Paid","Notes"])
+    w.writerow(["Date","Customer","Service","Price","Rate %","Commission","Paid","Notes","Paid Via","Account #","Street Address","Frequency"])
     for r in rows:
-        w.writerow([r[0].isoformat(), r[1], r[2], f"{r[3]:.2f}", f"{r[4]:.2f}", f"{r[5]:.2f}", "Yes" if r[6] else "No", (r[7] or "").replace("\n"," ")])
+        w.writerow([
+          r[0].isoformat(), r[1], r[2],
+          f"{r[3]:.2f}", f"{r[4]:.2f}", f"{r[5]:.2f}",
+          "Yes" if r[6] else "No",
+          (r[7] or "").replace("\n"," "),
+          ("CC" if r[8]=="cc" else "Check" if r[8]=="check" else ""),
+          r[9] or "", r[10] or "", r[11] or ""
+        ])
     from flask import Response
     filename = f"commissions_{year}-{month:02d}.csv"
     return Response(buf.getvalue(), mimetype="text/csv", headers={"Content-Disposition": f"attachment; filename={filename}"})
