@@ -865,7 +865,7 @@
     (function(){
       const amt = document.getElementById('comm_amount');
       const out = document.getElementById('comm_preview');
-      const DEFAULT_RATE = parseFloat('{{ default_commission_rate or 10 }}') || 10;
+      const DEFAULT_RATE = parseFloat('{{ default_commission_rate or 0 }}') || 0;
       function fmt(n){ return (isFinite(n) ? n : 0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
       function render(){
         const a = parseFloat(amt?.value || '0');
