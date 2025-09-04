@@ -309,7 +309,7 @@
           <h2>Sales &amp; Commissions</h2>
 
           <!-- Filters + Summary -->
-          <form method="GET" action="{{ url_for('tech_portal') }}" class="row" style="gap:10px;align-items:center;margin-bottom:10px">
+          <form method="GET" action="{{ url_for('tech_home') }}" class="row" style="gap:10px;align-items:center;margin-bottom:10px">
             <input class="btn" type="month" name="m" value="{{ selected_month or '' }}" style="width:180px" aria-label="Month">
             <button class="btn" type="submit">Apply</button>
             <a class="btn" href="{{ url_for('commission_export_csv', m=selected_month) }}">Export CSV</a>
