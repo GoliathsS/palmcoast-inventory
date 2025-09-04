@@ -3286,6 +3286,127 @@ def update_production():
     conn.close()
     return redirect('/inventory-analytics')
 
+@app.post("/tech/commission/new")
+@login_required
+def commission_new():
+    sold_on = request.form.get("sold_on")
+    customer_name = (request.form.get("customer_name") or "").strip()
+    service_type = (request.form.get("service_type") or "").strip()
+    amount = request.form.get("amount") or "0"
+    rate = request.form.get("commission_rate") or "10"
+    notes = (request.form.get("notes") or "").strip()
+    att = request.files.get("attachment")
+    paid_checked = request.form.get("paid") is not None
+
+    from datetime import date, datetime
+    try: sold_on = datetime.strptime(sold_on, "%Y-%m-%d").date()
+    except Exception: sold_on = date.today()
+    try: amount = round(float(amount), 2)
+    except Exception: amount = 0.0
+    try: rate = round(float(rate), 2)
+    except Exception: rate = 10.0
+
+    commission = round(amount * (rate / 100.0), 2)
+
+    conn = get_db_connection(); cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO commission_entries
+          (tech_id, sold_on, customer_name, service_type, amount, commission_rate, commission_amount, paid, paid_at, notes, status)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,CASE WHEN %s THEN now() ELSE NULL END,%s,'self')
+        RETURNING id
+    """, (getattr(current_user,"id",None), sold_on, customer_name, service_type,
+          amount, rate, commission, paid_checked, paid_checked, notes))
+    entry_id = cur.fetchone()[0]
+
+    if att and att.filename:
+        key = _comm_key_for(getattr(current_user,"id",0), att.filename)
+        ctype = mimetypes.guess_type(att.filename)[0] or "application/octet-stream"
+        s3.upload_fileobj(att, COMMISSIONS_BUCKET, key, ExtraArgs={"ContentType": ctype})
+        cur.execute("INSERT INTO commission_attachments (entry_id, s3_key) VALUES (%s,%s)", (entry_id, key))
+
+    conn.commit(); cur.close(); conn.close()
+    flash("Sale recorded.", "ok")
+    return redirect(url_for("tech_portal"))
+
+@app.post("/tech/commission/<int:entry_id>/toggle_paid")
+@login_required
+def commission_toggle_paid(entry_id):
+    conn = get_db_connection(); cur = conn.cursor()
+    cur.execute("""
+      UPDATE commission_entries
+         SET paid = NOT paid,
+             paid_at = CASE WHEN NOT paid THEN now() ELSE NULL END
+       WHERE id=%s AND tech_id=%s
+       RETURNING paid
+    """, (entry_id, getattr(current_user,"id",None)))
+    row = cur.fetchone()
+    conn.commit(); cur.close(); conn.close()
+    if not row: abort(404)
+    flash("Marked as {}".format("paid" if row[0] else "unpaid"), "ok")
+    return redirect(url_for("tech_portal"))
+
+@app.post("/tech/commission/<int:entry_id>/delete")
+@login_required
+def commission_delete(entry_id):
+    conn = get_db_connection(); cur = conn.cursor()
+    # Get attachment keys (if any), enforce ownership
+    cur.execute("""
+      SELECT ca.s3_key
+      FROM commission_entries ce
+      LEFT JOIN commission_attachments ca ON ca.entry_id = ce.id
+      WHERE ce.id=%s AND ce.tech_id=%s
+    """, (entry_id, getattr(current_user,"id",None)))
+    rows = cur.fetchall()
+    if rows is None: 
+        cur.close(); conn.close(); abort(404)
+
+    # Delete row (attachments cascade)
+    cur.execute("DELETE FROM commission_entries WHERE id=%s AND tech_id=%s", (entry_id, getattr(current_user,"id",None)))
+    conn.commit(); cur.close(); conn.close()
+
+    # Remove files from S3 (ignore errors)
+    try:
+        keys = [r[0] for r in rows if r and r[0]]
+        if keys:
+            s3.delete_objects(Bucket=COMMISSIONS_BUCKET, Delete={"Objects":[{"Key":k} for k in keys]})
+    except Exception: pass
+
+    flash("Entry deleted.", "ok")
+    return redirect(url_for("tech_portal"))
+
+@app.get("/tech/commission/export.csv")
+@login_required
+def commission_export_csv():
+    from datetime import date
+    import csv, io
+    m = (request.args.get("m") or "").strip()
+    today = date.today()
+    if m and len(m)==7 and m[4]=="-":
+      year = int(m[:4]); month = int(m[5:])
+    else:
+      year, month = today.year, today.month
+    from calendar import monthrange
+    start_dt = date(year, month, 1)
+    end_dt = date(year, month, monthrange(year, month)[1])
+
+    conn = get_db_connection(); cur = conn.cursor()
+    cur.execute("""
+      SELECT sold_on, customer_name, service_type, amount, commission_rate, commission_amount, paid, notes
+      FROM commission_entries
+      WHERE tech_id=%s AND sold_on BETWEEN %s AND %s
+      ORDER BY sold_on ASC, id ASC
+    """, (getattr(current_user,"id",None), start_dt, end_dt))
+    rows = cur.fetchall(); cur.close(); conn.close()
+
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["Date","Customer","Service","Amount","Rate %","Commission","Paid","Notes"])
+    for r in rows:
+        w.writerow([r[0].isoformat(), r[1], r[2], f"{r[3]:.2f}", f"{r[4]:.2f}", f"{r[5]:.2f}", "Yes" if r[6] else "No", (r[7] or "").replace("\n"," ")])
+    from flask import Response
+    filename = f"commissions_{year}-{month:02d}.csv"
+    return Response(buf.getvalue(), mimetype="text/csv", headers={"Content-Disposition": f"attachment; filename={filename}"})
+
 @app.route('/inventory-analytics')
 @login_required
 @role_required('ADMIN')
