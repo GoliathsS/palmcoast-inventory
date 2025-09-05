@@ -744,259 +744,231 @@ def api_products():
     cur.close(); conn.close()
     return jsonify(rows)
 
+# app.py
+from datetime import date
+import os
+import psycopg2.extras
+from flask import request, render_template, redirect, url_for, flash
+# ... your other imports
+
 @app.get("/my")
 @login_required
 @role_required("TECH","ADMIN")
 def tech_home():
-    from datetime import date
-    from calendar import monthrange
-    # If you don't already: from flask import request
+    # ---------- helpers ----------
+    def month_bounds(ym: str | None):
+        # ym is 'YYYY-MM' or None -> current month
+        if ym:
+            try:
+                y, m = [int(x) for x in ym.split("-", 1)]
+            except Exception:
+                y, m = date.today().year, date.today().month
+        else:
+            today = date.today()
+            y, m = today.year, today.month
+        start = date(y, m, 1)
+        # compute first day of next month without dateutil
+        end = date(y + (m // 12), ((m % 12) + 1), 1)
+        return f"{y:04d}-{m:02d}", start, end
 
-    # --- vehicle lookup (unchanged) ---
+    # selected month (for filters / CSV link)
+    selected_month, start_dt, end_dt = month_bounds(request.args.get("m"))
+    current_date = date.today().isoformat()
+    default_commission_rate = float(os.environ.get("DEFAULT_COMMISSION_RATE", "10"))
+
+    # ---------- assigned vehicle (fast query) ----------
     vehicle_id = None
     if current_user.role == "TECH":
-        conn = get_db_connection()
-        cur = conn.cursor()
+        with get_db_connection() as conn, conn.cursor() as cur:
+            cur.execute("SET LOCAL statement_timeout TO 4000")
+            cur.execute("""
+                SELECT v.vehicle_id
+                  FROM vehicles v
+                  JOIN technicians t ON v.technician_id = t.id
+                 WHERE t.user_id = %s
+                 LIMIT 1
+            """, (current_user.id,))
+            row = cur.fetchone()
+            vehicle_id = row[0] if row else None
+
+    # ---------- open one conn for the rest ----------
+    with get_db_connection() as conn, conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+        cur.execute("SET LOCAL statement_timeout TO 5000")
+
+        # who is this tech? (technicians.id)
+        tech_id = None
+        if current_user.role == "TECH":
+            cur.execute("SELECT id FROM technicians WHERE user_id = %s", (current_user.id,))
+            trow = cur.fetchone()
+            tech_id = trow["id"] if trow else None
+
+        # notifications (tech-specific or global)
         cur.execute("""
-            SELECT v.vehicle_id
-              FROM vehicles v
-              JOIN technicians t ON v.technician_id = t.id
-             WHERE t.user_id = %s
-             LIMIT 1
-        """, (current_user.id,))
-        row = cur.fetchone()
-        vehicle_id = row[0] if row else None
-        cur.close(); conn.close()
+            SELECT id, title, body, severity, due_at, is_read, created_at
+              FROM notifications
+             WHERE (%s IS NOT NULL AND tech_id = %s) OR tech_id IS NULL
+             ORDER BY
+                  CASE WHEN severity='critical' THEN 0
+                       WHEN severity='high'     THEN 1
+                       WHEN severity='normal'   THEN 2
+                       ELSE 3 END,
+                  COALESCE(due_at, created_at) ASC
+        """, (tech_id, tech_id))
+        notifications = cur.fetchall()
 
-    # --- open DictCursor for page data ---
-    conn = get_db_connection()
-    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-
-    # who is the current tech? (technicians.id) + user id
-    tech_id = None
-    if current_user.role == "TECH":
-        cur.execute("SELECT id FROM technicians WHERE user_id = %s", (current_user.id,))
-        trow = cur.fetchone()
-        tech_id = trow["id"] if trow else None
-    user_id = current_user.id  # used for commissions & bug reports (FK -> users.id)
-
-    # --- notifications (tech-specific or global) ---
-    cur.execute("""
-        SELECT id, title, body, severity, due_at, is_read, created_at
-          FROM notifications
-         WHERE (%s IS NOT NULL AND tech_id = %s) OR tech_id IS NULL
-         ORDER BY
-              CASE WHEN severity='critical' THEN 0
-                   WHEN severity='high'     THEN 1
-                   WHEN severity='normal'   THEN 2
-                   ELSE 3 END,
-              COALESCE(due_at, created_at) ASC
-    """, (tech_id, tech_id))
-    notifications = cur.fetchall()
-
-    # --- checklist (per tech) ---
-    cur.execute("""
-        SELECT id, label, is_done, due_at
-          FROM tech_checklist_items
-         WHERE tech_id = %s
-         ORDER BY COALESCE(due_at, now()) ASC, id ASC
-    """, (tech_id,))
-    checklist = cur.fetchall()
-
-    # --- requests (tech sees their own; admin sees queue) ---
-    if current_user.role == "ADMIN":
+        # checklist (per tech)
         cur.execute("""
-            SELECT
-                r.id,
-                r.technician_id AS tech_id,
-                t.name          AS tech_name,
-                r.request_type,
-                COALESCE(r.description, r.details, r.title) AS description,
-                r.status,
-                r.created_at,
-                r.closed_at
-            FROM tech_requests r
-            LEFT JOIN technicians t ON t.id = r.technician_id
-            ORDER BY (r.status = 'open') DESC, r.created_at DESC
-        """)
-    else:
-        cur.execute("""
-            SELECT
-                r.id,
-                r.technician_id AS tech_id,
-                r.request_type,
-                COALESCE(r.description, r.details, r.title) AS description,
-                r.status,
-                r.created_at,
-                r.closed_at
-            FROM tech_requests r
-            WHERE r.technician_id = %s
-            ORDER BY (r.status = 'open') DESC, r.created_at DESC
+            SELECT id, label, is_done, due_at
+              FROM tech_checklist_items
+             WHERE tech_id = %s
+             ORDER BY COALESCE(due_at, now()) ASC, id ASC
         """, (tech_id,))
-    requests_rows = cur.fetchall()
+        checklist = cur.fetchall()
 
-    # --- training / CEU (global or tech-specific) ---
-    cur.execute("""
-        SELECT id, title, url, ceu_hours, expires_on
-          FROM training_records
-         WHERE (tech_id = %s OR tech_id IS NULL)
-         ORDER BY COALESCE(expires_on, now()) ASC, title
-    """, (tech_id,))
-    training = cur.fetchall()
+        # requests (admin sees all, tech sees own)
+        if current_user.role == "ADMIN":
+            cur.execute("""
+                SELECT r.id, r.technician_id AS tech_id, t.name AS tech_name,
+                       r.request_type, COALESCE(r.description, r.details, r.title) AS description,
+                       r.status, r.created_at, r.closed_at
+                  FROM tech_requests r
+             LEFT JOIN technicians t ON t.id = r.technician_id
+                 ORDER BY (r.status = 'open') DESC, r.created_at DESC
+            """)
+        else:
+            cur.execute("""
+                SELECT r.id, r.technician_id AS tech_id,
+                       r.request_type, COALESCE(r.description, r.details, r.title) AS description,
+                       r.status, r.created_at, r.closed_at
+                  FROM tech_requests r
+                 WHERE r.technician_id = %s
+                 ORDER BY (r.status = 'open') DESC, r.created_at DESC
+            """, (tech_id,))
+        requests_rows = cur.fetchall()
 
-    # --- emergency contacts (global) ---
-    cur.execute("""
-        SELECT id, name, phone, kind, notes
-          FROM emergency_contacts
-         ORDER BY kind, name
-    """)
-    emergency = cur.fetchall()
-
-    # --- vehicle(s) for this tech (still list) ---
-    vehicles = []
-    if vehicle_id:
+        # training (global or tech-specific)
         cur.execute("""
-            SELECT vehicle_id, license_plate, vehicle_type,
-                   COALESCE(mileage, current_mileage, 0) AS vehicle_miles
-              FROM vehicles
-             WHERE vehicle_id = %s
-        """, (vehicle_id,))
-        v = cur.fetchone()
-        if v:
-            vehicles = [v]
+            SELECT id, title, url, ceu_hours, expires_on
+              FROM training_records
+             WHERE (tech_id = %s OR tech_id IS NULL)
+             ORDER BY COALESCE(expires_on, now()) ASC, title
+        """, (tech_id,))
+        training = cur.fetchall()
 
-    # --- maintenance status per vehicle ---
-    maint_by_vehicle = {}
-    for v in vehicles:
-        vid = v["vehicle_id"]
-        current_miles = int(v["vehicle_miles"] or 0)
+        # emergency contacts
+        cur.execute("SELECT id, name, phone, kind, notes FROM emergency_contacts ORDER BY kind, name")
+        emergency = cur.fetchall()
 
+        # vehicle(s)
+        vehicles = []
+        if vehicle_id:
+            cur.execute("""
+                SELECT vehicle_id, license_plate, vehicle_type,
+                       COALESCE(mileage, current_mileage, 0) AS vehicle_miles
+                  FROM vehicles
+                 WHERE vehicle_id = %s
+            """, (vehicle_id,))
+            v = cur.fetchone()
+            if v:
+                vehicles = [v]
+
+        # maintenance summary per vehicle
+        maint_by_vehicle = {}
+        for v in vehicles:
+            vid = v["vehicle_id"]
+            current_miles = int(v["vehicle_miles"] or 0)
+            cur.execute("""
+                SELECT service_type, odometer_due, received_at
+                  FROM maintenance_reminders
+                 WHERE vehicle_id = %s
+                 ORDER BY received_at DESC NULLS LAST, odometer_due ASC
+            """, (vid,))
+            rows = cur.fetchall()
+            by_service = {}
+            for r in rows:
+                s = (r["service_type"] or "").strip()
+                due = int(r["odometer_due"] or 0)
+                by_service[s] = max(by_service.get(s, 0), due)
+            summary = []
+            for s, due in by_service.items():
+                miles_remaining = due - current_miles
+                status = "overdue" if miles_remaining <= 0 else "due_soon" if miles_remaining <= 500 else "ok"
+                summary.append({"service_type": s, "due_at": due, "miles_remaining": miles_remaining, "status": status})
+            maint_by_vehicle[vid] = summary
+
+        # ---- Commissions (can be skipped to debug with ?skip_comm=1) ----
+        comm_entries = []
+        comm_summary = {"mtd_sales": 0.0, "mtd_commission": 0.0, "unpaid_commission": 0.0, "ytd_commission_paid": 0.0}
+        if request.args.get("skip_comm") not in ("1", "true", "yes"):
+            # summary
+            cur.execute("""
+              WITH my AS (
+                SELECT * FROM commission_entries
+                 WHERE tech_id=%s AND sold_on >= %s AND sold_on < %s
+              ),
+              ytd AS (
+                SELECT COALESCE(SUM(commission_amount),0) AS paid
+                  FROM commission_entries
+                 WHERE tech_id=%s AND paid = TRUE
+                   AND DATE_PART('year', COALESCE(paid_at, sold_on)) = DATE_PART('year', now())
+              )
+              SELECT
+                COALESCE((SELECT SUM(COALESCE(amount,0) + COALESCE(initial_amount,0)) FROM my),0) AS mtd_sales,
+                COALESCE((SELECT SUM(commission_amount) FROM my),0) AS mtd_commission,
+                COALESCE((SELECT SUM(commission_amount) FROM my WHERE paid = FALSE),0) AS unpaid_commission,
+                (SELECT paid FROM ytd) AS ytd_commission_paid
+            """, (current_user.id, start_dt, end_dt, current_user.id))
+            s = cur.fetchone()
+            comm_summary = {
+                "mtd_sales": float(s["mtd_sales"] or 0),
+                "mtd_commission": float(s["mtd_commission"] or 0),
+                "unpaid_commission": float(s["unpaid_commission"] or 0),
+                "ytd_commission_paid": float(s["ytd_commission_paid"] or 0),
+            }
+
+            # entries
+            cur.execute("""
+              SELECT ce.id, ce.sold_on, ce.customer_name, ce.service_type,
+                     ce.amount, ce.initial_amount, ce.commission_rate, ce.commission_amount,
+                     ce.paid, ca.id AS attachment_id, ce.notes,
+                     ce.payment_method, ce.account_number, ce.street_address, ce.frequency, ce.source
+                FROM commission_entries ce
+           LEFT JOIN LATERAL (
+                  SELECT id FROM commission_attachments
+                   WHERE entry_id = ce.id
+                   ORDER BY id ASC LIMIT 1
+                ) ca ON TRUE
+               WHERE ce.tech_id = %s
+                 AND ce.sold_on >= %s AND ce.sold_on < %s
+               ORDER BY ce.sold_on DESC, ce.id DESC
+            """, (current_user.id, start_dt, end_dt))
+            comm_entries = [
+                {k: row[k] for k in row.keys()}
+                for row in cur.fetchall()
+            ]
+
+        # ---- Field bug photos (fast, limited) ----
         cur.execute("""
-            SELECT service_type, odometer_due, received_at
-              FROM maintenance_reminders
-             WHERE vehicle_id = %s
-             ORDER BY received_at DESC NULLS LAST, odometer_due ASC
-        """, (vid,))
-        rows = cur.fetchall()
+          SELECT br.id, br.suspected_pest, br.notes, br.created_at, br.status, br.lat, br.lng,
+                 bp.id AS photo_id
+            FROM bug_reports br
+       LEFT JOIN LATERAL (
+              SELECT id FROM bug_photos
+               WHERE report_id = br.id
+               ORDER BY id ASC LIMIT 1
+            ) bp ON TRUE
+           WHERE br.tech_id = %s
+           ORDER BY br.created_at DESC
+           LIMIT 10
+        """, (current_user.id,))
+        bug_reports = [{
+            "id": row["id"], "suspected_pest": row["suspected_pest"], "notes": row["notes"],
+            "created_at": row["created_at"], "status": row["status"],
+            "lat": row["lat"], "lng": row["lng"], "photo_id": row["photo_id"],
+        } for row in cur.fetchall()]
 
-        by_service = {}
-        for r in rows:
-            s = r["service_type"].strip() if r["service_type"] else ""
-            due = int(r["odometer_due"] or 0)
-            by_service[s] = max(by_service.get(s, 0), due)
-
-        summary = []
-        for s, due in by_service.items():
-            miles_remaining = due - current_miles
-            if miles_remaining <= 0:
-                status = "overdue"
-            elif miles_remaining <= 500:
-                status = "due_soon"
-            else:
-                status = "ok"
-            summary.append({
-                "service_type": s,
-                "due_at": due,
-                "miles_remaining": miles_remaining,
-                "status": status
-            })
-        maint_by_vehicle[vid] = summary
-
-    # =========================
-    # NEW: Sales & Commissions
-    # =========================
-    m = (request.args.get("m") or "").strip()
-    today = date.today()
-    if m and len(m) == 7 and m[4] == "-":
-        year = int(m[:4]); month = int(m[5:])
-    else:
-        year, month = today.year, today.month
-    start_dt = date(year, month, 1)
-    end_dt = date(year, month, monthrange(year, month)[1])
-
-    # Summary (personal ledger; no approvals)
-    cur.execute("""
-      WITH my AS (
-        SELECT * FROM commission_entries
-         WHERE tech_id=%s AND sold_on BETWEEN %s AND %s
-      ),
-      ytd AS (
-        SELECT COALESCE(SUM(commission_amount),0) AS paid
-          FROM commission_entries
-         WHERE tech_id=%s AND paid = TRUE
-           AND DATE_PART('year', COALESCE(paid_at, sold_on)) = DATE_PART('year', now())
-      )
-      SELECT
-        COALESCE((SELECT SUM(amount)            FROM my),0) AS mtd_sales,
-        COALESCE((SELECT SUM(commission_amount) FROM my),0) AS mtd_commission,
-        COALESCE((SELECT SUM(commission_amount) FROM my WHERE paid = FALSE),0) AS unpaid_commission,
-        (SELECT paid FROM ytd) AS ytd_commission_paid
-    """, (user_id, start_dt, end_dt, user_id))
-    r = cur.fetchone()
-    comm_summary = {
-        "mtd_sales": r[0], "mtd_commission": r[1],
-        "unpaid_commission": r[2], "ytd_commission_paid": r[3]
-    }
-
-    # Entries for the selected month
-    cur.execute("""
-      SELECT ce.id, ce.sold_on, ce.customer_name, ce.service_type,
-             ce.amount, ce.commission_rate, ce.commission_amount,
-             ce.paid, ca.id AS attachment_id, ce.notes
-        FROM commission_entries ce
-   LEFT JOIN LATERAL (
-          SELECT id FROM commission_attachments
-           WHERE entry_id = ce.id
-           ORDER BY id ASC LIMIT 1
-        ) ca ON TRUE
-       WHERE ce.tech_id = %s
-         AND ce.sold_on BETWEEN %s AND %s
-       ORDER BY ce.sold_on DESC, ce.id DESC
-    """, (user_id, start_dt, end_dt))
-    comm_entries = [{
-        "id": row["id"],
-        "sold_on": row["sold_on"],
-        "customer_name": row["customer_name"],
-        "service_type": row["service_type"],
-        "amount": row["amount"],
-        "commission_rate": row["commission_rate"],
-        "commission_amount": row["commission_amount"],
-        "paid": row["paid"],
-        "attachment_id": row["attachment_id"],
-        "notes": row["notes"],
-    } for row in cur.fetchall()]
-
-    # ======================
-    # NEW: Field Bug Photos
-    # ======================
-    cur.execute("""
-      SELECT br.id, br.suspected_pest, br.notes, br.created_at, br.status, br.lat, br.lng,
-             bp.id AS photo_id
-        FROM bug_reports br
-   LEFT JOIN LATERAL (
-          SELECT id FROM bug_photos
-           WHERE report_id = br.id
-           ORDER BY id ASC LIMIT 1
-        ) bp ON TRUE
-       WHERE br.tech_id = %s
-       ORDER BY br.created_at DESC
-       LIMIT 10
-    """, (user_id,))
-    bug_reports = [{
-        "id": row["id"],
-        "suspected_pest": row["suspected_pest"],
-        "notes": row["notes"],
-        "created_at": row["created_at"],
-        "status": row["status"],
-        "lat": row["lat"],
-        "lng": row["lng"],
-        "photo_id": row["photo_id"],
-    } for row in cur.fetchall()]
-
-    cur.close(); conn.close()
-
+    # render
     return render_template(
-        # NOTE: if your template filename is "tech_portal.html", change this line accordingly
         "tech_home.html",
         vehicle_id=vehicle_id,
         notifications=notifications,
@@ -1006,12 +978,13 @@ def tech_home():
         emergency=emergency,
         vehicles=vehicles,
         maint_by_vehicle=maint_by_vehicle,
-        # extras for new panels
-        selected_month=f"{year:04d}-{month:02d}",
-        current_date=today.strftime("%Y-%m-%d"),
-        default_commission_rate=10,
+        # commissions context (template expects these)
+        selected_month=selected_month,
+        current_date=current_date,
+        default_commission_rate=default_commission_rate,
         comm_summary=comm_summary,
         comm_entries=comm_entries,
+        # bugs
         bug_reports=bug_reports,
         current_year=date.today().year
     )
