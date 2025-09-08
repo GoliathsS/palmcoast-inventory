@@ -3358,66 +3358,83 @@ def update_production():
 @login_required
 def commission_new():
     from datetime import date, datetime
-    import mimetypes
+    import os, mimetypes
 
-    # Form fields
-    customer_name  = (request.form.get("customer_name") or "").strip()
-    payment_method = (request.form.get("payment_method") or "").strip().lower()  # 'cc' | 'check'
-    account_number = (request.form.get("account_number") or "").strip()
-    street_address = (request.form.get("street_address") or "").strip()
-    service_type   = (request.form.get("service_type") or "").strip()
-    amount_raw     = (request.form.get("amount") or "0").strip()
-    frequency      = (request.form.get("frequency") or "").strip()
-    notes          = (request.form.get("notes") or "").strip()
-    sold_on_raw    = (request.form.get("sold_on") or "").strip()
-    att            = request.files.get("attachment")
+    # ----- helpers -----
+    CYCLES = {"one_time": 1, "monthly": 12, "bi_monthly": 6, "quarterly": 4, "semi_annual": 2, "annual": 1}
+    def _num(v, d=0.0):
+        try:
+            return round(float(v), 2)
+        except Exception:
+            return d
 
-    # Parse + defaults
+    # ----- form fields -----
+    customer_name   = (request.form.get("customer_name") or "").strip()
+    payment_method  = (request.form.get("payment_method") or "").strip().lower()  # 'cc'|'check'
+    account_number  = (request.form.get("account_number") or "").strip()
+    street_address  = (request.form.get("street_address") or "").strip()
+    service_type    = (request.form.get("service_type") or "").strip()
+    ongoing_amount  = _num(request.form.get("amount"))
+    initial_amount  = _num(request.form.get("initial_amount"))
+    commission_rate = _num(request.form.get("commission_rate") or os.environ.get("DEFAULT_COMMISSION_RATE", "10"))
+    frequency       = (request.form.get("frequency") or "monthly").strip().lower()
+    source          = (request.form.get("source") or "").strip()
+    notes           = (request.form.get("notes") or "").strip()
+    sold_on_raw     = (request.form.get("sold_on") or "").strip()
+    paid            = bool(request.form.get("paid"))
+    att             = request.files.get("attachment")
+
+    # ----- normalize / defaults -----
     try:
         sold_on = datetime.strptime(sold_on_raw, "%Y-%m-%d").date()
     except Exception:
         sold_on = date.today()
 
-    try:
-        amount = round(float(amount_raw), 2)
-    except Exception:
-        amount = 0.0
+    if payment_method not in {"cc", "check"}:
+        payment_method = None
 
-    # Use your default commission rate (passed to template / could be config/env)
-    DEFAULT_RATE = float(os.environ.get("DEFAULT_COMMISSION_RATE", "10"))
-    commission = round(amount * (DEFAULT_RATE / 100.0), 2)
+    if frequency not in CYCLES:
+        frequency = "monthly"
 
-    # Basic validation for payment method
-    if payment_method not in ("cc", "check", ""):
-        payment_method = ""
+    # ----- commission math: Initial + (cycles-1) * Ongoing -----
+    cycles = CYCLES[frequency]
+    recurring_cycles = max(cycles - 1, 0)
+    base_for_commission = initial_amount + (ongoing_amount * recurring_cycles)
+    commission_amount = round(base_for_commission * (commission_rate / 100.0), 2)
 
-    conn = get_db_connection(); cur = conn.cursor()
-    cur.execute("""
-        INSERT INTO commission_entries
-          (tech_id, sold_on, customer_name, service_type, amount,
-           commission_rate, commission_amount, paid, paid_at, notes, status,
-           payment_method, account_number, street_address, frequency)
-        VALUES (%s,%s,%s,%s,%s,
-                %s,%s,FALSE,NULL,%s,'self',
-                %s,%s,%s,%s)
-        RETURNING id
-    """, (
-        getattr(current_user,"id",None), sold_on, customer_name, service_type, amount,
-        DEFAULT_RATE, commission, notes,
-        payment_method or None, account_number or None, street_address or None, frequency or None
-    ))
-    entry_id = cur.fetchone()[0]
+    # ----- insert -----
+    with get_db_connection() as conn, conn.cursor() as cur:
+        cur.execute("""
+            INSERT INTO commission_entries
+              (tech_id, sold_on, customer_name, service_type,
+               initial_amount, amount, commission_rate, commission_amount,
+               paid, paid_at, notes, status,
+               payment_method, account_number, street_address, frequency, source, created_at)
+            VALUES
+              (%s,%s,%s,%s,
+               %s,%s,%s,%s,
+               %s, CASE WHEN %s THEN now() ELSE NULL END, %s, 'self',
+               %s,%s,%s,%s,%s, now())
+            RETURNING id
+        """, (
+            getattr(current_user, "id", None), sold_on, customer_name, service_type,
+            initial_amount, ongoing_amount, commission_rate, commission_amount,
+            paid, paid, notes,
+            payment_method, account_number or None, street_address or None, frequency, source or None
+        ))
+        entry_id = cur.fetchone()[0]
 
-    # Optional attachment to S3
-    if att and att.filename:
-        key = _comm_key_for(getattr(current_user,"id",0), att.filename)
-        ctype = mimetypes.guess_type(att.filename)[0] or "application/octet-stream"
-        s3.upload_fileobj(att, COMMISSIONS_BUCKET, key, ExtraArgs={"ContentType": ctype})
-        cur.execute("INSERT INTO commission_attachments (entry_id, s3_key) VALUES (%s,%s)", (entry_id, key))
+        # Optional attachment (S3)
+        if att and att.filename:
+            key = _comm_key_for(getattr(current_user, "id", 0), att.filename)
+            ctype = mimetypes.guess_type(att.filename)[0] or "application/octet-stream"
+            s3.upload_fileobj(att, COMMISSIONS_BUCKET, key, ExtraArgs={"ContentType": ctype})
+            cur.execute("INSERT INTO commission_attachments (entry_id, s3_key) VALUES (%s,%s)", (entry_id, key))
 
-    conn.commit(); cur.close(); conn.close()
+        conn.commit()
+
     flash("Sale recorded.", "ok")
-    return redirect(url_for("tech_home"))  # or tech_portal if you aliased endpoint
+    return redirect(url_for("tech_home"))
 
 @app.post("/tech/commission/<int:entry_id>/toggle_paid")
 @login_required
