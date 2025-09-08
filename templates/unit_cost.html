@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Palm Coast • Unit Cost Calculator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="color-scheme" content="light" />
+  <meta name="robots" content="noindex,nofollow" />
+  <style>
+    :root{
+      --page:#f7f7f9; --card:#ffffff; --border:#e6e7eb; --text:#0b1220; --muted:#6b7280;
+      --brand:#0ea5e9; --brand-2:#10b981; --good:#16a34a;
+      --shadow:0 8px 24px rgba(17,24,39,.08), 0 2px 6px rgba(17,24,39,.06);
+      --radius:16px; --ring:0 0 0 4px rgba(14,165,233,.15); --header-h:64px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0}
+    body{
+      font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter,"Helvetica Neue",Arial;
+      background:var(--page);color:var(--text);
+      display:flex;flex-direction:column;
+      -webkit-tap-highlight-color:rgba(0,0,0,0);
+      padding-top:env(safe-area-inset-top);
+    }
+
+    header{
+      position:sticky;top:0;z-index:10;
+      background:rgba(255,255,255,.85);
+      backdrop-filter:saturate(1.2) blur(8px);
+      border-bottom:1px solid var(--border);
+    }
+    .bar{max-width:min(1100px,94vw);margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:16px 0;min-height:var(--header-h)}
+    .brand{display:flex;align-items:center;gap:12px;font-weight:800;letter-spacing:.2px}
+    .meta{color:var(--muted);font-size:.95rem}
+
+    .wrap{width:min(1100px,94vw);margin:20px auto 40px;flex:1;display:grid;gap:18px}
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
+    .subpanel{background:#fff;border:1px dashed var(--border);border-radius:12px;padding:12px}
+    h1{margin:0;font-size:1.4rem;letter-spacing:-.01em}
+    h2{margin:0 0 10px;font-size:1.15rem}
+    .subtle{color:var(--muted)}
+    .grid{display:grid;gap:12px}
+    .grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .btn{
+      display:inline-flex;align-items:center;justify-content:center;
+      border:1px solid var(--border);background:#fff;border-radius:10px;
+      padding:8px 12px;text-decoration:none;color:#111;font-weight:600;min-height:44px;cursor:pointer
+    }
+    .btn:hover{box-shadow:var(--shadow)}
+    input.btn, select.btn{justify-content:flex-start}
+    .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid #cdebd8;color:#065f46;background:#ecfdf5;border-radius:999px;font-size:.88rem}
+    .cta{display:inline-block;font-weight:700;letter-spacing:.3px;font-size:.9rem;color:#fff;background:linear-gradient(90deg,var(--brand),var(--brand-2));padding:9px 12px;border-radius:10px;box-shadow:0 8px 20px rgba(16,185,129,.18)}
+    .footer{color:var(--muted);font-size:.9rem;text-align:center;padding:24px 0 34px}
+
+    @media (max-width: 720px) {
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .bar { padding: 12px 0; }
+      :root { --header-h: 56px; }
+    }
+
+    a:focus-visible, .btn:focus-visible{outline:none;box-shadow:var(--ring)}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="bar">
+      <div class="brand">Palm Coast • Unit Cost (Secret)</div>
+      <div class="meta">Admin-only • <a class="btn" href="{{ url_for('tech_home') }}">Back to Portal</a></div>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <!-- Intro -->
+    <div class="panel">
+      <h1>Fully-Loaded Technician Cost per Hour</h1>
+      <div class="subtle" style="margin-top:6px">
+        Calculates **paid-hour cost** and **productive-hour cost** using salary, taxes/benefits, vehicle insurance,
+        fuel, per-mile costs, and optional overhead. All math runs locally in your browser.
+      </div>
+    </div>
+
+    <!-- Inputs -->
+    <div class="panel">
+      <h2>Inputs</h2>
+      <div class="grid">
+        <!-- Compensation -->
+        <div class="subpanel">
+          <h3 style="margin:0 0 8px">Compensation</h3>
+          <div class="row">
+            <select class="btn" id="mode" style="width:170px">
+              <option value="hourly">Hourly</option>
+              <option value="salary">Annual Salary</option>
+            </select>
+            <input class="btn" id="hourly_wage" type="number" step="0.01" min="0" placeholder="Hourly wage $" style="width:180px">
+            <input class="btn" id="annual_salary" type="number" step="100" min="0" placeholder="Annual salary $" style="width:200px;display:none">
+            <input class="btn" id="employer_burden_pct" type="number" step="0.1" min="0" placeholder="Employer burden % (taxes, WC)" style="width:240px">
+          </div>
+          <div class="row" style="margin-top:6px">
+            <input class="btn" id="benefits_monthly" type="number" step="0.01" min="0" placeholder="Benefits $/month (health, phone, etc.)" style="width:300px">
+            <input class="btn" id="other_comp_monthly" type="number" step="0.01" min="0" placeholder="Other comp $/month (stipends)" style="width:280px">
+          </div>
+        </div>
+
+        <!-- Working hours -->
+        <div class="subpanel">
+          <h3 style="margin:0 0 8px">Working Hours</h3>
+          <div class="row">
+            <input class="btn" id="hours_per_week" type="number" step="0.1" min="0" placeholder="Paid hours per week" style="width:200px">
+            <input class="btn" id="pto_days" type="number" step="0.1" min="0" placeholder="PTO days / yr" style="width:160px">
+            <input class="btn" id="holiday_days" type="number" step="0.1" min="0" placeholder="Holiday days / yr" style="width:180px">
+            <input class="btn" id="hours_per_day" type="number" step="0.1" min="0" placeholder="Hours / workday" style="width:180px">
+          </div>
+          <div class="row" style="margin-top:6px">
+            <input class="btn" id="training_hours" type="number" step="0.1" min="0" placeholder="Training/Admin hours / yr" style="width:240px">
+            <input class="btn" id="utilization_pct" type="number" step="0.1" min="1" max="100" placeholder="Utilization % (productive share)" style="width:260px">
+          </div>
+        </div>
+
+        <!-- Vehicle & Fuel -->
+        <div class="subpanel">
+          <h3 style="margin:0 0 8px">Vehicle & Fuel</h3>
+          <div class="row">
+            <input class="btn" id="veh_insurance_monthly" type="number" step="0.01" min="0" placeholder="Vehicle insurance $/month" style="width:240px">
+            <input class="btn" id="veh_payment_monthly" type="number" step="0.01" min="0" placeholder="Vehicle payment/lease $/month" style="width:270px">
+            <input class="btn" id="veh_other_fixed_monthly" type="number" step="0.01" min="0" placeholder="Reg/Depreciation $/month" style="width:240px">
+          </div>
+          <div class="row" style="margin-top:6px">
+            <input class="btn" id="mpg" type="number" step="0.1" min="1" placeholder="MPG" style="width:140px">
+            <input class="btn" id="gas_price" type="number" step="0.01" min="0" placeholder="Fuel price $/gal" style="width:180px">
+            <input class="btn" id="miles_per_hour" type="number" step="0.1" min="0" placeholder="Avg miles per paid hour" style="width:230px">
+            <input class="btn" id="per_mile_cost" type="number" step="0.01" min="0" placeholder="Other per-mile $ (tires/maint)" style="width:240px">
+          </div>
+        </div>
+
+        <!-- Overhead (optional) -->
+        <div class="subpanel">
+          <h3 style="margin:0 0 8px">Overhead (Optional)</h3>
+          <div class="row">
+            <input class="btn" id="overhead_monthly" type="number" step="0.01" min="0" placeholder="Allocated overhead $/month (supervision, office)" style="width:380px">
+          </div>
+        </div>
+
+        <div class="row" style="align-items:center">
+          <button class="btn" id="load_example" type="button">Load Example</button>
+          <button class="cta" id="calc" type="button">Calculate</button>
+          <div id="warn" class="subtle" style="margin-left:auto"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div class="panel">
+      <h2>Results</h2>
+      <div class="subpanel">
+        <div class="row" style="gap:10px;flex-wrap:wrap">
+          <span class="pill">Paid Hours / Year: <strong id="out_paid_hours">0</strong></span>
+          <span class="pill">Productive Hours / Year: <strong id="out_prod_hours">0</strong></span>
+        </div>
+        <div class="row" style="gap:10px;margin-top:8px;flex-wrap:wrap">
+          <span class="pill">Comp (wage+burden+benefits) / hr: <strong id="out_comp_hr">$0.00</strong></span>
+          <span class="pill">Vehicle Fixed / hr: <strong id="out_vehicle_fixed_hr">$0.00</strong></span>
+          <span class="pill">Fuel / hr: <strong id="out_fuel_hr">$0.00</strong></span>
+          <span class="pill">Per-mile (maint) / hr: <strong id="out_permile_hr">$0.00</strong></span>
+          <span class="pill">Overhead / hr: <strong id="out_overhead_hr">$0.00</strong></span>
+        </div>
+        <div class="row" style="gap:10px;margin-top:10px;flex-wrap:wrap">
+          <span class="pill" style="background:#e0f2fe;border-color:#bae6fd">✅ Fully-Loaded Cost per PAID hour: <strong id="out_cost_paid">$0.00</strong></span>
+          <span class="pill" style="background:#fee2e2;border-color:#fecaca">🔥 Fully-Loaded Cost per PRODUCTIVE hour: <strong id="out_cost_prod">$0.00</strong></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">© {{ current_year or '' }} Palm Coast • Internal</div>
+
+  <script>
+  (() => {
+    const $ = id => document.getElementById(id);
+    const mode = $('mode'), hourly=$('hourly_wage'), annual=$('annual_salary'), burden=$('employer_burden_pct');
+    const benM=$('benefits_monthly'), otherM=$('other_comp_monthly');
+    const hpw=$('hours_per_week'), pto=$('pto_days'), hol=$('holiday_days'), hpd=$('hours_per_day'), train=$('training_hours'), util=$('utilization_pct');
+    const insM=$('veh_insurance_monthly'), payM=$('veh_payment_monthly'), othFixM=$('veh_other_fixed_monthly');
+    const mpg=$('mpg'), gas=$('gas_price'), mph=$('miles_per_hour'), perMile=$('per_mile_cost');
+    const ovhM=$('overhead_monthly');
+
+    const outPaid=$('out_paid_hours'), outProd=$('out_prod_hours');
+    const outComp=$('out_comp_hr'), outVF=$('out_vehicle_fixed_hr'), outFuel=$('out_fuel_hr'), outPM=$('out_permile_hr'), outOH=$('out_overhead_hr');
+    const outCostPaid=$('out_cost_paid'), outCostProd=$('out_cost_prod');
+    const warn=$('warn');
+
+    function n(v){ const x = parseFloat(v); return Number.isFinite(x) ? x : 0; }
+    const money = v => (v||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+
+    function toggleMode(){
+      if (mode.value === 'salary'){
+        annual.style.display = '';
+        hourly.style.display = 'none';
+      } else {
+        annual.style.display = 'none';
+        hourly.style.display = '';
+      }
+    }
+    mode.addEventListener('change', toggleMode);
+    toggleMode();
+
+    function calc(){
+      warn.textContent = '';
+
+      // Annual paid hours
+      const hoursPerWeek = n(hpw.value);
+      const hoursPerDay = n(hpd.value);
+      const scheduled = hoursPerWeek * 52;
+      const ptoHours = n(pto.value) * hoursPerDay;
+      const holHours = n(hol.value) * hoursPerDay;
+      const trainHours = n(train.value);
+      const paidHours = Math.max(scheduled - ptoHours - holHours - trainHours, 1); // avoid div/0
+      outPaid.textContent = Math.round(paidHours);
+
+      const utilization = Math.min(Math.max(n(util.value)/100, 0.01), 1); // 1%..100%
+      const productiveHours = paidHours * utilization;
+      outProd.textContent = Math.round(productiveHours);
+
+      // Annual compensation base
+      const burdenPct = n(burden.value)/100;
+      let annualBase = 0;
+      if (mode.value === 'salary'){
+        annualBase = n(annual.value);
+      } else {
+        annualBase = n(hourly.value) * paidHours;
+      }
+      const benefitsAnnual = n(benM.value) * 12;
+      const otherCompAnnual = n(otherM.value) * 12;
+
+      const burdenAnnual = annualBase * burdenPct;
+      const compAnnual = annualBase + burdenAnnual + benefitsAnnual + otherCompAnnual;
+      const compPerPaidHour = compAnnual / paidHours;
+
+      // Vehicle fixed annual
+      const vehFixedAnnual = (n(insM.value) + n(payM.value) + n(othFixM.value)) * 12;
+      const vehFixedPerPaidHour = vehFixedAnnual / paidHours;
+
+      // Fuel per hour
+      const _mpg = n(mpg.value), _gas = n(gas.value), _mph = n(mph.value);
+      const fuelPerHour = (_mpg > 0) ? (_mph / _mpg) * _gas : 0;
+
+      // Per-mile per hour (tires/maint)
+      const perMilePerHour = n(perMile.value) * _mph;
+
+      // Overhead per hour
+      const overheadPerHour = (n(ovhM.value) * 12) / paidHours;
+
+      // Totals
+      const paidHourCost = compPerPaidHour + vehFixedPerPaidHour + fuelPerHour + perMilePerHour + overheadPerHour;
+      const productiveHourCost = paidHourCost / utilization;
+
+      // Outputs
+      outComp.textContent = `$${money(compPerPaidHour)}`;
+      outVF.textContent   = `$${money(vehFixedPerPaidHour)}`;
+      outFuel.textContent = `$${money(fuelPerHour)}`;
+      outPM.textContent   = `$${money(perMilePerHour)}`;
+      outOH.textContent   = `$${money(overheadPerHour)}`;
+      outCostPaid.textContent = `$${money(paidHourCost)}`;
+      outCostProd.textContent = `$${money(productiveHourCost)}`;
+    }
+
+    $('calc').addEventListener('click', calc);
+
+    // Example values to get you started (edit to your reality)
+    $('load_example').addEventListener('click', () => {
+      mode.value = 'hourly'; toggleMode();
+      hourly.value = 22; annual.value = '';
+      burden.value = 28;                // payroll tax + workers comp, etc.
+      benM.value = 450; otherM.value = 40; // health/phone stipends
+      hpw.value = 40; pto.value = 10; hol.value = 7; hpd.value = 8; train.value = 24; // hours/year
+      util.value = 70;                   // 70% of paid hours are billable/productive
+      insM.value = 180; payM.value = 450; othFixM.value = 75;
+      mpg.value = 15; gas.value = 3.75; miles_per_hour.value = 14; perMile.value = 0.20;
+      ovhM.value = 300;                  // supervisor/office allocation per tech
+      calc();
+    });
+
+    // Auto-calc on change for quick feedback
+    document.querySelectorAll('input,select').forEach(el => el.addEventListener('input', () => {
+      // throttle-ish: only quick recompute for small updates
+      calc();
+    }));
+  })();
+  </script>
+</body>
+</html>
