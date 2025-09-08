@@ -3334,6 +3334,12 @@ def upload_invoice():
     # GET
     return render_template("upload_invoice.html")
 
+@app.get("/_unit_cost")  # hidden-ish path
+@login_required
+@role_required("ADMIN")
+def unit_cost_page():
+    return render_template("unit_cost.html")
+
 @app.route('/update-production', methods=['POST'])
 @login_required
 @role_required('ADMIN')
