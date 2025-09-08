@@ -601,7 +601,7 @@
       tbody.innerHTML = rows;
     }
 
-    async function refreshAll() {
+    async function reshAll() {
       try {
         // 1) Stats
         const stats = await fetchJSON('/api/dashboard-stats');
@@ -619,16 +619,16 @@
 
     // Initial fetch + poll every 15s
     document.addEventListener('DOMContentLoaded', () => {
-      refreshAll();
-      setInterval(refreshAll, 15000);
+      reshAll();
+      setInterval(reshAll, 15000);
 
-      // also refresh when filter changes (prevent full page reload)
+      // also resh when filter changes (prevent full page reload)
       const form = document.getElementById('filterForm');
       const select = document.getElementById('categorySelect');
       if (form && select) {
         form.addEventListener('submit', (e) => {
           e.preventDefault();
-          refreshAll();
+          reshAll();
         });
       }
     });
@@ -644,7 +644,7 @@
         await loadBarcodes(productId, listEl);
       });
 
-      // Intercept Add Barcode submit to POST via fetch and refresh list
+      // Intercept Add Barcode submit to POST via fetch and resh list
       const addForm = modalEl.querySelector('.add-barcode-form');
       addForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
