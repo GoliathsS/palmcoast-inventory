@@ -881,27 +881,36 @@
 
   <!-- Commission estimator (Initial + Ongoing, using default rate) -->
   <script>
-    (function(){
-      const initial = document.getElementById('comm_initial');
-      const amt = document.getElementById('comm_amount');
-      const out = document.getElementById('comm_preview');
-      const RATE = parseFloat('{{ default_commission_rate or 10 }}') || 10;
+  (function(){
+    const recur = document.getElementById('comm_amount'); // ongoing price
+    const init  = document.querySelector("input[name='initial_amount']") || document.getElementById('comm_initial');
+    const rate  = document.getElementById('comm_rate');
+    const freq  = document.querySelector("select[name='frequency']");
+    const out   = document.getElementById('comm_preview');
 
-      function num(v){ const n = parseFloat(v); return isFinite(n) ? n : 0; }
-      function money(n){ return (n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
+    const CYCLES = { one_time:1, monthly:12, bi_monthly:6, quarterly:4, semi_annual:2, annual:1 };
+    const num = v => parseFloat(v) || 0;
+    const fmt = n => n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
 
-      function render(){
-        const i = num(initial?.value || '0');
-        const a = num(amt?.value || '0');
-        const ci = i * (RATE/100);
-        const ca = a * (RATE/100);
-        const total = ci + ca;
-        if (out) out.textContent = `Est. Commission (${RATE}%): $${money(ci)} init + $${money(ca)} recur = $${money(total)}`;
-      }
-      initial?.addEventListener('input', render);
-      amt?.addEventListener('input', render);
-      render();
-    })();
+    function render(){
+      const f = (freq?.value || 'monthly').toLowerCase();
+      const cycles = CYCLES[f] ?? 12;
+      const recurringCycles = Math.max(cycles - 1, 0);
+
+      const i = num(init?.value);
+      const a = num(recur?.value);
+      const r = num(rate?.value);
+
+      const base = i + (a * recurringCycles);
+      const comm = base * (r/100);
+
+      if(out) out.textContent =
+        `Est. Commission (${r.toFixed(1)}%): $${fmt(comm)} — base $${fmt(base)} (Init $${fmt(i)} + ${recurringCycles}×$${fmt(a)})`;
+    }
+    [recur, init, rate].forEach(el => el?.addEventListener('input', render));
+    freq?.addEventListener('change', render);
+    render();
+  })();
   </script>
 </body>
 </html>
