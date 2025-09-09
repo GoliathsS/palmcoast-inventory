@@ -410,80 +410,67 @@
   </div>
 
   <!-- Scripts -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script type="module">
     import { BrowserMultiFormatReader } from 'https://cdn.jsdelivr.net/npm/@zxing/browser@latest/+esm';
 
     const scannerModalEl = document.getElementById("scannerModal");
     const scannerModal   = new bootstrap.Modal(scannerModalEl, { backdrop: 'static' });
-    const videoElem      = document.getElementById("scannerPreview");
-    const closeModalBtn  = document.getElementById("closeModalBtn");
+    const videoEl        = document.getElementById("scannerPreview");
+    const closeBtn       = document.getElementById("closeModalBtn");
     const beep           = document.getElementById("beep-sound");
     const reader         = new BrowserMultiFormatReader();
 
-    async function decodeOnceSmart(videoEl){
-      // iOS-friendly path: request *rear* camera via facingMode constraints first
+    async function decodeOnceSmart(){
+      // Prefer rear camera; fall back to last device if labels are blank
       try {
         return await reader.decodeOnceFromConstraints(
           { video: { facingMode: { ideal: "environment" } } },
           videoEl
         );
-      } catch (e) {
-        // Fallback: enumerate devices and pick one that looks like "back/rear"
-        try {
-          const devices = await reader.listVideoInputDevices();
-          const backId = devices.find(d => /back|rear/i.test(d.label))?.deviceId
-                      ?? devices.at(-1)?.deviceId;
-          return await reader.decodeOnceFromVideoDevice(backId, videoEl);
-        } catch (e2) {
-          throw e2;
-        }
+      } catch {
+        const devs = await reader.listVideoInputDevices();
+        const back = devs.find(d => /back|rear/i.test(d.label))?.deviceId ?? devs.at(-1)?.deviceId;
+        return await reader.decodeOnceFromVideoDevice(back, videoEl);
       }
     }
 
-    function startScanInto(targetInputId){
+    async function startScanInto(targetInputId){
       const input = document.getElementById(targetInputId);
       if (!input) return;
 
-      // Start scanning *after* the modal is fully visible — important on iOS
       const onShown = async () => {
         scannerModalEl.removeEventListener('shown.bs.modal', onShown);
         try {
-          const result = await decodeOnceSmart(videoElem);
+          const result = await decodeOnceSmart();
           input.value = result.getText();
           beep?.play();
         } catch (err) {
-          console.error("Scan failed:", err);
-          // Helpful messages for common iOS cases
-          if (err?.name === 'NotAllowedError') {
-            alert('Camera permission is blocked. In Settings → Safari → Camera, allow access.');
-          } else if (err?.name === 'NotReadableError') {
-            alert('Camera is in use by another app. Close other camera apps and try again.');
-          }
+          console.error('Scan failed:', err);
+          if (err?.name === 'NotAllowedError') alert('Camera permission is blocked in Safari. Enable it in Settings → Safari → Camera.');
         } finally {
-          reader.reset();          // stop the camera
-          scannerModal.hide();     // close the scanner modal
+          try { reader.reset(); } catch {}
+          // small delay helps iOS fully detach stream before hiding
+          await new Promise(r => setTimeout(r, 80));
+          scannerModal.hide();
         }
       };
 
-      scannerModalEl.addEventListener('shown.bs.modal', onShown, { once: true });
+      scannerModalEl.addEventListener('shown.bs.modal', onShown, { once:true });
       scannerModal.show();
     }
 
-    // Existing Add-Product scan button -> scans into #barcode-field
+    // Add-Product scan button
     document.getElementById("scan-btn")?.addEventListener("click", () => startScanInto("barcode-field"));
 
-    // New: any button with .js-scan-into scans into its target input
+    // Any “scan into” button in Barcodes modal
     document.addEventListener("click", (e) => {
       const btn = e.target.closest(".js-scan-into");
       if (!btn) return;
       e.preventDefault();
-      const targetId = btn.getAttribute("data-target");
-      startScanInto(targetId);
+      startScanInto(btn.getAttribute("data-target"));
     });
 
-    // Safety: if user closes modal manually, stop the camera
-    closeModalBtn?.addEventListener("click", () => reader.reset());
+    closeBtn?.addEventListener("click", () => reader.reset());
   </script>
 
   <script>
@@ -636,45 +623,25 @@
 
   <!-- Manage Barcodes loader (AJAX fragment + actions) -->
   <script>
-    // Load barcodes list when the modal opens, and wire the forms/buttons inside it.
-    document.querySelectorAll('.barcode-modal').forEach(modalEl => {
-      modalEl.addEventListener('shown.bs.modal', async () => {
-        const productId = modalEl.dataset.productId;
-        const listEl = modalEl.querySelector('#barcodeList-' + productId);
-        await loadBarcodes(productId, listEl);
-      });
-
-      // Intercept Add Barcode submit to POST via fetch and resh list
-      const addForm = modalEl.querySelector('.add-barcode-form');
-      addForm?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const productId = modalEl.dataset.productId;
-        const listEl = modalEl.querySelector('#barcodeList-' + productId);
-
-        const formData = new FormData(addForm);
-        const res = await fetch(addForm.action, {
-          method: 'POST',
-          body: formData,
-          credentials: 'same-origin'
-        });
-        // Endpoint may redirect; ignore body and just refresh the list
-        await loadBarcodes(productId, listEl);
-        addForm.reset();
-      });
-    });
-
+    // Load list + wire actions
     async function loadBarcodes(productId, listEl){
       try{
         const res = await fetch(`/products/${productId}/barcodes-fragment`, { credentials:'same-origin' });
+        if (!res.ok){
+          listEl.innerHTML = `<div class="text-danger">Could not load barcodes (HTTP ${res.status}).</div>`;
+          return;
+        }
         listEl.innerHTML = await res.text();
 
-        // Wire "Set Primary / Retire / Reactivate" buttons (they have .js-barcode-action)
         listEl.querySelectorAll('.js-barcode-action').forEach(btn => {
           btn.addEventListener('click', async (e) => {
             e.preventDefault();
+            btn.disabled = true; btn.textContent = 'Saving…';
             const url = btn.getAttribute('data-action');
-            await fetch(url, { method:'POST', credentials:'same-origin' });
+            const resp = await fetch(url, { method:'POST', credentials:'same-origin' });
+            btn.disabled = false;
             await loadBarcodes(productId, listEl);
+            if (!resp.ok) alert(`Server error (${resp.status}). Check logs.`);
           });
         });
       }catch(e){
@@ -682,6 +649,38 @@
         console.warn(e);
       }
     }
+
+    // Initialize each modal
+    document.querySelectorAll('.barcode-modal').forEach(modalEl => {
+      modalEl.addEventListener('shown.bs.modal', async () => {
+        const productId = modalEl.dataset.productId;
+        await loadBarcodes(productId, modalEl.querySelector('#barcodeList-' + productId));
+      });
+
+      // Intercept Add Barcode submit
+      const addForm = modalEl.querySelector('.add-barcode-form');
+      addForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const productId = modalEl.dataset.productId;
+        const listEl = modalEl.querySelector('#barcodeList-' + productId);
+
+        const btn = addForm.querySelector('button[type="submit"], button:not([type])') || addForm.querySelector('button');
+        const original = btn.textContent;
+        btn.disabled = true; btn.textContent = 'Adding…';
+
+        const formData = new FormData(addForm);
+        const resp = await fetch(addForm.action, { method:'POST', body:formData, credentials:'same-origin' });
+
+        btn.disabled = false; btn.textContent = original;
+
+        if (!resp.ok) {
+          alert(`Could not add barcode (HTTP ${resp.status}). Ensure the /admin/products/<id>/barcodes/add route exists and you’re logged in as ADMIN.`);
+          return;
+        }
+        addForm.reset();
+        await loadBarcodes(productId, listEl);
+      });
+    });
   </script>
 
   <footer class="container text-center py-4 text-muted" style="font-size:.9rem;">
