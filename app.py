@@ -256,7 +256,7 @@ def guess_symbology(code: str) -> str | None:
     return None
 
 def _ensure_barcode_alias_table_once():
-    """Create product_barcodes + indexes and (optionally) backfill from products.barcode."""
+    """Create product_ + indexes and backfill from products.barcode."""
     conn = get_db_connection(); cur = conn.cursor()
     try:
         cur.execute("""
@@ -271,16 +271,23 @@ def _ensure_barcode_alias_table_once():
                 added_by INTEGER,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 archived_at TIMESTAMPTZ
-            );
+            )
         """)
-        # per-product uniqueness (lets us upsert)
-        cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_prod_code ON product_barcodes (product_id, code);")
-        # global uniqueness for *active* codes
-        cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_code_active ON product_barcodes (code) WHERE is_active;")
+        # Create unique per-product to allow ON CONFLICT upserts
+        cur.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS ux_prod_code "
+            "ON product_barcodes (product_id, code)"
+        )
+        # Ensure a barcode cannot be active for two products at once
+        cur.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS ux_code_active "
+            "ON product_barcodes (code) WHERE is_active"
+        )
 
-        # Optional one-time backfill so existing products get a primary alias
-        cur.execute("SELECT id, COALESCE(barcode,'') FROM products;")
-        for pid, raw in cur.fetchall():
+        # Backfill primaries from products.barcode
+        cur.execute("SELECT id, COALESCE(barcode,'') FROM products")
+        rows = cur.fetchall()
+        for pid, raw in rows:
             code = normalize_barcode(raw)
             if not code:
                 continue
@@ -1487,41 +1494,40 @@ def add_product():
     cost_per_unit = float(request.form.get("cost_per_unit", 0))
     siteone_sku = request.form.get("siteone_sku", "").strip()
     category = request.form.get("category", "Pest")
-    units_per_item = int(request.form.get("units_per_item", 1))
-    unit_cost = round(cost_per_unit / max(units_per_item,1), 2)
-
-    code = normalize_barcode(raw_barcode)  # <-- digits-only, keep leading zeros
+    units_per_item = 1
+    unit_cost = cost_per_unit
+    in_stock = 0
+    units_remaining = 0
 
     conn = get_db_connection(); cur = conn.cursor()
     try:
-        # Insert product (keep legacy barcode column equal to primary)
+        # Normalize & keep legacy column in sync with primary
+        code = normalize_barcode(raw_barcode)
+
         cur.execute("""
             INSERT INTO products (
                 name, barcode, stock, min_stock, cost_per_unit,
                 siteone_sku, category, units_per_item, unit_cost, units_remaining, is_archived
-            ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,FALSE)
+            ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s, FALSE)
             RETURNING id
-        """, (name, code, 0, min_stock, cost_per_unit,
-              siteone_sku, category, units_per_item, unit_cost, 0))
+        """, (name, code, in_stock, min_stock, cost_per_unit,
+              siteone_sku, category, units_per_item, unit_cost, units_remaining))
         product_id = cur.fetchone()[0]
 
         if code:
-            # Seed alias table as active + primary
+            # Make this the primary active barcode
             cur.execute("""
                 INSERT INTO product_barcodes (product_id, code, symbology, is_active, is_primary, added_by)
                 VALUES (%s, %s, %s, TRUE, TRUE, %s)
                 ON CONFLICT (product_id, code) DO UPDATE
-                   SET is_active = TRUE, is_primary = TRUE, archived_at = NULL
-            """, (product_id, code, guess_symbology(code), getattr(current_user,"id",None)))
+                   SET is_active = TRUE, is_primary = TRUE, archived_at = NULL;
+            """, (product_id, code, guess_symbology(code), getattr(current_user, "id", None)))
 
         conn.commit()
-    except Exception as e:
-        conn.rollback()
-        current_app.logger.error("add_product error: %s", e)
-        abort(500)
-    finally:
-        cur.close(); conn.close()
-
+    except Exception:
+        conn.rollback(); cur.close(); conn.close()
+        raise
+    cur.close(); conn.close()
     return redirect(url_for('index'))
 
 @app.post("/admin/products/<int:product_id>/barcodes/<int:barcode_id>/primary")
