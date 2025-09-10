@@ -1488,151 +1488,63 @@ def barcodes_fragment(product_id):
 @login_required
 @role_required('ADMIN')
 def add_product():
-    name = request.form["name"]
-    raw_barcode = request.form.get("barcode", "")
-    min_stock = int(request.form["min_stock"])
+    name          = request.form["name"]
+    barcode       = normalize_barcode(request.form.get("barcode",""))
+    min_stock     = int(request.form["min_stock"])
     cost_per_unit = float(request.form.get("cost_per_unit", 0))
-    siteone_sku = request.form.get("siteone_sku", "").strip()
-    category = request.form.get("category", "Pest")
-    units_per_item = 1
-    unit_cost = cost_per_unit
-    in_stock = 0
-    units_remaining = 0
+    siteone_sku   = (request.form.get("siteone_sku") or "").strip()
+    category      = request.form.get("category", "Pest")
+
+    units_per_item   = 1
+    unit_cost        = cost_per_unit
+    in_stock         = 0
+    units_remaining  = 0
 
     conn = get_db_connection(); cur = conn.cursor()
-    try:
-        # Normalize & keep legacy column in sync with primary
-        code = normalize_barcode(raw_barcode)
-
-        cur.execute("""
-            INSERT INTO products (
-                name, barcode, stock, min_stock, cost_per_unit,
-                siteone_sku, category, units_per_item, unit_cost, units_remaining, is_archived
-            ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s, FALSE)
-            RETURNING id
-        """, (name, code, in_stock, min_stock, cost_per_unit,
-              siteone_sku, category, units_per_item, unit_cost, units_remaining))
-        product_id = cur.fetchone()[0]
-
-        if code:
-            # Make this the primary active barcode
-            cur.execute("""
-                INSERT INTO product_barcodes (product_id, code, symbology, is_active, is_primary, added_by)
-                VALUES (%s, %s, %s, TRUE, TRUE, %s)
-                ON CONFLICT (product_id, code) DO UPDATE
-                   SET is_active = TRUE, is_primary = TRUE, archived_at = NULL;
-            """, (product_id, code, guess_symbology(code), getattr(current_user, "id", None)))
-
-        conn.commit()
-    except Exception:
-        conn.rollback(); cur.close(); conn.close()
-        raise
+    cur.execute("""
+        INSERT INTO products (
+            name, barcode, stock, min_stock, cost_per_unit,
+            siteone_sku, category, units_per_item, unit_cost, units_remaining, is_archived
+        ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s, FALSE)
+    """, (name, barcode, in_stock, min_stock, cost_per_unit,
+          siteone_sku, category, units_per_item, unit_cost, units_remaining))
+    conn.commit()
     cur.close(); conn.close()
-    return redirect(url_for('index'))
+    return redirect("/")
 
+# Legacy: "add barcode" → just set products.barcode
+@app.post("/admin/products/<int:product_id>/barcodes/add")
+@login_required
+@role_required('ADMIN')
+def add_barcode_compat(product_id):
+    code = normalize_barcode(request.form.get("code",""))
+    if not code: return _err("Invalid barcode.", 400)
+    ok, msg = _update_product_barcode(product_id, code)
+    return _ok() if ok else _err(msg or "Save failed", 409)
+
+# Legacy: "set primary" → requires code in body now; ignore barcode_id
 @app.post("/admin/products/<int:product_id>/barcodes/<int:barcode_id>/primary")
 @login_required
 @role_required('ADMIN')
-def set_primary_barcode(product_id, barcode_id):
-    conn = get_db_connection(); cur = conn.cursor()
-    try:
-        cur.execute("UPDATE product_barcodes SET is_primary=FALSE WHERE product_id=%s", (product_id,))
-        cur.execute("""
-            UPDATE product_barcodes
-               SET is_primary=TRUE, is_active=TRUE, archived_at=NULL
-             WHERE id=%s AND product_id=%s
-        """, (barcode_id, product_id))
-        # sync legacy column
-        cur.execute("SELECT code FROM product_barcodes WHERE id=%s", (barcode_id,))
-        new_code = cur.fetchone()[0]
-        cur.execute("UPDATE products SET barcode=%s WHERE id=%s", (normalize_barcode(new_code), product_id))
-        conn.commit()
-    finally:
-        cur.close(); conn.close()
-    return redirect(url_for('index'))
+def set_primary_barcode_compat(product_id, barcode_id):
+    code = normalize_barcode(request.form.get("code",""))
+    if not code:
+        return _err("Missing code. This legacy endpoint no longer selects by ID; pass 'code' in the body.", 400)
+    ok, msg = _update_product_barcode(product_id, code)
+    return _ok() if ok else _err(msg or "Save failed", 409)
 
+# Legacy: archive/unarchive → no-ops in single-barcode model
 @app.post("/admin/products/<int:product_id>/barcodes/<int:barcode_id>/archive")
 @login_required
 @role_required('ADMIN')
-def archive_barcode(product_id, barcode_id):
-    conn = get_db_connection(); cur = conn.cursor()
-    try:
-        cur.execute("""
-            UPDATE product_barcodes
-               SET is_active=FALSE, is_primary=FALSE, archived_at=NOW()
-             WHERE id=%s AND product_id=%s
-        """, (barcode_id, product_id))
-        conn.commit()
-    finally:
-        cur.close(); conn.close()
-    return redirect(url_for('index'))
+def archive_barcode_compat(product_id, barcode_id):
+    return _ok()  # no-op
 
 @app.post("/admin/products/<int:product_id>/barcodes/<int:barcode_id>/unarchive")
 @login_required
 @role_required('ADMIN')
-def unarchive_barcode(product_id, barcode_id):
-    conn = get_db_connection(); cur = conn.cursor()
-    try:
-        cur.execute("SELECT code FROM product_barcodes WHERE id=%s AND product_id=%s", (barcode_id, product_id))
-        row = cur.fetchone()
-        if not row: abort(404)
-        code = row[0]
-        cur.execute("""
-            SELECT 1 FROM product_barcodes
-             WHERE code=%s AND is_active=TRUE AND product_id<>%s
-             LIMIT 1
-        """, (code, product_id))
-        if cur.fetchone():
-            flash("Cannot reactivate: this code is active on another product.", "danger")
-        else:
-            cur.execute("""
-                UPDATE product_barcodes
-                   SET is_active=TRUE, archived_at=NULL
-                 WHERE id=%s AND product_id=%s
-            """, (barcode_id, product_id))
-            conn.commit()
-            flash("Barcode reactivated.", "success")
-    finally:
-        cur.close(); conn.close()
-    return ("", 204)  # no content (AJAX)
-
-@app.post("/admin/products/<int:product_id>/barcodes/add")
-@login_required
-@role_required('ADMIN')
-def add_barcode(product_id):
-    code = normalize_barcode(request.form.get("code",""))
-    notes = (request.form.get("notes") or "").strip()
-    make_primary = bool(request.form.get("is_primary"))
-    if not code:
-        flash("Invalid barcode.", "danger")
-        return redirect(url_for('index'))
-
-    conn = get_db_connection(); cur = conn.cursor()
-    try:
-        # prevent stealing an active code from another product
-        cur.execute("""
-            SELECT product_id FROM product_barcodes
-             WHERE code=%s AND is_active=TRUE AND product_id<>%s
-             LIMIT 1
-        """, (code, product_id))
-        if cur.fetchone():
-            flash("That barcode is already active on another product.", "danger")
-        else:
-            if make_primary:
-                cur.execute("UPDATE product_barcodes SET is_primary=FALSE WHERE product_id=%s", (product_id,))
-            cur.execute("""
-                INSERT INTO product_barcodes (product_id, code, symbology, is_active, is_primary, notes, added_by)
-                VALUES (%s, %s, %s, TRUE, %s, %s, %s)
-                ON CONFLICT (product_id, code) DO UPDATE
-                   SET is_active=TRUE, is_primary=EXCLUDED.is_primary, notes=EXCLUDED.notes, archived_at=NULL
-            """, (product_id, code, guess_symbology(code), make_primary, notes, getattr(current_user,"id",None)))
-            if make_primary:
-                cur.execute("UPDATE products SET barcode=%s WHERE id=%s", (code, product_id))
-            conn.commit()
-            flash("Barcode saved.", "success")
-    finally:
-        cur.close(); conn.close()
-    return redirect(url_for('index'))
+def unarchive_barcode_compat(product_id, barcode_id):
+    return _ok()  # no-op
 
 @app.route('/edit-product/<int:product_id>', methods=['POST'])
 @login_required
