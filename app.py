@@ -1488,19 +1488,21 @@ def barcodes_fragment(product_id):
 @login_required
 @role_required('ADMIN')
 def add_product():
-    name          = request.form["name"]
-    barcode       = normalize_barcode(request.form.get("barcode",""))
-    min_stock     = int(request.form["min_stock"])
+    name = request.form["name"]
+    barcode = request.form["barcode"]
+    min_stock = int(request.form["min_stock"])
     cost_per_unit = float(request.form.get("cost_per_unit", 0))
-    siteone_sku   = (request.form.get("siteone_sku") or "").strip()
-    category      = request.form.get("category", "Pest")
+    siteone_sku = request.form.get("siteone_sku", "").strip()
+    category = request.form.get("category", "Pest")
 
-    units_per_item   = 1
-    unit_cost        = cost_per_unit
-    in_stock         = 0
-    units_remaining  = 0
+    # defaults for partials math
+    units_per_item = 1
+    unit_cost = cost_per_unit
+    in_stock = 0
+    units_remaining = 0
 
-    conn = get_db_connection(); cur = conn.cursor()
+    conn = get_db_connection()
+    cur = conn.cursor()
     cur.execute("""
         INSERT INTO products (
             name, barcode, stock, min_stock, cost_per_unit,
