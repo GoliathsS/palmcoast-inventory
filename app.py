@@ -42,6 +42,7 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 
 CANONICAL_HOST = os.environ.get("CANONICAL_HOST")  # e.g. "palmcoast-inventory.onrender.com"
 
+DIGIT_BARCODE = re.compile(r'^\d{8}$|^\d{12}$|^\d{13}$|^\d{14}$')
 # Make sure templates refresh and bad requests never look like "nothing happened"
 app.config["TEMPLATES_AUTO_RELOAD"] = True
 
@@ -254,6 +255,38 @@ def guess_symbology(code: str) -> str | None:
     if n == 13: return "EAN13"
     if n == 14: return "GTIN14"
     return None
+
+def _ok(payload=None, status=200):
+    return (jsonify(payload or {"ok": True}), status)
+
+def _err(msg, status=400):
+    return (jsonify({"error": msg}), status)
+
+def _ensure_primary_consistency(cur, product_id):
+    """
+    Makes sure products.barcode reflects the current primary (if any).
+    If no primary exists, sets products.barcode to the newest active code or NULL.
+    """
+    # Current primary
+    cur.execute("""
+        SELECT code FROM product_barcodes
+        WHERE product_id=%s AND is_active=TRUE AND is_primary=TRUE
+        ORDER BY id DESC LIMIT 1
+    """, (product_id,))
+    row = cur.fetchone()
+    if row:
+        cur.execute("UPDATE products SET barcode=%s WHERE id=%s", (row[0], product_id))
+        return
+
+    # Fallback: newest active non-primary
+    cur.execute("""
+        SELECT code FROM product_barcodes
+        WHERE product_id=%s AND is_active=TRUE
+        ORDER BY created_at DESC NULLS LAST, id DESC
+        LIMIT 1
+    """, (product_id,))
+    row = cur.fetchone()
+    cur.execute("UPDATE products SET barcode=%s WHERE id=%s", (row[0] if row else None, product_id))
 
 def _ensure_barcode_alias_table_once():
     """Create product_ + indexes and backfill from products.barcode."""
@@ -1514,39 +1547,170 @@ def add_product():
     cur.close(); conn.close()
     return redirect("/")
 
-# Legacy: "add barcode" → just set products.barcode
+# === ADD BARCODE ===
 @app.post("/admin/products/<int:product_id>/barcodes/add")
 @login_required
 @role_required('ADMIN')
-def add_barcode_compat(product_id):
-    code = normalize_barcode(request.form.get("code",""))
-    if not code: return _err("Invalid barcode.", 400)
-    ok, msg = _update_product_barcode(product_id, code)
-    return _ok() if ok else _err(msg or "Save failed", 409)
+def add_barcode(product_id: int):
+    code = normalize_barcode(request.form.get("code", ""))
+    notes = (request.form.get("notes") or "").strip()
+    want_primary = request.form.get("is_primary") in ("1", "true", "on", "yes")
 
-# Legacy: "set primary" → requires code in body now; ignore barcode_id
+    if not code:
+        return _err("Barcode is required.", 400)
+    if not DIGIT_BARCODE.match(code):
+        return _err("Invalid barcode format. Use 8/12/13/14 digits.", 400)
+
+    conn = get_db_connection(); cur = conn.cursor()
+    try:
+        # Ensure product exists
+        cur.execute("SELECT id FROM products WHERE id=%s", (product_id,))
+        if not cur.fetchone():
+            return _err("Product not found.", 404)
+
+        # Enforce uniqueness across all products (adjust if you allow duplicates per product)
+        cur.execute("""
+            SELECT pb.product_id, p.name
+            FROM product_barcodes pb
+            JOIN products p ON p.id = pb.product_id
+            WHERE pb.code=%s AND pb.product_id<>%s
+        """, (code, product_id))
+        clash = cur.fetchone()
+        if clash:
+            return _err("Barcode already used by another product.", 409)
+
+        # Insert new row (default active; primary decided below)
+        cur.execute("""
+            INSERT INTO product_barcodes (product_id, code, symbology, is_active, is_primary, notes, created_at)
+            VALUES (%s, %s, NULL, TRUE, FALSE, %s, NOW())
+            RETURNING id
+        """, (product_id, code, notes))
+        new_id = cur.fetchone()[0]
+
+        # If requested primary OR no other primary exists, promote this one
+        make_primary = want_primary
+        if not make_primary:
+            cur.execute("""
+                SELECT 1 FROM product_barcodes
+                WHERE product_id=%s AND is_active=TRUE AND is_primary=TRUE
+                LIMIT 1
+            """, (product_id,))
+            make_primary = cur.fetchone() is None
+
+        if make_primary:
+            # Demote others then promote this one
+            cur.execute("UPDATE product_barcodes SET is_primary=FALSE WHERE product_id=%s", (product_id,))
+            cur.execute("UPDATE product_barcodes SET is_primary=TRUE, is_active=TRUE WHERE id=%s", (new_id,))
+            # Sync products.barcode
+            cur.execute("UPDATE products SET barcode=%s WHERE id=%s", (code, product_id))
+        else:
+            # Keep products.barcode consistent with existing primary
+            _ensure_primary_consistency(cur, product_id)
+
+        conn.commit()
+        return _ok({"id": new_id, "code": code})
+    except Exception as e:
+        conn.rollback()
+        app.logger.exception("add_barcode failed")
+        return _err("Server error adding barcode.", 500)
+    finally:
+        cur.close(); conn.close()
+
+
+# === SET PRIMARY ===
 @app.post("/admin/products/<int:product_id>/barcodes/<int:barcode_id>/primary")
 @login_required
 @role_required('ADMIN')
-def set_primary_barcode_compat(product_id, barcode_id):
-    code = normalize_barcode(request.form.get("code",""))
-    if not code:
-        return _err("Missing code. This legacy endpoint no longer selects by ID; pass 'code' in the body.", 400)
-    ok, msg = _update_product_barcode(product_id, code)
-    return _ok() if ok else _err(msg or "Save failed", 409)
+def set_primary_barcode(product_id: int, barcode_id: int):
+    conn = get_db_connection(); cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT id, code, is_active FROM product_barcodes
+            WHERE id=%s AND product_id=%s
+        """, (barcode_id, product_id))
+        row = cur.fetchone()
+        if not row:
+            return _err("Barcode not found for this product.", 404)
+        _, code, is_active = row
+        if not is_active:
+            # Reactivate as part of primary set
+            cur.execute("UPDATE product_barcodes SET is_active=TRUE, archived_at=NULL WHERE id=%s", (barcode_id,))
 
-# Legacy: archive/unarchive → no-ops in single-barcode model
+        # One primary per product: demote others then promote this one
+        cur.execute("UPDATE product_barcodes SET is_primary=FALSE WHERE product_id=%s", (product_id,))
+        cur.execute("UPDATE product_barcodes SET is_primary=TRUE WHERE id=%s", (barcode_id,))
+
+        # Sync products.barcode
+        cur.execute("UPDATE products SET barcode=%s WHERE id=%s", (code, product_id))
+        conn.commit()
+        return _ok()
+    except Exception:
+        conn.rollback()
+        app.logger.exception("set_primary_barcode failed")
+        return _err("Server error setting primary.", 500)
+    finally:
+        cur.close(); conn.close()
+
+
+# === ARCHIVE ===
 @app.post("/admin/products/<int:product_id>/barcodes/<int:barcode_id>/archive")
 @login_required
 @role_required('ADMIN')
-def archive_barcode_compat(product_id, barcode_id):
-    return _ok()  # no-op
+def archive_barcode(product_id: int, barcode_id: int):
+    conn = get_db_connection(); cur = conn.cursor()
+    try:
+        # Get the barcode and whether it's currently primary
+        cur.execute("""
+            SELECT code, is_primary FROM product_barcodes
+            WHERE id=%s AND product_id=%s
+        """, (barcode_id, product_id))
+        row = cur.fetchone()
+        if not row:
+            return _err("Barcode not found.", 404)
+        code, was_primary = row
 
+        # Archive it
+        cur.execute("""
+            UPDATE product_barcodes
+            SET is_active=FALSE, is_primary=FALSE, archived_at=NOW()
+            WHERE id=%s
+        """, (barcode_id,))
+
+        # If it was primary, choose the next best active one or clear
+        _ensure_primary_consistency(cur, product_id)
+        conn.commit()
+        return _ok()
+    except Exception:
+        conn.rollback()
+        app.logger.exception("archive_barcode failed")
+        return _err("Server error archiving barcode.", 500)
+    finally:
+        cur.close(); conn.close()
+
+
+# === UNARCHIVE ===
 @app.post("/admin/products/<int:product_id>/barcodes/<int:barcode_id>/unarchive")
 @login_required
 @role_required('ADMIN')
-def unarchive_barcode_compat(product_id, barcode_id):
-    return _ok()  # no-op
+def unarchive_barcode(product_id: int, barcode_id: int):
+    conn = get_db_connection(); cur = conn.cursor()
+    try:
+        cur.execute("""
+            UPDATE product_barcodes
+            SET is_active=TRUE, archived_at=NULL
+            WHERE id=%s AND product_id=%s
+        """, (barcode_id, product_id))
+
+        # Do not auto-primary on unarchive; keep current primary stable
+        _ensure_primary_consistency(cur, product_id)
+        conn.commit()
+        return _ok()
+    except Exception:
+        conn.rollback()
+        app.logger.exception("unarchive_barcode failed")
+        return _err("Server error unarchiving barcode.", 500)
+    finally:
+        cur.close(); conn.close()
 
 @app.route('/edit-product/<int:product_id>', methods=['POST'])
 @login_required
