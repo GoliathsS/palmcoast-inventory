@@ -1716,54 +1716,61 @@ def unarchive_barcode(product_id: int, barcode_id: int):
 @login_required
 @role_required('ADMIN')
 def edit_product(product_id):
+    import re
     data = request.form
-    name = data['name']
-    raw_barcode = data.get('barcode', '')
-    min_stock = int(data['min_stock'])
-    cost_per_unit = float(data.get('cost_per_unit', 0.0))
-    category = data.get('category', 'Pest')
-    siteone_sku = data.get('siteone_sku', '').strip()
-    units_per_item = int(data.get('units_per_item', 1))
-    unit_cost = round(cost_per_unit / units_per_item, 2) if units_per_item else 0.0
+
+    def normalize_barcode(s: str) -> str:
+        # keep your existing helper if already defined; this local one is fine too
+        return re.sub(r'\D+', '', (s or ''))
+
+    name            = (data.get('name') or '').strip()
+    raw_barcode     = data.get('barcode', '')
+    min_stock       = int(data.get('min_stock') or 0)
+    cost_per_unit   = float(data.get('cost_per_unit') or 0.0)
+    category        = (data.get('category') or 'Pest').strip()
+    siteone_sku     = (data.get('siteone_sku') or '').strip()
+    units_per_item  = int(data.get('units_per_item') or 1)
+    unit_cost       = round(cost_per_unit / units_per_item, 2) if units_per_item else 0.0
 
     code = normalize_barcode(raw_barcode)
 
+    # Optional: format check (EAN-8/UPC-A/EAN-13/ITF-14)
+    if code and not re.match(r'^\d{8}$|^\d{12}$|^\d{13}$|^\d{14}$', code):
+        flash("Invalid barcode format. Use 8/12/13/14 digits.", "danger")
+        return redirect(url_for('index'))
+
     conn = get_db_connection(); cur = conn.cursor()
     try:
-        # Update base fields (keep legacy column synced with the intended primary code)
+        # Uniqueness across other products (allow blank)
+        if code:
+            cur.execute("SELECT id FROM products WHERE barcode=%s AND id<>%s", (code, product_id))
+            if cur.fetchone():
+                flash("This barcode is already used by another product.", "danger")
+                return redirect(url_for('index'))
+
+        # Update the product (single source of truth lives in products.barcode)
         cur.execute("""
             UPDATE products
-               SET name=%s, barcode=%s, min_stock=%s, cost_per_unit=%s,
-                   category=%s, siteone_sku=%s, units_per_item=%s, unit_cost=%s
+               SET name=%s,
+                   barcode=%s,
+                   min_stock=%s,
+                   cost_per_unit=%s,
+                   category=%s,
+                   siteone_sku=%s,
+                   units_per_item=%s,
+                   unit_cost=%s
              WHERE id=%s
         """, (name, code, min_stock, cost_per_unit, category, siteone_sku, units_per_item, unit_cost, product_id))
 
-        if code:
-            # Block activating a code already active on a different product
-            cur.execute("""
-                SELECT product_id FROM product_barcodes
-                 WHERE code=%s AND is_active=TRUE AND product_id<>%s
-                 LIMIT 1
-            """, (code, product_id))
-            conflict = cur.fetchone()
-            if conflict:
-                flash("This barcode is already active on another product.", "danger")
-            else:
-                # Make this primary for this product
-                cur.execute("UPDATE product_barcodes SET is_primary=FALSE WHERE product_id=%s", (product_id,))
-                cur.execute("""
-                    INSERT INTO product_barcodes (product_id, code, symbology, is_active, is_primary, added_by)
-                    VALUES (%s, %s, %s, TRUE, TRUE, %s)
-                    ON CONFLICT (product_id, code) DO UPDATE
-                       SET is_active = TRUE, is_primary = TRUE, archived_at = NULL
-                """, (product_id, code, guess_symbology(code), getattr(current_user, "id", None)))
-
         conn.commit()
-    except Exception as e:
+        flash("Product updated.", "success")
+    except Exception:
         conn.rollback()
+        app.logger.exception("edit_product failed")
+        flash("Server error updating product.", "danger")
+    finally:
         cur.close(); conn.close()
-        raise
-    cur.close(); conn.close()
+
     return redirect(url_for('index'))
 
 @app.route('/delete-product/<int:product_id>', methods=['POST'])
