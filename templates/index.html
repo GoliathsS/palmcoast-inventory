@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -51,7 +51,7 @@
       display:flex; align-items:center; gap:.65rem; text-decoration:none; color:#111;
       box-shadow: 0 2px 10px rgba(0,0,0,.04);
       transition: transform .12s ease, box-shadow .12s ease;
-      position:relative;  /* enable corner badges */
+      position:relative;
     }
     .action:hover{ transform: translateY(-2px); box-shadow:0 6px 18px rgba(0,0,0,.07); }
     .action i{ width:28px; height:28px; display:grid; place-items:center; border-radius:8px; font-size:14px; }
@@ -137,7 +137,6 @@
       <a href="/upload-invoice" class="action"><i class="i-blue fa-solid fa-paperclip"></i><span>Upload Invoice (Sync)</span></a>
       <a href="/corrections" class="action"><i class="i-red fa-solid fa-screwdriver-wrench"></i><span>Corrections</span></a>
 
-      <!-- Tech Request Queue + live badge -->
       <a href="{{ url_for('tech_requests_queue') }}" class="action">
         <i class="i-orange fa-solid fa-list-check"></i><span>Tech Request Queue</span>
         <span id="openReqBadge" class="count-badge">0</span>
@@ -145,7 +144,6 @@
 
       <a href="/sds" class="action"><i class="i-cyan fa-solid fa-file-lines"></i><span>SDS & Labels</span></a>
 
-      <!-- ✅ Vehicle Profiles with color-coded badges -->
       <a href="/vehicles" class="action">
         <i class="i-blue fa-solid fa-truck"></i><span>Vehicle Profiles</span>
         <span id="badge-red" class="count-badge" style="background:#dc3545; right:-6px;">0</span>
@@ -153,7 +151,6 @@
         <span id="badge-yellow" class="count-badge" style="background:#ffc107; color:#fff; right:62px;">0</span>
       </a>
 
-      <!-- Vehicle Inspections (no badge here) -->
       <a href="/inspections" class="action">
         <i class="i-gray fa-solid fa-clipboard-check"></i><span>Vehicle Inspections</span>
       </a>
@@ -261,9 +258,8 @@
                   <span class="badge bg-info text-dark">Pest</span>
                 {% endif %}
               </td>
-              <td>
+              <td style="min-width:160px;">
                 <button class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#editModal{{ product[0] }}">✏️ Edit</button>
-                <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#barcodeModal{{ product[0] }}">🏷 Barcodes</button>
                 <form action="/delete-product/{{ product[0] }}" method="post" style="display:inline-block" onsubmit="return confirm('Are you sure?')">
                   <button class="btn btn-sm btn-outline-danger">🗑 Delete</button>
                 </form>
@@ -284,10 +280,16 @@
                         <label class="form-label">Product Name</label>
                         <input type="text" name="name" class="form-control" value="{{ product[1] }}" required>
                       </div>
-                      <div class="mb-3">
+
+                      <!-- Barcode with scan button -->
+                      <div class="mb-3 position-relative">
                         <label class="form-label">Barcode</label>
-                        <input type="text" name="barcode" class="form-control" value="{{ product[2] }}" required>
+                        <input type="text" name="barcode" class="form-control" value="{{ product[2] }}" id="edit-barcode-{{ product[0] }}" required>
+                        <button type="button"
+                                class="btn btn-sm btn-outline-secondary position-absolute top-0 end-0 mt-4 me-1 js-scan-into"
+                                data-target="edit-barcode-{{ product[0] }}">📷</button>
                       </div>
+
                       <div class="mb-3">
                         <label class="form-label">Min Stock</label>
                         <input type="number" name="min_stock" class="form-control" value="{{ product[4] }}" required>
@@ -321,58 +323,6 @@
                       <button type="submit" class="btn btn-primary">Save Changes</button>
                     </div>
                   </form>
-                </div>
-              </div>
-            </div>
-
-            <!-- Manage Barcodes Modal -->
-            <div class="modal fade barcode-modal" id="barcodeModal{{ product[0] }}" tabindex="-1"
-                 aria-labelledby="barcodeModalLabel{{ product[0] }}" aria-hidden="true"
-                 data-product-id="{{ product[0] }}">
-              <div class="modal-dialog">
-                <div class="modal-content">
-                  <div class="modal-header">
-                    <h5 class="modal-title" id="barcodeModalLabel{{ product[0] }}">Manage Barcodes — {{ product[1] }}</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                  </div>
-
-                  <div class="modal-body">
-                    <!-- Add barcode (separate form; not nested inside Edit form) -->
-                    <form class="add-barcode-form" method="POST"
-                          action="/admin/products/{{ product[0] }}/barcodes/add">
-                      <div class="row g-2 align-items-center">
-                        <div class="col-12 position-relative">
-                          <label class="form-label mb-1">Scan or paste new barcode</label>
-                          <input type="text" name="code" class="form-control"
-                                 id="code-input-{{ product[0] }}" placeholder="e.g., 012345678905" required>
-                          <button type="button"
-                                  class="btn btn-sm btn-outline-secondary position-absolute top-0 end-0 mt-1 me-1 js-scan-into"
-                                  data-target="code-input-{{ product[0] }}">📷</button>
-                        </div>
-                        <div class="col-12 col-md-7">
-                          <input type="text" name="notes" class="form-control" placeholder="Notes (optional)">
-                        </div>
-                        <div class="col-6 col-md-3 form-check ms-2">
-                          <input class="form-check-input" type="checkbox" id="primary{{ product[0] }}" name="is_primary" value="1">
-                          <label class="form-check-label" for="primary{{ product[0] }}">Set as primary</label>
-                        </div>
-                        <div class="col-12 col-md-2 text-end">
-                          <button class="btn btn-success w-100">Add</button>
-                        </div>
-                      </div>
-                    </form>
-
-                    <hr class="my-3">
-
-                    <!-- Existing barcodes list (loaded via AJAX) -->
-                    <div id="barcodeList-{{ product[0] }}">
-                      <div class="text-muted">Loading barcodes…</div>
-                    </div>
-                  </div>
-
-                  <div class="modal-footer">
-                    <small class="text-muted">Tip: Primary = code shown in the table. Retired codes still scan (legacy fallback).</small>
-                  </div>
                 </div>
               </div>
             </div>
@@ -422,7 +372,6 @@
     const reader         = new BrowserMultiFormatReader();
 
     async function decodeOnceSmart(){
-      // Prefer rear camera; fall back to last device if labels are blank
       try {
         return await reader.decodeOnceFromConstraints(
           { video: { facingMode: { ideal: "environment" } } },
@@ -450,7 +399,6 @@
           if (err?.name === 'NotAllowedError') alert('Camera permission is blocked in Safari. Enable it in Settings → Safari → Camera.');
         } finally {
           try { reader.reset(); } catch {}
-          // small delay helps iOS fully detach stream before hiding
           await new Promise(r => setTimeout(r, 80));
           scannerModal.hide();
         }
@@ -463,7 +411,7 @@
     // Add-Product scan button
     document.getElementById("scan-btn")?.addEventListener("click", () => startScanInto("barcode-field"));
 
-    // Any “scan into” button in Barcodes modal
+    // Any “scan into” button (used in Edit modals now)
     document.addEventListener("click", (e) => {
       const btn = e.target.closest(".js-scan-into");
       if (!btn) return;
@@ -511,7 +459,7 @@
     });
 
     /* ===========================
-       LIVE UPDATES (polling)
+       LIVE UPDATES (stats only)
        =========================== */
     const $ = (id) => document.getElementById(id);
 
@@ -549,58 +497,12 @@
       setBadge('badge-yellow', Number(s.yellow_vehicle_count || 0));
     }
 
-    function rowBadge(stock, min) {
-      if (stock <= 0) return '<span class="badge bg-danger">Out</span>';
-      if (stock < min) return '<span class="badge badge-low">Low</span>';
-      return '<span class="badge badge-ok">OK</span>';
-    }
-
-    function catBadge(cat) {
-      if (cat === 'Lawn') return '<span class="badge bg-success">Lawn</span>';
-      if (cat === 'Wildlife') return '<span class="badge bg-warning text-dark">Wildlife</span>';
-      return '<span class="badge bg-info text-dark">Pest</span>';
-    }
-
-    function renderProducts(products) {
-      const tbody = $('productsBody');
-      const rows = products.map(p => {
-        // [id, name, barcode, stock, min_stock, price, siteone_sku, category, units_per_item, unit_cost, units_remaining]
-        const out = (p[3] === 0) ? 'table-danger' : '';
-        return `
-          <tr class="${out}" ${p[3]===0?'title="Out of Stock"':''}>
-            <td class="fw-semibold">${p[1] ?? ''}</td>
-            <td class="text-muted">${p[2] ?? ''}</td>
-            <td>${p[3] ?? 0}</td>
-            <td>${p[10] ?? 0}</td>
-            <td>${p[4] ?? 0}</td>
-            <td>${rowBadge(Number(p[3]||0), Number(p[4]||0))}</td>
-            <td>$${fmtMoney(p[5])}</td>
-            <td>${catBadge(p[7] ?? '')}</td>
-            <td style="min-width:160px;">
-              <td style="min-width:160px;">
-              <button class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#editModal${p[0]}">✏️ Edit</button>
-              <form action="/delete-product/${p[0]}" method="post" style="display:inline-block" onsubmit="return confirm('Are you sure?')">
-                <button class="btn btn-sm btn-outline-danger">🗑 Delete</button>
-              </form>
-            </td>
-          </tr>
-        `;
-      }).join('');
-      tbody.innerHTML = rows;
-    }
-
     async function reshAll() {
       try {
-        // 1) Stats only
         const stats = await fetchJSON('/api/dashboard-stats');
         updateStatsUI(stats);
-
-        // 2) DO NOT re-render products here; it nukes the modals
-        // const sel = document.getElementById('categorySelect');
-        // const category = encodeURIComponent(sel?.value || 'All');
-        // const products = await fetchJSON(`/api/products?category=${category}`);
-        // renderProducts(products);
-      } catch (e) {
+        // NOTE: No table re-render here (keeps modals stable)
+      } catch(e) {
         console.warn('Live update failed:', e);
       }
     }
@@ -609,78 +511,7 @@
     document.addEventListener('DOMContentLoaded', () => {
       reshAll();
       setInterval(reshAll, 15000);
-
-      // also resh when filter changes (prevent full page reload)
-      const form = document.getElementById('filterForm');
-      const select = document.getElementById('categorySelect');
-      if (form && select) {
-        form.addEventListener('submit', (e) => {
-          e.preventDefault();
-          reshAll();
-        });
-      }
-    });
-  </script>
-
-  <!-- Manage Barcodes loader (AJAX fragment + actions) -->
-  <script>
-    // Load list + wire actions
-    async function loadBarcodes(productId, listEl){
-      try{
-        const res = await fetch(`/products/${productId}/barcodes-fragment`, { credentials:'same-origin' });
-        if (!res.ok){
-          listEl.innerHTML = `<div class="text-danger">Could not load barcodes (HTTP ${res.status}).</div>`;
-          return;
-        }
-        listEl.innerHTML = await res.text();
-
-        listEl.querySelectorAll('.js-barcode-action').forEach(btn => {
-          btn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            btn.disabled = true; btn.textContent = 'Saving…';
-            const url = btn.getAttribute('data-action');
-            const resp = await fetch(url, { method:'POST', credentials:'same-origin' });
-            btn.disabled = false;
-            await loadBarcodes(productId, listEl);
-            if (!resp.ok) alert(`Server error (${resp.status}). Check logs.`);
-          });
-        });
-      }catch(e){
-        listEl.innerHTML = `<div class="text-danger">Failed to load barcodes.</div>`;
-        console.warn(e);
-      }
-    }
-
-    // Initialize each modal
-    document.querySelectorAll('.barcode-modal').forEach(modalEl => {
-      modalEl.addEventListener('shown.bs.modal', async () => {
-        const productId = modalEl.dataset.productId;
-        await loadBarcodes(productId, modalEl.querySelector('#barcodeList-' + productId));
-      });
-
-      // Intercept Add Barcode submit
-      const addForm = modalEl.querySelector('.add-barcode-form');
-      addForm?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const productId = modalEl.dataset.productId;
-        const listEl = modalEl.querySelector('#barcodeList-' + productId);
-
-        const btn = addForm.querySelector('button[type="submit"], button:not([type])') || addForm.querySelector('button');
-        const original = btn.textContent;
-        btn.disabled = true; btn.textContent = 'Adding…';
-
-        const formData = new FormData(addForm);
-        const resp = await fetch(addForm.action, { method:'POST', body:formData, credentials:'same-origin' });
-
-        btn.disabled = false; btn.textContent = original;
-
-        if (!resp.ok) {
-          alert(`Could not add barcode (HTTP ${resp.status}). Ensure the /admin/products/<id>/barcodes/add route exists and you’re logged in as ADMIN.`);
-          return;
-        }
-        addForm.reset();
-        await loadBarcodes(productId, listEl);
-      });
+      // Let the category filter submit normally (server will render rows+modals)
     });
   </script>
 
