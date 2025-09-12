@@ -577,8 +577,8 @@
             <td>$${fmtMoney(p[5])}</td>
             <td>${catBadge(p[7] ?? '')}</td>
             <td style="min-width:160px;">
+              <td style="min-width:160px;">
               <button class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#editModal${p[0]}">✏️ Edit</button>
-              <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#barcodeModal${p[0]}">🏷 Barcodes</button>
               <form action="/delete-product/${p[0]}" method="post" style="display:inline-block" onsubmit="return confirm('Are you sure?')">
                 <button class="btn btn-sm btn-outline-danger">🗑 Delete</button>
               </form>
@@ -591,16 +591,16 @@
 
     async function reshAll() {
       try {
-        // 1) Stats
+        // 1) Stats only
         const stats = await fetchJSON('/api/dashboard-stats');
         updateStatsUI(stats);
 
-        // 2) Products for the current filter
-        const sel = document.getElementById('categorySelect');
-        const category = encodeURIComponent(sel?.value || 'All');
-        const products = await fetchJSON(`/api/products?category=${category}`);
-        renderProducts(products);
-      } catch(e) {
+        // 2) DO NOT re-render products here; it nukes the modals
+        // const sel = document.getElementById('categorySelect');
+        // const category = encodeURIComponent(sel?.value || 'All');
+        // const products = await fetchJSON(`/api/products?category=${category}`);
+        // renderProducts(products);
+      } catch (e) {
         console.warn('Live update failed:', e);
       }
     }
