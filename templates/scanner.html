@@ -194,15 +194,26 @@
   <div id="toasts" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
   <audio id="beep" src="/static/beep.mp3" preload="auto"></audio>
 
-  <!-- ZXing -->
   <script type="module">
+    // === Polyfills / helpers ===
+    if (!HTMLVideoElement.prototype.requestVideoFrameCallback) {
+      HTMLVideoElement.prototype.requestVideoFrameCallback = function (cb) {
+        let last = performance.now();
+        return setTimeout(() => {
+          const now = performance.now();
+          cb(now, { mediaTime: (this.currentTime || 0) });
+        }, 50);
+      };
+    }
+
+    // Import ZXing (browser-friendly bundle)
     import {
       BrowserMultiFormatReader,
       DecodeHintType,
       BarcodeFormat
     } from "https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/+esm";
 
-    // Toast helper
+    // --- Toast helper ---
     function toast(message, {sub=null, variant='success', ttl=2600} = {}){
       const stack = document.getElementById('toasts');
       const el = document.createElement('div');
@@ -218,28 +229,29 @@
       }, ttl);
     }
 
-    const statusEl = document.getElementById("status");
-    const directionEl = document.getElementById("direction");
-    const techEl = document.getElementById("technician");
-    const camSelect = document.getElementById("cameraSelect");
+    // --- DOM refs ---
+    const statusEl   = document.getElementById("status");
+    const directionEl= document.getElementById("direction");
+    const techEl     = document.getElementById("technician");
+    const camSelect  = document.getElementById("cameraSelect");
 
-    const startBtn = document.getElementById("start-btn");
-    const pauseBtn = document.getElementById("pause-btn");
-    const torchBtn = document.getElementById("torch-btn");
-    const lowlightBtn = document.getElementById("lowlight-btn");
+    const startBtn   = document.getElementById("start-btn");
+    const pauseBtn   = document.getElementById("pause-btn");
+    const torchBtn   = document.getElementById("torch-btn");
+    const lowlightBtn= document.getElementById("lowlight-btn");
     const toggleLogBtn = document.getElementById("toggleLog");
 
-    const container = document.getElementById("scanner-container");
-    const video = document.getElementById("preview");
-    const list = document.getElementById("scanned-items");
-    const beep = document.getElementById("beep");
-    const logPanel = document.getElementById("log-panel");
-    const zoomWrap = document.getElementById("zoom-wrap");
-    const zoomInput = document.getElementById("zoom");
-    const roiCanvas = document.getElementById("roi");
-    const roiCtx = roiCanvas.getContext("2d", { willReadFrequently: true });
+    const container  = document.getElementById("scanner-container");
+    const video      = document.getElementById("preview");
+    const list       = document.getElementById("scanned-items");
+    const beep       = document.getElementById("beep");
+    const logPanel   = document.getElementById("log-panel");
+    const zoomWrap   = document.getElementById("zoom-wrap");
+    const zoomInput  = document.getElementById("zoom");
+    const roiCanvas  = document.getElementById("roi");
+    const roiCtx     = roiCanvas.getContext("2d", { willReadFrequently: true });
 
-    // ZXing with hints (formats + try harder)
+    // --- ZXing with hints ---
     const reader = new BrowserMultiFormatReader();
     const hints = new Map();
     hints.set(DecodeHintType.POSSIBLE_FORMATS, [
@@ -248,6 +260,7 @@
     hints.set(DecodeHintType.TRY_HARDER, true);
     reader.setHints(hints);
 
+    // --- State ---
     let stream = null;
     let active = false;
     let lastBarcode = "";
@@ -257,6 +270,7 @@
     let lowLight = false;
     let caps = {};
     let settings = {};
+    let rafId = null;
 
     // stability gate
     let lastCandidate = null;
@@ -266,7 +280,7 @@
     const CONFIRM_WINDOW_MS = 600;
 
     function setStatus(msg, cls=""){
-      statusEl.textContent = msg;
+      statusEl.textContent = msg || "";
       statusEl.className = cls;
     }
 
@@ -284,12 +298,13 @@
 
     async function listCameras(){
       try{
+        // Some browsers require a prior getUserMedia to reveal labels
         const devices = await navigator.mediaDevices.enumerateDevices();
         const vids = devices.filter(d => d.kind === "videoinput");
         camSelect.innerHTML = '<option value="">Default Camera</option>';
         vids.forEach((v, i) => {
           const opt = document.createElement("option");
-          opt.value = v.deviceId;
+          opt.value = v.deviceId || "";
           opt.textContent = v.label || `Camera ${i+1}`;
           camSelect.appendChild(opt);
         });
@@ -307,27 +322,34 @@
           frameRate: { ideal: 30, max: 60 }
         }
       };
+
+      // get stream
       stream = await navigator.mediaDevices.getUserMedia(constraints);
       video.srcObject = stream;
-      await video.play();
+
+      // Safari sometimes needs a tiny await before play()
+      await Promise.resolve();
+      await video.play().catch(()=>{});
 
       currentTrack = stream.getVideoTracks()[0];
-      caps = currentTrack.getCapabilities?.() || {};
-      settings = currentTrack.getSettings?.() || {};
+      caps = (currentTrack && currentTrack.getCapabilities) ? currentTrack.getCapabilities() : {};
+      settings = (currentTrack && currentTrack.getSettings) ? currentTrack.getSettings() : {};
 
       // Torch availability
-      torchBtn.disabled = !("torch" in caps);
+      torchBtn.disabled = !caps || !('torch' in caps);
+      torchBtn.textContent = "Flash";
 
-      // Low-light button enabled if we can at least change frameRate or torch
-      lowlightBtn.disabled = !("torch" in caps || "frameRate" in (caps || {}));
+      // Low-light button enabled if we can change frameRate or torch
+      lowlightBtn.disabled = !(('torch' in (caps||{})) || ('frameRate' in (caps||{})));
+      lowlightBtn.textContent = "Low-light";
 
       // Zoom support
-      if ("zoom" in caps) {
+      if (caps && 'zoom' in caps) {
         zoomWrap.classList.remove("hidden");
-        zoomInput.min = caps.zoom.min ?? 1;
-        zoomInput.max = caps.zoom.max ?? 1;
+        zoomInput.min  = caps.zoom.min ?? 1;
+        zoomInput.max  = caps.zoom.max ?? 1;
         zoomInput.step = caps.zoom.step ?? 0.01;
-        zoomInput.value = settings.zoom ?? zoomInput.min;
+        zoomInput.value= settings.zoom ?? zoomInput.min;
       } else {
         zoomWrap.classList.add("hidden");
       }
@@ -336,8 +358,9 @@
     }
 
     async function stopCamera(){
+      if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
       if (stream){
-        stream.getTracks().forEach(t => t.stop());
+        try { stream.getTracks().forEach(t => t.stop()); } catch {}
         stream = null;
         currentTrack = null;
       }
@@ -352,7 +375,7 @@
 
     async function toggleTorch(){
       try{
-        if (!currentTrack || !("torch" in caps)) return;
+        if (!currentTrack || !caps || !('torch' in caps)) return;
         torchOn = !torchOn;
         await currentTrack.applyConstraints({ advanced: [{ torch: torchOn }] });
         settings = currentTrack.getSettings?.() || settings;
@@ -366,19 +389,15 @@
       if (!currentTrack) return;
       lowLight = on;
       const adv = [];
-      // drop framerate to allow longer exposure → sharper frames in dim light
+      // lower framerate to allow more exposure
       adv.push({ frameRate: on ? 15 : 30 });
-      if (("torch" in caps)) adv.push({ torch: on || torchOn }); // keep torch state if already on
-      try {
-        await currentTrack.applyConstraints({ advanced: adv });
-        lowlightBtn.textContent = on ? "Low-light: On" : "Low-light";
-      } catch(e) {
-        // ignore
-      }
+      if (caps && 'torch' in caps) adv.push({ torch: on || torchOn });
+      try { await currentTrack.applyConstraints({ advanced: adv }); } catch {}
+      lowlightBtn.textContent = on ? "Low-light: On" : "Low-light";
     }
 
     zoomInput?.addEventListener("input", async (e) => {
-      if (!currentTrack || !("zoom" in caps)) return;
+      if (!currentTrack || !caps || !('zoom' in caps)) return;
       try{
         await currentTrack.applyConstraints({ advanced: [{ zoom: Number(e.target.value) }] });
         settings = currentTrack.getSettings?.() || settings;
@@ -415,7 +434,7 @@
       }
     }
 
-    // ROI helper: draw center crop (~60% of frame) onto hidden canvas
+    // ROI draw
     function drawROI() {
       const vw = video.videoWidth, vh = video.videoHeight;
       if (!vw || !vh) return false;
@@ -426,72 +445,68 @@
       return true;
     }
 
-    // Decode loop using requestVideoFrameCallback for smoothness
-    async function decodeLoop() {
+    // Decode loop (safe fallback to setTimeout if rVFC polyfilled)
+    function decodeLoop() {
       if (!active) return;
 
-      try {
-        if (video.readyState >= 2 && drawROI()) {
-          try {
-            const result = await reader.decodeFromCanvas(roiCanvas);
-            const text = result?.text || result?.getText?.() || "";
-            if (text) {
-              const now = performance.now();
+      const tick = async () => {
+        try {
+          if (video.readyState >= 2 && drawROI()) {
+            try {
+              const result = await reader.decodeFromCanvas(roiCanvas);
+              const text = result?.text || result?.getText?.() || "";
+              if (text) {
+                const now = performance.now();
+                if (text === lastCandidate && (now - lastCandidateAt) < CONFIRM_WINDOW_MS) {
+                  const direction = directionEl.value;
+                  const technician = techEl.value;
 
-              // stability gate: need same code twice within window
-              if (text === lastCandidate && (now - lastCandidateAt) < CONFIRM_WINDOW_MS) {
-                const direction = directionEl.value;
-                const technician = techEl.value;
-
-                if (direction === "out" && !technician){
-                  setStatus("Technician required for Scan Out.", "warning");
-                } else {
-                  // De-dupe final submit within cooldown
-                  if (!(text === lastBarcode && (now - lastTime) < SCAN_COOLDOWN_MS)) {
-                    lastBarcode = text; lastTime = now;
-
-                    // Beep only on confirmed decode
-                    beep?.play().catch(()=>{});
-
-                    // Log entry line
-                    const li = document.createElement("li");
-                    const t = new Date().toLocaleTimeString();
-                    li.textContent = `${t} — ${text} (${direction}${technician?` • tech:${technician}`:''})`;
-                    list.appendChild(li);
-
-                    await sendScan(text, direction, technician);
+                  if (direction === "out" && !technician){
+                    setStatus("Technician required for Scan Out.", "warning");
+                  } else {
+                    if (!(text === lastBarcode && (now - lastTime) < SCAN_COOLDOWN_MS)) {
+                      lastBarcode = text; lastTime = now;
+                      beep?.play().catch(()=>{});
+                      const li = document.createElement("li");
+                      const t = new Date().toLocaleTimeString();
+                      li.textContent = `${t} — ${text} (${direction}${technician?` • tech:${technician}`:''})`;
+                      list.appendChild(li);
+                      await sendScan(text, direction, technician);
+                    }
                   }
+                  lastCandidate = null;
+                } else {
+                  lastCandidate = text;
+                  lastCandidateAt = now;
                 }
-                lastCandidate = null; // reset gate
-              } else {
-                lastCandidate = text;
-                lastCandidateAt = now;
               }
-            }
-          } catch (noResult) {
-            // normal: no barcode in this frame
+            } catch (_) { /* no code this frame */ }
           }
-        }
-      } catch (err) {
-        // ignore frame-level errors
-      }
+        } catch (_) { /* ignore */ }
 
-      video.requestVideoFrameCallback(decodeLoop);
+        // schedule next
+        video.requestVideoFrameCallback(() => decodeLoop());
+      };
+
+      // Start one tick immediately
+      tick();
     }
 
     startBtn.addEventListener("click", async () => {
       try{
         startBtn.disabled = true;
         setStatus("Starting camera…");
-        await listCameras();
-        await startCamera();
+        await listCameras();                  // safe even if empty labels
+        await startCamera();                  // may prompt for permission
         active = true;
         pauseBtn.disabled = false;
         setStatus("Fill the box and hold 6–10 inches away");
         decodeLoop();
       }catch(e){
-        setStatus(`${e.message || "Camera access denied"}`, "error");
-        startBtn.disabled = false;
+        console.error(e);
+        setStatus(`${e?.message || "Camera access failed"}`, "error");
+        toast("Camera error", { sub: e?.message || "Unable to start", variant: 'error' });
+        startBtn.disabled = false;           // re-enable if failed
       }
     });
 
@@ -523,6 +538,7 @@
         }
       }catch(e){
         setStatus("Failed to switch camera", "error");
+        toast("Camera switch failed", { variant: 'error' });
       }
     });
 
@@ -530,10 +546,10 @@
     window.addEventListener("beforeunload", stopCamera);
   </script>
 
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/static/service-worker.js').catch(()=>{});
-    }
-  </script>
-</body>
-</html>
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/static/service-worker.js').catch(()=>{});
+      }
+    </script>
+  </body>
+  </html>
